@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0", "pybind11", "numpy"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mathutils"
+version = "0.1.0"
+description = "Fast mathematical utilities"
+authors = [{ name = "Your Name", email = "your.email@example.com" }]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = ["numpy"]
+
+[project.optional-dependencies]
+dev = ["pytest", "build", "twine"]
+
+[tool.setuptools]
+packages = ["mathutils"]
+
+[tool.setuptools.package-dir]
+mathutils = "mathutils"

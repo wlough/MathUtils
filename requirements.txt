@@ -1,0 +1,14 @@
+numpy
+sympy
+scipy
+numba
+notebook
+jupyterlab
+ipykernel
+black
+python-lsp-server[all]
+jedi
+mccabe
+pycodestyle
+matplotlib
+pybind11
