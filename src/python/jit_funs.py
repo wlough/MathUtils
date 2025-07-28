@@ -1078,23 +1078,28 @@ def phi_independent_scalarYlm(l, m, theta):
     log_abs_sin_theta = np.log(abs_sin_theta)
     abs_m = abs(m)
     rlm = np.sign(cos_theta ** (l - abs_m) * sin_theta**abs_m) / (2 * np.sqrt(np.pi))
-    # if m > 0:
-    #     if m % 2 == 1:
-    #         rlm *= -1
-    #
-    #
-    #
-    if m % 2 == 1:
-        rlm *= -1
-
-    #
-    #
-    #
-    #
-    if m < 0:
+    if m > 0:
         if m % 2 == 1:
             rlm *= -1
+    # ep, en, op, on
+    # +, +, -, +
     #
+    #
+    #
+    # if m % 2 == 1:
+    #     rlm *= -1
+    # ep,en,op,on
+    # +, +, -, -
+    #
+    #
+    #
+    #
+    #
+    # if m < 0:
+    #     if m % 2 == 1:
+    #         rlm *= -1
+    # ep,en,op,on
+    # +, +, +, -
     #
     #
     #

@@ -24,6 +24,12 @@ PYBIND11_MODULE(mathutils_backend, m) {
   m.def("Ylm_vectorized", &mathutils::Ylm_vectorized, "...", py::arg("l"),
         py::arg("m"), py::arg("theta"), py::arg("phi"));
 
+  m.def("real_Ylm_vectorized", &mathutils::real_Ylm_vectorized, "...",
+        py::arg("l"), py::arg("m"), py::arg("theta"), py::arg("phi"));
+
+  m.def("magnitude_Ylm", &mathutils::magnitude_Ylm, "...", py::arg("l"),
+        py::arg("abs_m"), py::arg("abs_cos_theta"));
+
   // Expose the LOG factorial lookup table as read-only
   py::array_t<double> log_factorial_table =
       py::cast(mathutils::LOG_FACTORIAL_LOOKUP_TABLE);

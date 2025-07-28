@@ -189,7 +189,7 @@ double _phi_independent_Ylm(int l, int m, double theta, double phi) {
  * @param theta Polar angle in radians.
  * @return Value of Ylm(theta, phi)/exp(i*theta*phi)
  */
-double phi_independent_Ylm(int l, int m, double theta) {
+inline double phi_independent_Ylm(int l, int m, double theta) {
   double epsilon = 1e-8;
   double minus_log4 = std::log(0.25);
 
@@ -319,29 +319,209 @@ double phi_independent_Ylm(int l, int m, double theta) {
   return rlm * sum_Qk;
 }
 
-std::complex<double> Ylm(int l, int m, double theta, double phi) {
+inline double magnitude_Ylm(int l, int abs_m, double abs_cos_theta) {
+  double epsilon = 1e-8;
+  double minus_log4 = std::log(0.25);
 
+  int ell_minus_m = l - abs_m;
+  double abs_sin_theta = std::sqrt(1.0 - abs_cos_theta * abs_cos_theta);
+
+  double rlm = 1.0 / (2.0 * std::sqrt(M_PI));
+  int k_bound = (ell_minus_m) / 2;
+  int sk = 1;
+  double log_qk = 0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) -
+                  abs_m * std::log(2) - 0.5 * log_factorial(ell_minus_m) -
+                  log_factorial(abs_m);
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  // If cos(theta) ~ +/-sin(theta) replace sin(theta) with tan(theta)
+  if (std::abs(abs_cos_theta - abs_sin_theta) < epsilon) {
+    double abs_tan_theta = abs_sin_theta / abs_cos_theta;
+    double log_abs_cos_theta = std::log(abs_cos_theta);
+    double log_abs_tan_theta = std::log(abs_tan_theta);
+    log_qk += l * log_abs_cos_theta + abs_m * log_abs_tan_theta;
+    double sum_Qk = sk * std::exp(log_qk);
+    for (int k = 1; k <= k_bound; ++k) {
+      sk *= -1;
+      log_qk += 2 * log_abs_tan_theta;
+      log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+                std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k) -
+                std::log(k);
+      sum_Qk += sk * std::exp(log_qk);
+    }
+    return rlm * sum_Qk;
+  }
+
+  // if cos(theta) ~ 0, sin(theta) ~ 1
+  if (abs_cos_theta < epsilon) {
+    double log_abs_sin_theta = std::log(abs_sin_theta);
+    log_qk += abs_m * log_abs_sin_theta;
+    double abs_cos_theta_pow = std::pow(abs_cos_theta, ell_minus_m);
+    double sum_Qk = sk * std::exp(log_qk) * abs_cos_theta_pow;
+    for (int k = 1; k <= k_bound; ++k) {
+      sk *= -1;
+      log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+                std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k) -
+                std::log(k);
+      abs_cos_theta_pow = std::pow(abs_cos_theta, ell_minus_m - 2 * k);
+      sum_Qk += sk * std::exp(log_qk) * abs_cos_theta_pow;
+    }
+
+    return rlm * sum_Qk;
+  }
+
+  // if sin(theta) ~ 0, cos(theta) ~ +/-1
+  if (abs_sin_theta < epsilon) {
+    double trig_term =
+        std::pow(abs_cos_theta, ell_minus_m) * std::pow(abs_sin_theta, abs_m);
+    double sum_Qk = sk * std::exp(log_qk) * trig_term;
+    for (int k = 1; k <= k_bound; ++k) {
+      sk *= -1;
+      log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+                std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k) -
+                std::log(k);
+      trig_term = std::pow(abs_cos_theta, ell_minus_m - 2 * k) *
+                  std::pow(abs_sin_theta, abs_m + 2 * k);
+      sum_Qk += sk * std::exp(log_qk) * trig_term;
+    }
+    return rlm * sum_Qk;
+  }
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  // if log(cos(theta)) and log(sin(theta)) are defined
+  double log_abs_cos_theta = std::log(abs_cos_theta);
+  double log_abs_sin_theta = std::log(abs_sin_theta);
+  log_qk += ell_minus_m * log_abs_cos_theta + abs_m * log_abs_sin_theta;
+  double sum_Qk = sk * std::exp(log_qk);
+  for (int k = 1; k <= k_bound; ++k) {
+    sk *= -1;
+    log_qk += -2 * log_abs_cos_theta + 2 * log_abs_sin_theta;
+    log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+              std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k) -
+              std::log(k);
+    sum_Qk += sk * std::exp(log_qk);
+  }
+
+  return rlm * sum_Qk;
+}
+
+inline std::complex<double> Ylm(int l, int m, double theta, double phi) {
+  if (theta > M_PI || theta < 0.0) {
+    throw std::out_of_range("theta must be in the range [0, pi]");
+  }
+  return std::exp(std::complex<double>(0, m * phi)) *
+         phi_independent_Ylm(l, m, theta);
+  // if (theta > M_PI || theta < 0.0) {
+  //   throw std::out_of_range("theta must be in the range [0, pi]");
+  // }
+  // int abs_m = std::abs(m);
+  // double cos_theta = std::cos(theta);
+  // double abs_cos_theta = std::abs(cos_theta);
+  // std::complex<double> val = std::exp(std::complex<double>(0, m * phi)) *
+  //                            magnitude_Ylm(l, abs_m, abs_cos_theta);
+  // if ((m > 0) && (abs_m % 2 == 1)) {
+  //   val *= -1;
+  // }
+  // if ((cos_theta < 0) && (l - abs_m % 2 == 1)) {
+  //   val *= -1;
+  // }
+
+  // return val;
+}
+
+Eigen::VectorXcd Ylm_vectorized(int l, int m, const Eigen::VectorXd &theta,
+                                const Eigen::VectorXd &phi) {
   if (l < 0) {
     throw std::out_of_range("l must be non-negative");
   }
   if (m < -l || m > l) {
     throw std::out_of_range("m must be in the range [-l, l]");
   }
-  if (theta > M_PI || theta < 0.0) {
-    throw std::out_of_range("theta must be in the range [0, pi]");
-  }
-  return std::exp(std::complex<double>(0, m * phi)) *
-         phi_independent_Ylm(l, m, theta);
-}
-
-Eigen::VectorXcd Ylm_vectorized(int l, int m, const Eigen::VectorXd &theta,
-                                const Eigen::VectorXd &phi) {
   if (theta.size() != phi.size()) {
     throw std::invalid_argument("theta and phi must have the same size");
   }
   Eigen::VectorXcd result(theta.size());
   for (int i = 0; i < theta.size(); ++i) {
     result[i] = Ylm(l, m, theta[i], phi[i]);
+  }
+  return result;
+}
+
+// inline double real_Ylm(int l, int m, double theta, double phi) {
+
+//   if (theta > M_PI || theta < 0.0) {
+//     throw std::out_of_range("theta must be in the range [0, pi]");
+//   }
+//   int abs_m = std::abs(m);
+//   double cos_theta = std::cos(theta);
+//   double abs_cos_theta = std::abs(cos_theta);
+//   double val = magnitude_Ylm(l, abs_m, abs_cos_theta);
+//   int s = 1;
+
+//   if (m < 0) {
+//     val *= std::sqrt(2) * std::sin(abs_m * phi);
+//     if ((cos_theta < 0) && (l - abs_m % 2 == 1)) {
+//       s *= -1;
+//     }
+//     if (abs_m % 2 == 1) {
+//       s *= -1;
+//     }
+//     return s * val;
+//   }
+//   if (m == 0) {
+//     if ((cos_theta < 0) && (l % 2 == 1)) {
+//       s *= -1;
+//     }
+//     return s * val;
+//   }
+//   val *= std::sqrt(2) * std::cos(abs_m * phi);
+//   if ((cos_theta < 0) && (l - abs_m % 2 == 1)) {
+//     s *= -1;
+//   }
+//   return s * val;
+// }
+
+inline double real_Ylm(int l, int m, double theta, double phi) {
+
+  if (theta > M_PI || theta < 0.0) {
+    throw std::out_of_range("theta must be in the range [0, pi]");
+  }
+  int abs_m = std::abs(m);
+  double val = phi_independent_Ylm(l, abs_m, theta);
+  if (abs_m % 2 == 1) {
+    val *= -1;
+  }
+  if (m < 0) {
+    return val * std::sqrt(2) * std::sin(abs_m * phi);
+  }
+  if (m == 0) {
+    return val;
+  }
+  return val * std::sqrt(2) * std::cos(abs_m * phi);
+}
+
+Eigen::VectorXd real_Ylm_vectorized(int l, int m, const Eigen::VectorXd &theta,
+                                    const Eigen::VectorXd &phi) {
+  if (l < 0) {
+    throw std::out_of_range("l must be non-negative");
+  }
+  if (m < -l || m > l) {
+    throw std::out_of_range("m must be in the range [-l, l]");
+  }
+  if (theta.size() != phi.size()) {
+    throw std::invalid_argument("theta and phi must have the same size");
+  }
+  Eigen::VectorXd result(theta.size());
+  for (int i = 0; i < theta.size(); ++i) {
+    result[i] = real_Ylm(l, m, theta[i], phi[i]);
   }
   return result;
 }
