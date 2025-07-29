@@ -7,10 +7,10 @@ ext_modules = [
     Pybind11Extension(
         "mathutils.mathutils_backend",
         [
-            "src/cpp/bindings.cpp",  # Correct path to your bindings
+            "src/cpp/bindings.cpp",
         ],
         include_dirs=[
-            "include",  # Your header files
+            "include",  # MathUtils header files
             "/usr/include/eigen3",  # Eigen headers
         ],
         cxx_std=17,

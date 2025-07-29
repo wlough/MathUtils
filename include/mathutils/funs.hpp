@@ -58,7 +58,6 @@ inline int spherical_harmonic_index_n_LM(int l, int m) {
     throw std::out_of_range("l must be non-negative");
   }
   return l * (l + 1) + m;
-  // return l*l+l+l = l**2+2l = l
 }
 
 inline std::array<int, 2> spherical_harmonic_index_lm_N(int n) {
@@ -151,56 +150,6 @@ double phi_independent_problem_angle_same_Ylm(int l, int m, double theta,
         std::log(l - abs_m - 2 * k + 1) - std::log(abs_m + k) - std::log(k);
     sum_Qk += sk * std::exp(log_qk);
   }
-  return rlm * sum_Qk;
-}
-
-double _phi_independent_Ylm(int l, int m, double theta, double phi) {
-  double cos_theta = std::cos(theta);
-  double abs_cos_theta = std::abs(cos_theta);
-  double epsilon = 1e-8;
-  if (abs_cos_theta < epsilon) {
-    return 0.0;
-  }
-  double sin_theta = std::sin(theta);
-  double abs_sin_theta = std::abs(sin_theta);
-  if (abs_sin_theta < epsilon) {
-    return 0.0;
-  }
-  if (std::abs(abs_cos_theta - abs_sin_theta) < epsilon) {
-    return 0.0;
-  }
-  double log_abs_cos_theta = std::log(abs_cos_theta);
-  double log_abs_sin_theta = std::log(abs_sin_theta);
-  int abs_m = std::abs(m);
-
-  double trig_pows =
-      std::pow(cos_theta, l - abs_m) * std::pow(sin_theta, abs_m);
-
-  double rlm = sign(trig_pows) / (2 * std::sqrt(M_PI));
-  // if abs_m % 2 == 1:
-  if (m > 0) {
-    if (m % 2 == 1) {
-      rlm *= -1;
-    }
-  }
-
-  double log_qk = (0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
-                   (l - abs_m) * log_abs_cos_theta + abs_m * log_abs_sin_theta -
-                   abs_m * std::log(2) - 0.5 * log_factorial(l - abs_m) -
-                   log_factorial(abs_m));
-  double sk = 1;
-  double sum_Qk = sk * std::exp(log_qk);
-  double minus_log4 = std::log(0.25);
-
-  for (int k = 1; k <= (l - abs_m) / 2; ++k) {
-    sk *= -1;
-    log_qk +=
-        (-2 * log_abs_cos_theta + 2 * log_abs_sin_theta + minus_log4 +
-         std::log(l - abs_m - 2 * k + 2) + std::log(l - abs_m - 2 * k + 1) -
-         std::log(abs_m + k) - std::log(k));
-    sum_Qk += sk * std::exp(log_qk);
-  }
-
   return rlm * sum_Qk;
 }
 
