@@ -29,6 +29,27 @@ inline double log_factorial(uint64_t n) {
   }
 }
 
+inline double Heaviside(double x) {
+  if (x < 0.0) {
+    return 0.0;
+  } else if (x > 0.0) {
+    return 1.0;
+  } else {
+    return 0.5; // H(0) = 1/2
+  }
+}
+
+inline int Heaviside(int x) {
+  if (x < 0) {
+    return 0;
+  } else {
+    return 1;
+  }
+}
+
+inline int sign(int x) { return (x > 0) - (x < 0); }
+inline int sign(double x) { return (x > 0.0) - (x < 0.0); }
+
 inline int spherical_harmonic_index_n_LM(int l, int m) {
   if (m < -l || m > l) {
     throw std::out_of_range("m must be in the range [-l, l]");
@@ -37,6 +58,7 @@ inline int spherical_harmonic_index_n_LM(int l, int m) {
     throw std::out_of_range("l must be non-negative");
   }
   return l * (l + 1) + m;
+  // return l*l+l+l = l**2+2l = l
 }
 
 inline std::array<int, 2> spherical_harmonic_index_lm_N(int n) {
@@ -524,6 +546,176 @@ Eigen::VectorXd real_Ylm_vectorized(int l, int m, const Eigen::VectorXd &theta,
     result[i] = real_Ylm(l, m, theta[i], phi[i]);
   }
   return result;
+}
+
+inline int spherical_harmonic_s_lmtheta(int l, int m, double theta) {
+  int sign_m = (m > 0) - (m < 0);
+  int sign_cos_theta = (theta < M_PI_2) - (theta > M_PI_2);
+  int s = 1;
+  if (l % 2 == 1) {
+    s *= sign_cos_theta;
+  }
+  if (m % 2 == 1) {
+    s *= -sign_m * sign_cos_theta;
+  }
+  return s;
+}
+
+Eigen::MatrixXd compute_all_real_Ylm(int l_max,
+                                     const Eigen::MatrixXd &thetaphi_coord_P) {
+  // check l_max
+  if (l_max < 0) {
+    throw std::out_of_range("l_max must be non-negative");
+  }
+  // check thetaphi_coord_P
+  if (thetaphi_coord_P.cols() != 2) {
+    throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
+  }
+  int num_points = thetaphi_coord_P.rows();
+  if (num_points <= 0) {
+    throw std::invalid_argument("thetaphi_coord_P must have at least one row");
+  }
+  //////////////////////////////////
+  int num_modes = l_max * (l_max + 2) + 1; // = n_LM(l_max, l_max)+1
+  Eigen::MatrixXd Y(num_points, num_modes);
+  Y.setZero();
+  for (int l{0}; l <= l_max; l++) {
+    for (int m{-l}; m <= l; m++) {
+      int n = l * (l + 1) + m;
+      for (int p{0}; p < num_points; ++p) {
+        double theta = thetaphi_coord_P(p, 0);
+        double phi = thetaphi_coord_P(p, 1);
+        Y(p, n) = real_Ylm(l, m, theta, phi);
+      }
+    }
+  }
+  //////////////////////////////////
+  // double epsilon = 1e-8;
+  // double minus_log4 = std::log(0.25);
+
+  // Eigen::VectorXd theta_P = thetaphi_coord_P.col(0);
+  // Eigen::VectorXd phi_P = thetaphi_coord_P.col(1);
+  // Eigen::VectorXd cos_theta_P = theta_P.array().cos();
+  // Eigen::VectorXd abs_cos_theta_P = cos_theta_P.cwiseAbs();
+  // Eigen::VectorXd sin_theta_P = theta_P.array().sin();
+  // Eigen::VectorXd abs_sin_theta_P = sin_theta_P.cwiseAbs();
+
+  // int num_modes = l_max * (l_max + 2) + 1; // = n_LM(l_max, l_max)+1
+
+  // // // Y = Eigen::MatrixXd::Zero(num_points, num_modes);
+  // Eigen::MatrixXd Y(num_points, num_modes);
+  // Y.setZero();
+
+  // for (int l{0}; l <= l_max; ++l) {
+  //   for (int m{-l}; m <= l; ++m) {
+  //     int n = l * (l + 1) + m;
+  //     int sign_m = (m > 0) - (m < 0);
+  //     int abs_m = std::abs(m);
+  //     int ell_minus_m = l - abs_m;
+  //     int ell_plus_m = l + abs_m;
+  //     int k_bound = (ell_minus_m) / 2;
+  //     double log_qk0 = 0.5 * std::log(2 * l + 1) +
+  //                      0.5 * log_factorial(l + abs_m) - abs_m * std::log(2) -
+  //                      0.5 * log_factorial(l - abs_m) - log_factorial(abs_m);
+  //     for (int p{0}; p < num_points; ++p) {
+
+  //       int s_lmtheta = 1;
+  //       int sign_cos_theta = (theta_P[p] < M_PI_2) - (theta_P[p] > M_PI_2);
+  //       if (l % 2 == 1) {
+  //         s_lmtheta *= sign_cos_theta;
+  //       }
+  //       // if (m % 2 == 1) {
+  //       //   s_lmtheta *= -sign_m *sign_cos_theta;
+  //       // }
+  //       // if (m % 2 == 1) {
+  //       //   s_lmtheta *= -sign_cos_theta;
+  //       // }
+  //       // if (m % 2 == 1) {
+  //       //   s_lmtheta *= -1;
+  //       // }
+  //       if (m % 2 == 1) {
+  //         s_lmtheta *= sign_cos_theta;
+  //       }
+
+  //       int s_k = 1;
+  //       double log_qk = log_qk0;
+  //       double sum_Qk{0.0};
+  //       /////////////////////////////////////////
+  //       /////////////////////////////////////////
+  //       /////////////////////////////////////////
+  //       // If cos(theta) ~ +/-sin(theta) replace sin(theta) with tan(theta)
+  //       if (std::abs(abs_cos_theta_P[p] - abs_sin_theta_P[p]) < epsilon) {
+  //         double tan_theta = std::tan(theta_P[p]);
+  //         double abs_tan_theta = std::abs(tan_theta);
+  //         double log_abs_cos_theta = std::log(abs_cos_theta_P[p]);
+  //         double log_abs_tan_theta = std::log(abs_tan_theta);
+  //         log_qk += l * log_abs_cos_theta + abs_m * log_abs_tan_theta;
+  //         sum_Qk = s_k * std::exp(log_qk);
+  //         for (int k{1}; k <= k_bound; k++) {
+  //           s_k *= -1;
+  //           log_qk += 2 * log_abs_tan_theta;
+  //           log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+  //                     std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k)
+  //                     - std::log(k);
+  //           sum_Qk += s_k * std::exp(log_qk);
+  //         }
+  //       } else if (abs_cos_theta_P[p] <
+  //                  epsilon) { // if cos(theta) ~ 0, sin(theta) ~ 1
+  //         double log_abs_sin_theta = std::log(abs_sin_theta_P[p]);
+  //         log_qk += abs_m * log_abs_sin_theta;
+  //         double abs_cos_theta_pow = std::pow(abs_cos_theta_P[p],
+  //         ell_minus_m); double sum_Qk = s_k * std::exp(log_qk) *
+  //         abs_cos_theta_pow; for (int k = 1; k <= k_bound; ++k) {
+  //           s_k *= -1;
+  //           log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+  //                     std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k)
+  //                     - std::log(k);
+  //           abs_cos_theta_pow =
+  //               std::pow(abs_cos_theta_P[p], ell_minus_m - 2 * k);
+  //           sum_Qk += s_k * std::exp(log_qk) * abs_cos_theta_pow;
+  //         }
+  //       } else if (abs_sin_theta_P[p] <
+  //                  epsilon) { // if sin(theta) ~ 0, cos(theta) ~ +/-1
+  //         double trig_term = std::pow(abs_cos_theta_P[p], ell_minus_m) *
+  //                            std::pow(abs_sin_theta_P[p], abs_m);
+  //         double sum_Qk = s_k * std::exp(log_qk) * trig_term;
+  //         for (int k = 1; k <= k_bound; ++k) {
+  //           s_k *= -1;
+  //           log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+  //                     std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k)
+  //                     - std::log(k);
+  //           trig_term = std::pow(abs_cos_theta_P[p], ell_minus_m - 2 * k) *
+  //                       std::pow(abs_sin_theta_P[p], abs_m + 2 * k);
+  //           sum_Qk += s_k * std::exp(log_qk) * trig_term;
+  //         }
+  //       } else { // if log(cos(theta)) and log(sin(theta)) are defined
+  //         double log_abs_cos_theta = std::log(abs_cos_theta_P[p]);
+  //         double log_abs_sin_theta = std::log(abs_sin_theta_P[p]);
+  //         log_qk += ell_minus_m * log_abs_cos_theta + abs_m *
+  //         log_abs_sin_theta; sum_Qk = s_k * std::exp(log_qk); for (int k{1};
+  //         k <= k_bound; ++k) {
+  //           s_k *= -1;
+  //           log_qk += -2 * log_abs_cos_theta + 2 * log_abs_sin_theta;
+  //           log_qk += minus_log4 + std::log(ell_minus_m - 2 * k + 2) +
+  //                     std::log(ell_minus_m - 2 * k + 1) - std::log(abs_m + k)
+  //                     - std::log(k);
+  //           sum_Qk += s_k * std::exp(log_qk);
+  //         }
+  //       }
+  //       /////////////////////////////////////////
+  //       /////////////////////////////////////////
+  //       /////////////////////////////////////////
+  //       Y(p, n) = s_lmtheta * sum_Qk / (2.0 * std::sqrt(M_PI));
+  //       if (m < 0) {
+  //         Y(p, n) *= std::sqrt(2) * std::sin(abs_m * phi_P[p]);
+  //       } else if (m > 0) {
+  //         Y(p, n) *= std::sqrt(2) * std::cos(abs_m * phi_P[p]);
+  //       }
+  //     }
+  //   }
+  // }
+
+  return Y;
 }
 
 } // namespace mathutils
