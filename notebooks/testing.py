@@ -9,15 +9,16 @@
 
 def test_all_real_Ylm_against_jit():
     import numpy as np
-    from src.python.jit_funs import real_Ylm as jit_real_Ylm
+
+    # from src.python.jit_funs import real_Ylm as jit_real_Ylm
     from mathutils import (
         spherical_harmonic_index_n_LM,
         spherical_harmonic_index_lm_N,
-        Ylm_vectorized,
-        real_Ylm_vectorized,
         compute_all_real_Ylm,
+        jit_funs,
     )
 
+    jit_real_Ylm = jit_funs.real_Ylm
     # Ylm_fun = real_Ylm_vectorized  # up to l=54
     # Ylm_fun = Ylm_alt0  # up to l=10
     # Ylm_fun = Ylm_alt1  # up to l=19
