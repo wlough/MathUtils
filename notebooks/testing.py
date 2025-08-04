@@ -1,8 +1,16 @@
 # %%
 # generate lookup tables
-# from src.python.codegen import write_lookup_tables
-# write_lookup_tables()
+from src.python.codegen import (
+    write_log_factorial_lookup_table,
+    write_spherical_harmonic_index_lookup_table,
+)
+
+# write_lookup_tables(n_max=50, precision=50)
+write_log_factorial_lookup_table(n_max=200, precision=200)
+write_spherical_harmonic_index_lookup_table(l_max=100)
 # then pip install -e .
+# import numpy as np
+# from math import lgamma
 
 # %%
 from mathutils import (

@@ -25,7 +25,17 @@ source .venv/mathutils_test/bin/activate
 pip install -r requirements_testing.txt
 
 
+in C++ 
 
+`(false)`$\mapsto$ `0`
+
+`(true)`$\mapsto$ `1`
+
+`0`$\mapsto$ `false`
+
+`1`$\mapsto$ `true`
+
+`13`$\mapsto$ `true`
 
 <!-- # MathUtils
 

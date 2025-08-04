@@ -1,6 +1,43 @@
 import numpy as np
 from numba import njit, int32, int64  # , prange
 from numba.typed import Dict  # , List
+import math
+
+
+def log_of_product_of_powers(bases, exponents):
+    """
+    Compute the complex logarithm of ∏ᵢ bases[i]**exponents[i] for real bases.
+
+    Returns
+    -------
+    re_log : float
+        ∑ᵢ exponents[i] * log|bases[i]|, the real part of the log.
+    arg_over_pi : float
+        (∑ᵢ exponents[i] * arg(bases[i])) / π, i.e. the logarithm’s
+        imaginary part scaled by π, reduced modulo 2.
+
+    Notes
+    -----
+    - If bases[i] == 0 and exponents[i] > 0, contributes −∞ to re_log.
+    - If bases[i] == 0 and exponents[i] < 0, re_log accumulates +∞ (ValueError
+      may be preferred if you want to reject 0**negative).
+    - For bases[i] < 0, arg(bases[i]) = π so each negative base flips
+      sign according to the parity of the exponent.
+    """
+    re_log = 0.0
+    arg_over_pi = 0.0
+
+    for b, p in zip(bases, exponents):
+        if b == 0:
+            if p != 0:
+                re_log += -p * float("inf")
+        elif b < 0:
+            re_log += p * math.log(-b)
+            arg_over_pi += p
+        else:
+            re_log += p * math.log(b)
+
+    return re_log, (arg_over_pi % 2)
 
 
 factorial_table = np.array(
