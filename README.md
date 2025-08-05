@@ -9,7 +9,7 @@ python -m venv .venv/mathutils_build
 source .venv/mathutils_build/bin/activate
 pip install build twine
 # Clean previous builds
-rm -rf dist/ build/ *.egg-info .venv/mathutils_test
+rm -rf dist/ build/ *.egg-info
 # Build source distribution and wheel
 python -m build
 # Verify files were created

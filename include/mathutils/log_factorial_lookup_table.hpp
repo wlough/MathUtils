@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 /**
  * @file log_factorial_lookup_table.hpp
  * @brief table of \f$\ln(n!)\f$ for \f$n \in [0, {n_max}]\f$

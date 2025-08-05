@@ -121,6 +121,7 @@ def write_log_factorial_lookup_table(n_max=200, precision=200):
     """Generate and write lookup tables for mathutils"""
 
     look_up_tables_hpp = "#pragma once\n\n"
+    look_up_tables_hpp += "#include <cstdint>\n\n"
     look_up_tables_hpp += (
         "/**\n"
         "* @file log_factorial_lookup_table.hpp\n"
@@ -163,10 +164,10 @@ def write_spherical_harmonic_index_lookup_table(l_max=100):
         "*/\n\n"
     )
     look_up_tables_hpp += "namespace mathutils {\n\n"
-    look_up_tables_hpp += f"constexpr int SPHERICAL_HARMONIC_INDEX_L_MAX = {l_max};\n\n"
-    look_up_tables_hpp += (
-        f"constexpr int SPHERICAL_HARMONIC_INDEX_N_MAX = {l_max * (l_max + 2)};\n\n"
-    )
+    look_up_tables_hpp += f"constexpr int SPHERICAL_HARMONIC_INDEX_L_MAX = {
+        l_max};\n\n"
+    look_up_tables_hpp += f"constexpr int SPHERICAL_HARMONIC_INDEX_N_MAX = {
+            l_max * (l_max + 2)};\n\n"
     arr = generate_spherical_harmonics_index_table(l_max=l_max)
     look_up_tables_hpp += arr + "\n\n"
     look_up_tables_hpp += "} // namespace mathutils\n"
