@@ -622,6 +622,14 @@ inline double phi_independent_Ylm(int l, int m, double theta) {
   return rlm * sum_Qk;
 }
 
+inline std::complex<double> old_Ylm(int l, int m, double theta, double phi) {
+  if (theta > M_PI || theta < 0.0) {
+    throw std::out_of_range("theta must be in the range [0, pi]");
+  }
+  return std::exp(std::complex<double>(0, m * phi)) *
+         phi_independent_Ylm(l, m, theta);
+}
+
 inline double old_real_Ylm(int l, int m, double theta, double phi) {
 
   if (theta > M_PI || theta < 0.0) {

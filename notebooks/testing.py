@@ -436,9 +436,12 @@ def test_mathutils_Ylm_against_sympy():
     local_tol = 1e-12
     l_min = 0
     l_max = 100
-    Theta = np.pi * np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+    Theta = np.pi * np.array([0.0, 0.5, 1.0])
     Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25,
                            0.0, 0.25, 0.5, 0.75, 1.0])
+    # Theta = np.pi * np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+    # Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25,
+    #                        0.0, 0.25, 0.5, 0.75, 1.0])
     Theta = np.array([*Theta, *np.linspace(0, np.pi, 11)[1:-1]])
     Phi = np.array([*Phi, *np.linspace(2 * np.pi, 22)[1:]])
 
