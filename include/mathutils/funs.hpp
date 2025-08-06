@@ -112,6 +112,25 @@ inline std::pair<double, int> ReLogRe_ImLogRe_over_pi(const T &x) {
   }
 }
 
+template <typename T>
+inline std::pair<double, int> ReLogRe_ImLogRe_over_pi_of_x_to_pow(const T &x,
+                                                                  int n) {
+  if constexpr (std::is_floating_point_v<T> || std::is_integral_v<T>) {
+    return (n == 0) ? std::make_pair(0.0, 0)
+           : (x == T{0})
+               ? std::make_pair(-n * std::numeric_limits<double>::infinity(), 0)
+               : std::make_pair(n * std::log(std::abs(x)),
+                                static_cast<int>(x < T{0} && (n & 1)));
+  } else {
+    double Re_x = static_cast<double>(x);
+    return (n == 0) ? std::make_pair(0.0, 0)
+           : (Re_x == 0.0)
+               ? std::make_pair(-n * std::numeric_limits<double>::infinity(), 0)
+               : std::make_pair(n * std::log(std::abs(Re_x)),
+                                static_cast<int>(Re_x < 0.0 && (n & 1)));
+  }
+}
+
 /////////////////////////
 // Spherical harmonics //
 /////////////////////////
@@ -179,9 +198,14 @@ inline double real_Ylm(int l, int m, double theta, double phi) {
         -0.5 * std::log(4 * M_PI) - (abs_m + 2 * k) * std::log(2) +
         0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
         0.5 * log_factorial(l - abs_m) - log_factorial(l - abs_m - 2 * k) -
-        log_factorial(abs_m + k) - log_factorial(k) +
-        (l - abs_m - 2 * k) * log_abs_cos_theta +
-        (abs_m + 2 * k) * log_abs_sin_theta;
+        log_factorial(abs_m + k) - log_factorial(k);
+    //  +
+    // (l - abs_m - 2 * k) * log_abs_cos_theta +
+    // (abs_m + 2 * k) * log_abs_sin_theta;
+    int pow_cos = (l - abs_m - 2 * k);
+    int pow_sin = (abs_m + 2 * k);
+    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
     Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
   }
   return (m < 0)   ? std::sqrt(2) * std::sin(abs_m * phi) * Xlm
@@ -225,9 +249,14 @@ Eigen::VectorXd real_Ylm(int l, int m,
           -0.5 * std::log(4 * M_PI) - (abs_m + 2 * k) * std::log(2) +
           0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
           0.5 * log_factorial(l - abs_m) - log_factorial(l - abs_m - 2 * k) -
-          log_factorial(abs_m + k) - log_factorial(k) +
-          (l - abs_m - 2 * k) * log_abs_cos_theta +
-          (abs_m + 2 * k) * log_abs_sin_theta;
+          log_factorial(abs_m + k) - log_factorial(k);
+      // +
+      // (l - abs_m - 2 * k) * log_abs_cos_theta +
+      // (abs_m + 2 * k) * log_abs_sin_theta;
+      int pow_cos = (l - abs_m - 2 * k);
+      int pow_sin = (abs_m + 2 * k);
+      ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+      ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
       Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
     }
     Y(p) = (m < 0)   ? std::sqrt(2) * std::sin(abs_m * phi) * Xlm
@@ -258,13 +287,16 @@ inline std::complex<double> Ylm(int l, int m, double theta, double phi) {
   for (int k{0}; k <= (l - abs_m) / 2; k++) {
     int ImLog_over_pi_Xklm =
         k + (l - abs_m) * arg_over_pi_cos_theta + abs_m * arg_over_pi_sin_theta;
-    double ReLog_Xklm =
-        -0.5 * std::log(4 * M_PI) - (abs_m + 2 * k) * std::log(2) +
-        0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
-        0.5 * log_factorial(l - abs_m) - log_factorial(l - abs_m - 2 * k) -
-        log_factorial(abs_m + k) - log_factorial(k) +
-        (l - abs_m - 2 * k) * log_abs_cos_theta +
-        (abs_m + 2 * k) * log_abs_sin_theta;
+    double ReLog_Xklm = -0.5 * std::log(4 * M_PI) - abs_m * std::log(2) +
+                        0.5 * std::log(2 * l + 1) +
+                        0.5 * log_factorial(l + abs_m) +
+                        0.5 * log_factorial(l - abs_m) - 2 * k * std::log(2) -
+                        log_factorial(l - abs_m - 2 * k) -
+                        log_factorial(abs_m + k) - log_factorial(k);
+    int pow_cos = (l - abs_m - 2 * k);
+    int pow_sin = (abs_m + 2 * k);
+    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
     Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
   }
   return (m < 0) ? std::exp(std::complex<double>(0, m * phi)) * Xlm
@@ -310,9 +342,14 @@ Eigen::VectorXcd Ylm(int l, int m, const Eigen::MatrixXd &thetaphi_coord_P) {
           -0.5 * std::log(4 * M_PI) - (abs_m + 2 * k) * std::log(2) +
           0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
           0.5 * log_factorial(l - abs_m) - log_factorial(l - abs_m - 2 * k) -
-          log_factorial(abs_m + k) - log_factorial(k) +
-          (l - abs_m - 2 * k) * log_abs_cos_theta +
-          (abs_m + 2 * k) * log_abs_sin_theta;
+          log_factorial(abs_m + k) - log_factorial(k);
+      //  +
+      // (l - abs_m - 2 * k) * log_abs_cos_theta +
+      // (abs_m + 2 * k) * log_abs_sin_theta;
+      int pow_cos = (l - abs_m - 2 * k);
+      int pow_sin = (abs_m + 2 * k);
+      ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+      ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
       Y(p) += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
     }
     Y(p) *= std::exp(std::complex<double>(0, m * phi));
@@ -371,9 +408,14 @@ Eigen::MatrixXd compute_all_real_Ylm(int l_max,
         double ReLog_Xklm = -0.5 * std::log(4 * M_PI) - (2 * k) * std::log(2) +
                             0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l) +
                             0.5 * log_factorial(l) - log_factorial(l - 2 * k) -
-                            log_factorial(k) - log_factorial(k) +
-                            (l - 2 * k) * log_abs_cos_theta +
-                            (2 * k) * log_abs_sin_theta;
+                            log_factorial(k) - log_factorial(k);
+        //  +
+        // (l - 2 * k) * log_abs_cos_theta +
+        // (2 * k) * log_abs_sin_theta;
+        int pow_cos = l - 2 * k;
+        int pow_sin = 2 * k;
+        ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+        ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
         Y(p, n) +=
             minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
       }
@@ -387,9 +429,14 @@ Eigen::MatrixXd compute_all_real_Ylm(int l_max,
               -0.5 * std::log(4 * M_PI) - (m + 2 * k) * std::log(2) +
               0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + m) +
               0.5 * log_factorial(l - m) - log_factorial(l - m - 2 * k) -
-              log_factorial(m + k) - log_factorial(k) +
-              (l - m - 2 * k) * log_abs_cos_theta +
-              (m + 2 * k) * log_abs_sin_theta;
+              log_factorial(m + k) - log_factorial(k);
+          // +
+          // (l - m - 2 * k) * log_abs_cos_theta +
+          // (m + 2 * k) * log_abs_sin_theta;
+          int pow_cos = (l - m - 2 * k);
+          int pow_sin = (m + 2 * k);
+          ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+          ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
           Y(p, n_plus) +=
               minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
         }
@@ -452,12 +499,18 @@ Eigen::MatrixXcd compute_all_Ylm(int l_max,
         double ReLog_Xklm = -0.5 * std::log(4 * M_PI) - (2 * k) * std::log(2) +
                             0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l) +
                             0.5 * log_factorial(l) - log_factorial(l - 2 * k) -
-                            log_factorial(k) - log_factorial(k) +
-                            (l - 2 * k) * log_abs_cos_theta +
-                            (2 * k) * log_abs_sin_theta;
+                            log_factorial(k) - log_factorial(k);
+        //  +
+        // (l - 2 * k) * log_abs_cos_theta +
+        // (2 * k) * log_abs_sin_theta;
+        int pow_cos = l - 2 * k;
+        int pow_sin = 2 * k;
+        ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+        ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
         Y(p, n) +=
             minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
       }
+      // m=-l,...,l
       for (int m{1}; m <= l; m++) {
         int n_plus = l * (l + 1) + m;
         int n_minus = l * (l + 1) - m;
@@ -468,9 +521,14 @@ Eigen::MatrixXcd compute_all_Ylm(int l_max,
               -0.5 * std::log(4 * M_PI) - (m + 2 * k) * std::log(2) +
               0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + m) +
               0.5 * log_factorial(l - m) - log_factorial(l - m - 2 * k) -
-              log_factorial(m + k) - log_factorial(k) +
-              (l - m - 2 * k) * log_abs_cos_theta +
-              (m + 2 * k) * log_abs_sin_theta;
+              log_factorial(m + k) - log_factorial(k);
+          //  +
+          // (l - m - 2 * k) * log_abs_cos_theta +
+          // (m + 2 * k) * log_abs_sin_theta;
+          int pow_cos = (l - m - 2 * k);
+          int pow_sin = (m + 2 * k);
+          ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+          ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
           Y(p, n_plus) +=
               minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
         }
@@ -483,6 +541,110 @@ Eigen::MatrixXcd compute_all_Ylm(int l_max,
     }
   }
   return Y;
+}
+
+inline double spherical_Plm(int l, int abs_m, double theta) {
+  int k_max = (l - abs_m) / 2;
+  double cos_theta = std::cos(theta);
+  double sin_theta = std::sin(theta);
+  if ((cos_theta == 0.0 && (l - abs_m & 1)) ||
+      (sin_theta == 0.0 && abs_m != 0)) {
+    return 0.0;
+  }
+
+  auto [log_abs_cos_theta, arg_over_pi_cos_theta] =
+      ReLogRe_ImLogRe_over_pi(cos_theta);
+  auto [log_abs_sin_theta, arg_over_pi_sin_theta] =
+      ReLogRe_ImLogRe_over_pi(sin_theta);
+  double Xlm = 0.0;
+  int no_k_part_ImLog_over_pi_Xklm =
+      (l - abs_m) * arg_over_pi_cos_theta + abs_m * arg_over_pi_sin_theta;
+  double no_k_part_ReLog_Xklm =
+      -0.5 * std::log(4 * M_PI) - abs_m * std::log(2) +
+      0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
+      0.5 * log_factorial(l - abs_m);
+
+  for (int k{0}; k <= k_max; k++) {
+    int ImLog_over_pi_Xklm = k + no_k_part_ImLog_over_pi_Xklm;
+    double ReLog_Xklm = no_k_part_ReLog_Xklm - 2 * k * std::log(2) +
+                        -log_factorial(l - abs_m - 2 * k) -
+                        log_factorial(abs_m + k) - log_factorial(k);
+    int pow_cos = (l - abs_m - 2 * k);
+    int pow_sin = (abs_m + 2 * k);
+    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
+    Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
+  }
+  return Xlm;
+}
+
+inline double spherical_Plm_even(int l, int abs_m, double theta) {
+  int k_max = (l - abs_m) / 2;
+  double cos_theta = std::cos(theta);
+  double sin_theta = std::sin(theta);
+  if (sin_theta == 0.0 && abs_m != 0) {
+    return 0.0;
+  }
+  auto [log_abs_cos_theta, arg_over_pi_cos_theta] =
+      ReLogRe_ImLogRe_over_pi(cos_theta);
+  auto [log_abs_sin_theta, arg_over_pi_sin_theta] =
+      ReLogRe_ImLogRe_over_pi(sin_theta);
+  double Xlm = 0.0;
+  int no_k_part_ImLog_over_pi_Xklm =
+      (l - abs_m) * arg_over_pi_cos_theta + abs_m * arg_over_pi_sin_theta;
+  double no_k_part_ReLog_Xklm =
+      -0.5 * std::log(4 * M_PI) - abs_m * std::log(2) +
+      0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
+      0.5 * log_factorial(l - abs_m);
+
+  for (int k{0}; k <= k_max; k++) {
+    int ImLog_over_pi_Xklm = k + no_k_part_ImLog_over_pi_Xklm;
+    double ReLog_Xklm = no_k_part_ReLog_Xklm - 2 * k * std::log(2) +
+                        -log_factorial(l - abs_m - 2 * k) -
+                        log_factorial(abs_m + k) - log_factorial(k);
+    int pow_cos = 2 * (k_max - k);
+    int pow_sin = (abs_m + 2 * k);
+    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
+    Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
+  }
+  return Xlm;
+}
+
+inline double spherical_Plm_odd(int l, int abs_m, double theta) {
+  int k_max = (l - abs_m) / 2;
+  double cos_theta = std::cos(theta);
+  double sin_theta = std::sin(theta);
+  if (cos_theta == 0.0) {
+    return 0.0;
+  }
+  if (sin_theta == 0.0 && abs_m != 0) {
+    return 0.0;
+  }
+  auto [log_abs_cos_theta, arg_over_pi_cos_theta] =
+      ReLogRe_ImLogRe_over_pi(cos_theta);
+  auto [log_abs_sin_theta, arg_over_pi_sin_theta] =
+      ReLogRe_ImLogRe_over_pi(sin_theta);
+  double Xlm = 0.0;
+  int no_k_part_ImLog_over_pi_Xklm =
+      (l - abs_m) * arg_over_pi_cos_theta + abs_m * arg_over_pi_sin_theta;
+  double no_k_part_ReLog_Xklm =
+      -0.5 * std::log(4 * M_PI) - abs_m * std::log(2) +
+      0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
+      0.5 * log_factorial(l - abs_m);
+
+  for (int k{0}; k <= k_max; k++) {
+    int ImLog_over_pi_Xklm = k + no_k_part_ImLog_over_pi_Xklm;
+    double ReLog_Xklm = no_k_part_ReLog_Xklm - 2 * k * std::log(2) +
+                        -log_factorial(l - abs_m - 2 * k) -
+                        log_factorial(abs_m + k) - log_factorial(k);
+    int pow_cos = 2 * (k_max - k) + 1;
+    int pow_sin = (abs_m + 2 * k);
+    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
+    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
+    Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
+  }
+  return Xlm;
 }
 
 /**

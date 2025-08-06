@@ -645,6 +645,23 @@ def jitnorm(V, axis=-1):
 
 
 @njit
+def fib_disc(Npoints=100):
+    xy = np.zeros((Npoints, 2))
+    ga = np.pi * (3.0 - np.sqrt(5.0))  # golden angle
+
+    for i in range(Npoints):
+        rad = np.sqrt(i / (Npoints - 1))  # radius at z
+
+        theta = ga * i  # angle increment
+        x = rad * np.cos(theta)
+        y = rad * np.sin(theta)
+
+        xy[i] = np.array([x, y])
+
+    return xy
+
+
+@njit
 def fib_sphere(Npoints=100):
     xyz = np.zeros((Npoints, 3))
     ga = np.pi * (3.0 - np.sqrt(5.0))  # golden angle

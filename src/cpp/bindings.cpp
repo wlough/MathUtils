@@ -84,6 +84,18 @@ PYBIND11_MODULE(mathutils_backend, m) {
   py::module_ special =
       m.def_submodule("special", "Special mathematical functions");
 
+  special.def("minus_one_to_int_pow", &mathutils::special::minus_one_to_int_pow,
+              "Compute (-1)^n for integer n", py::arg("n"));
+
+  special.def("ReLogRe_ImLogRe_over_pi",
+              &mathutils::special::ReLogRe_ImLogRe_over_pi<double>,
+              "Compute ReLogRe and ImLogRe over pi for a given value (double)",
+              py::arg("x"));
+  special.def("ReLogRe_ImLogRe_over_pi",
+              &mathutils::special::ReLogRe_ImLogRe_over_pi<int>,
+              "Compute ReLogRe and ImLogRe over pi for a given value (int)",
+              py::arg("x"));
+
   special.def("log_factorial", &mathutils::special::log_factorial,
               "Compute log factorial of n", py::arg("n"));
 
@@ -142,5 +154,5 @@ PYBIND11_MODULE(mathutils_backend, m) {
   //   = SPHERICAL_HARMONIC_INDEX_N_MAX;
 
   // Version info
-  m.attr("__version__") = "0.1.8";
+  m.attr("__version__") = "0.1.11";
 }
