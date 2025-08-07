@@ -10,6 +10,8 @@ from mathutils.special import (
     old_compute_all_real_Ylm,
     Ylm,
     real_Ylm,
+    compute_all_Ylm,
+    compute_all_real_Ylm
 )
 from scipy.special import sph_harm_y_all, sph_harm_y, loggamma
 
@@ -135,7 +137,8 @@ def sympy_precision_scalar_Ylm(l, m, theta_val, phi_val, precision=50):
     theta, phi = sp.symbols("theta phi", real=True)
     ylm_symbolic = sp.Ynm(l, m, theta, phi)
     result = ylm_symbolic.subs(
-        {theta: sp.Float(theta_val, precision), phi: sp.Float(phi_val, precision)}
+        {theta: sp.Float(theta_val, precision),
+         phi: sp.Float(phi_val, precision)}
     ).evalf(precision)
     if result.is_real:
         return complex(float(result), 0.0)
@@ -225,7 +228,7 @@ def get_problem_theta():
 
 def test_scalar_Y_vs_Y(Yfun1, Yfun2, tol=1e-8, l_max=100, use_problem_angles=True):
     print(20 * "_")
-    print("test_Y_vs_Y")
+    print("test_scalar_Y_vs_Y")
     print(f"Yfun1={Yfun1}")
     print(f"Yfun2={Yfun2}")
     print(f"tol={tol}")
@@ -335,7 +338,7 @@ def test_all_Y_vs_Y(
     # use_problem_angles = True
 
     print(20 * "_")
-    print("test_Y_vs_Y")
+    print("test_all_Y_vs_Y")
     print(f"Yfun1={compute_all_Yfun1}")
     print(f"Yfun2={compute_all_Yfun2}")
     print(f"tol={tol}")
@@ -380,7 +383,36 @@ def test_all_Y_vs_Y(
     )
 
 
-def run_tests():
+def time_all_Y_vs_Y(
+    compute_all_Yfun1, compute_all_Yfun2, l_max=100, use_problem_angles=True
+):
+
+    # Yfun1 = Ylm
+    # Yfun2 = jit_Ylm
+    # tol = 1e-8
+    # l_max = 100
+    # use_problem_angles = True
+
+    print(20 * "_")
+    print("time_all_Y_vs_Y")
+    print(f"Yfun1={compute_all_Yfun1}")
+    print(f"Yfun2={compute_all_Yfun2}")
+    print(f"l_max={l_max}")
+    print(f"use_problem_angles={use_problem_angles}\n")
+
+    Theta = np.linspace(0, np.pi, 12)[1:-1]
+    Phi = np.linspace(0, 2 * np.pi, 22, endpoint=False)
+    if use_problem_angles:
+        Theta = np.sort([*get_problem_theta(), *Theta])
+    ThetaPhi = np.array([[t, p] for t in Theta for p in Phi])
+
+    print("%timeit compute_all_Yfun1(l_max, ThetaPhi)")
+    # %timeit compute_all_Yfun1(l_max, ThetaPhi)
+    print("%timeit compute_all_Yfun2(l_max, ThetaPhi)")
+    # %timeit compute_all_Yfun2(l_max, ThetaPhi)
+
+
+def run_precision_tests():
     tol = 1e-12
     # test_scalar_Y_vs_Y(Ylm, sph_harm_y, tol=tol, l_max=100, use_problem_angles=True)
 
@@ -390,21 +422,22 @@ def run_tests():
     # test_Y_vs_Y(Ylm, jit_Ylm, tol=tol, l_max=100, use_problem_angles=True)
     # test_Y_vs_Y(real_Ylm, jit_real_Ylm, tol=tol, l_max=100, use_problem_angles=True)
     test_Y_vs_Y(Ylm, sciYlm, tol=tol, l_max=200, use_problem_angles=True)
-    test_Y_vs_Y(real_Ylm, real_sciYlm, tol=tol, l_max=200, use_problem_angles=True)
-    # test_all_Y_vs_Y(
-    #     compute_all_series_Ylm,
-    #     compute_all_sciYlm,
-    #     tol=tol,
-    #     l_max=100,
-    #     use_problem_angles=True,
-    # )
-    # test_all_Y_vs_Y(
-    #     compute_all_series_real_Ylm,
-    #     compute_all_real_sciYlm,
-    #     tol=tol,
-    #     l_max=100,
-    #     use_problem_angles=True,
-    # )
+    test_Y_vs_Y(real_Ylm, real_sciYlm, tol=tol,
+                l_max=200, use_problem_angles=True)
+    test_all_Y_vs_Y(
+        compute_all_Ylm,
+        compute_all_sciYlm,
+        tol=tol,
+        l_max=200,
+        use_problem_angles=True,
+    )
+    test_all_Y_vs_Y(
+        compute_all_real_Ylm,
+        compute_all_real_sciYlm,
+        tol=tol,
+        l_max=200,
+        use_problem_angles=True,
+    )
 
 
-# run_tests()
+run_precision_tests()

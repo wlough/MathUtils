@@ -11,7 +11,7 @@ namespace py = pybind11;
 
 PYBIND11_MODULE(mathutils_backend, m) {
   m.doc() = "Fast mathematical utilities backend";
-  m.attr("__version__") = "0.1.15";
+  m.attr("__version__") = "0.1.19";
 
   // Basic utility functions (in main module)
   m.def("sign", &mathutils::sign<double>, "sign function (double)",
@@ -110,6 +110,13 @@ PYBIND11_MODULE(mathutils_backend, m) {
       py::arg("m"), py::arg("thetaphi_coord_P"));
 
   // Batch computation functions in special submodule
+  special.def("compute_all_real_Ylm", &mathutils::special::compute_all_real_Ylm,
+              "Compute all real Ylm up to l_max", py::arg("l_max"),
+              py::arg("thetaphi_coord_P"));
+  special.def("compute_all_Ylm", &mathutils::special::compute_all_Ylm,
+              "Compute all complex Ylm up to l_max", py::arg("l_max"),
+              py::arg("thetaphi_coord_P"));
+
   special.def("compute_all_series_real_Ylm",
               &mathutils::special::compute_all_series_real_Ylm,
               "Compute all real Ylm up to l_max", py::arg("l_max"),

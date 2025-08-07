@@ -13,7 +13,7 @@ ext_modules = [
             "include",  # MathUtils header files
             "/usr/include/eigen3",  # Eigen headers
         ],
-        cxx_std=17,
+        cxx_std=20,  # Use C++20 standard for coroutines
         define_macros=[("VERSION_INFO", '"dev"')],
     ),
 ]
