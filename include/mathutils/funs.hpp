@@ -45,6 +45,14 @@ namespace mathutils {
 namespace special {
 
 /**
+ * @brief Compute \f$(-1)^n\f$ for integer n.
+ */
+inline int minus_one_to_int_pow(int n) {
+  // Returns -1 if n is odd, 1 if n is even
+  return 1 - 2 * (n & 1);
+}
+
+/**
  * @brief Compute \f$\ln(n!)\f$ for a non-negative integer n.
  * Uses a lookup table for small values and lgamma for larger values.
  *
@@ -158,22 +166,329 @@ inline std::array<int, 2> spherical_harmonic_index_lm_N(int n) {
 }
 
 /**
- * @brief Compute \f$(-1)^n\f$ for integer n.
+ * @brief Compute the associated Legendre polynomial with spherical harmonics
+ * normalization \f$P_{m m}(\theta) = e^{-im\phi}Y_{m m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi/2\f$ and \f$m\geq 0\f$.
+ * @param m Degree/order of the polynomial (\f$m=0,1,\ldots\f$).
+ * @param theta Polar angle in radians (\f$0\leq\theta\leq\pi/2\f$).
+ * @return double Value of the associated normalized Legendre polynomial.
  */
-inline int minus_one_to_int_pow(int n) {
-  // Returns -1 if n is odd, 1 if n is even
-  return 1 - 2 * (n & 1);
+inline double reduced_spherical_Pmm(int m, double theta) {
+  // if (theta == 0.0) {
+  //   if (m == 0) {
+  //     return 1.0 / std::sqrt(4 * M_PI);
+  //   }
+  //   return 0.0;
+  // }
+  // double sigma = (1 - 2 * (m & 1)); // this is just std::pow(-1, m);
+  // return sigma * std::exp(m * std::log(std::sin(theta)) -
+  //                         0.5 * std::log(4 * M_PI) - m * std::log(2) +
+  //                         0.5 * std::lgamma(2 * m + 2) - std::lgamma(m + 1));
+  return (theta == 0.0)
+             ? (m == 0) / std::sqrt(4 * M_PI)
+             : (1 - 2 * (m & 1)) *
+                   std::exp(m * std::log(std::sin(theta)) -
+                            0.5 * std::log(4 * M_PI) - m * std::log(2) +
+                            0.5 * std::lgamma(2 * m + 2) - std::lgamma(m + 1));
 }
 
-inline double log_spherical_harmonic_normalization_Nklm(int k, int l, int m) {
-  return -0.5 * std::log(4 * M_PI) - (std::abs(m) + 2 * k) * std::log(2) +
-         0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + std::abs(m)) +
-         0.5 * log_factorial(l - std::abs(m)) -
-         log_factorial(l - std::abs(m) - 2 * k) -
-         log_factorial(std::abs(m) + k) - log_factorial(k);
+/**
+ * @brief Compute the associated Legendre polynomial with spherical harmonics
+ * normalization \f$P_{\ell m}(\theta) = e^{-im\phi}Y_{\ell m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi/2\f$ and \f$m\geq 0\f$.
+ *
+ * @param l Degree of the polynomial (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the polynomial (\f$m=0,1,\ldots,\ell\f$).
+ * @param theta Polar angle in radians (\f$0\leq\theta\leq\pi/2\f$).
+ * @return double Value of the associated normalized Legendre polynomial.
+ */
+inline double reduced_spherical_Plm(int l, int m, double theta) {
+  double cos_theta = std::cos(theta);
+  // P_{m m}
+  double P_ell_minus_one_m = reduced_spherical_Pmm(m, theta);
+  if (l == m) {
+    return P_ell_minus_one_m;
+  }
+  // P_{m+1 m}
+  double P_ell_m = cos_theta * std::sqrt(2 * m + 3) * P_ell_minus_one_m;
+  for (int ell = m + 2; ell <= l; ++ell) {
+    // double q =
+    //     cos_theta *
+    //         std::sqrt((2 * ell - 1) * (2 * ell + 1) / ((ell - m) * (ell +
+    //         m))) * P_ell_m -
+    //     std::sqrt((ell - m - 1) * (ell + m - 1) * (2 * ell + 1) /
+    //               ((ell - m) * (ell + m) * (2 * ell - 3))) *
+    //         P_ell_minus_one_m;
+    const double den_ell_m = (ell - m) * 1.0 * (ell + m);
+    const double c_ell_m =
+        std::sqrt(((2.0 * ell - 1.0) * (2.0 * ell + 1.0)) / den_ell_m);
+    const double den_ell_minus_one_m =
+        (ell - m) * 1.0 * (ell + m) * (2.0 * ell - 3.0);
+    const double c_ell_minus_one_m =
+        std::sqrt(((ell - m - 1.0) * (ell + m - 1.0) * (2.0 * ell + 1.0)) /
+                  den_ell_minus_one_m);
+    const double q =
+        cos_theta * c_ell_m * P_ell_m - c_ell_minus_one_m * P_ell_minus_one_m;
+    P_ell_minus_one_m = P_ell_m;
+    P_ell_m = q;
+  }
+  return P_ell_m;
 }
 
+/**
+ * @brief Compute the associated Legendre polynomial with spherical harmonics
+ * normalization \f$P_{\ell m}(\theta) = e^{-im\phi}Y_{\ell m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi\f$ and \f$-\ell \leq m\geq \ell\f$.
+ *
+ * @param l Degree of the polynomial (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the polynomial (\f$m=-\ell,\ldots,\ell\f$).
+ * @param theta Polar angle in radians (\f$0\leq\theta\leq\pi\f$).
+ * @return double Value of the associated normalized Legendre polynomial.
+ */
+inline double spherical_Plm(int l, int m, double theta) {
+  int abs_m = std::abs(m);
+  // int sigma = 1;
+  // if (m < 0) {
+  //   sigma *= std::pow(-1, m);
+  // }
+  // if (theta > M_PI_2) {
+  //   sigma *= std::pow(-1, l-abs_m);
+  // }
+  // sign difference between spherical_Plm and reduced_spherical_Plm
+  // int sigma =
+  //     ((m < 0) && (m & 1)) ^ ((theta > M_PI_2) && ((l - abs_m) & 1)) ? -1 :
+  //     1;
+  // // transform theta to [0, pi/2]
+  // theta = std::min(theta, M_PI - theta);
+  // m = abs_m;
+  // return sigma * reduced_spherical_Plm(l, abs_m, theta);
+  return ((m < 0) && (m & 1)) ^ ((theta > M_PI_2) && ((l - abs_m) & 1))
+             ? -reduced_spherical_Plm(l, abs_m, std::min(theta, M_PI - theta))
+             : reduced_spherical_Plm(l, abs_m, std::min(theta, M_PI - theta));
+}
+
+/**
+ * @brief Compute the real spherical harmonics \f$Y_{l m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi\f$ and \f$-\ell \leq m\geq \ell\f$.
+ *
+ * @param l Degree of the spherical harmonic (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the spherical harmonic (\f$m=-\ell,\ldots,\ell\f$).
+ * @param theta Polar angle in radians (\f$0\leq\theta\leq\pi\f$).
+ * @param phi Azimuthal angle in radians (\f$0\leq\phi<2\pi\f$).
+ * @return double Value of the real spherical harmonic.
+ */
+inline double recursive_real_Ylm(int l, int m, double theta, double phi) {
+  // int abs_m = std::abs(m);
+  // double Plm = spherical_Plm(l, abs_m, theta);
+  // if (m < 0) {
+  //   return (1 - 2 * (m & 1)) * std::sqrt(2) * std::sin(abs_m * phi) * Plm;
+  // } else if (m > 0) {
+  //   return (1 - 2 * (m & 1)) * std::sqrt(2) * std::cos(abs_m * phi) * Plm;
+  // }
+  // // m == 0
+  // return Plm;
+  if (m < 0) {
+    return -std::sqrt(2) * std::sin(m * phi) * spherical_Plm(l, m, theta);
+  } else if (m > 0) {
+    return (1 - 2 * (m & 1)) * std::sqrt(2) * std::cos(m * phi) *
+           spherical_Plm(l, m, theta);
+  }
+  // m == 0
+  return spherical_Plm(l, m, theta);
+}
+
+/**
+ * @brief Compute the real spherical harmonics \f$Y_{l m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi\f$ and \f$-\ell \leq m\geq \ell\f$.
+ *
+ * @param l Degree of the spherical harmonic (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the spherical harmonic (\f$m=-\ell,\ldots,\ell\f$).
+ * @param theta Polar angle in radians (\f$0\leq\theta\leq\pi\f$).
+ * @param phi Azimuthal angle in radians (\f$0\leq\phi<2\pi\f$).
+ * @return double Value of the real spherical harmonic.
+ */
 inline double real_Ylm(int l, int m, double theta, double phi) {
+  // check l and m
+  if (l < 0) {
+    throw std::out_of_range("l must be non-negative");
+  }
+  if (m < -l || m > l) {
+    throw std::out_of_range("m must be in the range [-l, l]");
+  }
+  if (theta < 0 || theta > M_PI) {
+    throw std::out_of_range("theta must be in the range [0, pi]");
+  }
+  return recursive_real_Ylm(l, m, theta, phi);
+}
+
+/**
+ * @brief Compute the real spherical harmonics \f$Y_{l m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi\f$ and \f$-\ell \leq m\geq \ell\f$.
+ *
+ * @param l Degree of the spherical harmonic (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the spherical harmonic (\f$m=-\ell,\ldots,\ell\f$).
+ * @param thetaphi_coord_P Matrix containing the polar and azimuthal angles.
+ * @return Eigen::VectorXd Values of the real spherical harmonics.
+ */
+Eigen::VectorXd real_Ylm(int l, int m,
+                         const Eigen::MatrixXd &thetaphi_coord_P) {
+  // check l and m
+  if (l < 0) {
+    throw std::out_of_range("l must be non-negative");
+  }
+  if (m < -l || m > l) {
+    throw std::out_of_range("m must be in the range [-l, l]");
+  }
+  // check thetaphi_coord_P
+  if (thetaphi_coord_P.cols() != 2) {
+    throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
+  }
+  Eigen::VectorXd result(thetaphi_coord_P.rows());
+  for (int i = 0; i < thetaphi_coord_P.rows(); ++i) {
+    double theta = thetaphi_coord_P(i, 0);
+    if (theta < 0 || theta > M_PI) {
+      throw std::out_of_range("theta must be in the range [0, pi]");
+    }
+    double phi = thetaphi_coord_P(i, 1);
+    result(i) = recursive_real_Ylm(l, m, theta, phi);
+  }
+  return result;
+}
+
+/**
+ * @brief Compute real spherical harmonics \f$y_{l m}(\theta, \phi)\f$ for
+ * \f$\ell=0,...,\ell_{max}\f$ at the given coordinates.
+ *
+ * @param l_max The maximum order of the spherical harmonics (non-negative
+ * integer).
+ * @param thetaphi_coord_P A matrix of shape (num_points, 2) where each row
+ * contains the polar angle \f$\theta\f$ and azimuthal angle \f$\phi\f$ in
+ * radians.
+ * @return A matrix of shape (num_points, l_max * (l_max + 2) + 1)
+ */
+// Eigen::MatrixXd compute_all_real_Ylm(int l_max,
+//                                      const Eigen::MatrixXd &thetaphi_coord_P)
+//                                      {
+//   // check l_max
+//   if (l_max < 0) {
+//     throw std::out_of_range("l_max must be non-negative");
+//   }
+//   // check thetaphi_coord_P
+//   if (thetaphi_coord_P.cols() != 2) {
+//     throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
+//   }
+//   int num_points = thetaphi_coord_P.rows();
+//   if (num_points <= 0) {
+//     throw std::invalid_argument("thetaphi_coord_P must have at least one
+//     row");
+//   }
+//   //////////////////////////////////
+//   int num_modes = l_max * (l_max + 2) + 1; // = n_LM(l_max, l_max)+1
+//   Eigen::MatrixXd Y(num_points, num_modes);
+//   Y.setZero();
+
+//   for (int p{0}; p < num_points; ++p) {
+//     double theta = thetaphi_coord_P(p, 0);
+//     if (theta < 0 || theta > M_PI) {
+//       throw std::out_of_range("theta must be in the range [0, pi]");
+//     }
+//     double phi = thetaphi_coord_P(p, 1);
+//     for (int l{0}; l <= l_max; l++) {
+//       // m = 0 case
+//       int n = l * (l + 1);
+//       // ...
+//       for (int m{1}; m <= l; m++) {
+//         int n_plus = l * (l + 1) + m;
+//         int n_minus = l * (l + 1) - m;
+
+//         Y(p, n_minus) = std::sqrt(2) * std::sin(m * phi) * Y(p, n_plus);
+//         Y(p, n_plus) *= std::sqrt(2) * std::cos(m * phi);
+//       }
+//     }
+//   }
+//   return Y;
+// }
+
+/**
+ * @brief Compute the spherical harmonics \f$Y_{l m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi\f$ and \f$-\ell \leq m\geq \ell\f$.
+ *
+ * @param l Degree of the spherical harmonic (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the spherical harmonic (\f$m=-\ell,\ldots,\ell\f$).
+ * @param theta Polar angle in radians (\f$0\leq\theta\leq\pi\f$).
+ * @param phi Azimuthal angle in radians (\f$0\leq\phi<2\pi\f$).
+ * @return std::complex<double> Value of the spherical harmonic.
+ */
+inline std::complex<double> recursive_Ylm(int l, int m, double theta,
+                                          double phi) {
+  return spherical_Plm(l, m, theta) *
+         std::exp(std::complex<double>(0, m * phi));
+}
+
+/**
+ * @brief Compute the spherical harmonics \f$Y_{l m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi\f$ and \f$-\ell \leq m\geq \ell\f$.
+ *
+ * @param l Degree of the spherical harmonic (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the spherical harmonic (\f$m=-\ell,\ldots,\ell\f$).
+ * @param theta Polar angle in radians (\f$0\leq\theta\leq\pi\f$).
+ * @param phi Azimuthal angle in radians (\f$0\leq\phi<2\pi\f$).
+ * @return std::complex<double> Value of the spherical harmonic.
+ */
+inline std::complex<double> Ylm(int l, int m, double theta, double phi) {
+  // check l and m
+  if (l < 0) {
+    throw std::out_of_range("l must be non-negative");
+  }
+  if (m < -l || m > l) {
+    throw std::out_of_range("m must be in the range [-l, l]");
+  }
+  if (theta < 0 || theta > M_PI) {
+    throw std::out_of_range("theta must be in the range [0, pi]");
+  }
+  return recursive_Ylm(l, m, theta, phi);
+}
+
+/**
+ * @brief Compute the spherical harmonics \f$Y_{l m}(\theta, \phi)\f$
+ * for \f$0\leq\theta\leq\pi\f$ and \f$-\ell \leq m\geq \ell\f$.
+ *
+ * @param l Degree of the spherical harmonic (\f$\ell=0,1,\ldots\f$).
+ * @param m Order of the spherical harmonic (\f$m=-\ell,\ldots,\ell\f$).
+ * @param thetaphi_coord_P Matrix containing the polar and azimuthal angles.
+ * @return Eigen::VectorXcd Values of the spherical harmonics.
+ */
+Eigen::VectorXcd Ylm(int l, int m, const Eigen::MatrixXd &thetaphi_coord_P) {
+
+  // check l and m
+  if (l < 0) {
+    throw std::out_of_range("l must be non-negative");
+  }
+  if (m < -l || m > l) {
+    throw std::out_of_range("m must be in the range [-l, l]");
+  }
+  // check thetaphi_coord_P
+  if (thetaphi_coord_P.cols() != 2) {
+    throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
+  }
+  Eigen::VectorXcd result(thetaphi_coord_P.rows());
+  for (int i = 0; i < thetaphi_coord_P.rows(); ++i) {
+    double theta = thetaphi_coord_P(i, 0);
+    if (theta < 0 || theta > M_PI) {
+      throw std::out_of_range("theta must be in the range [0, pi]");
+    }
+    double phi = thetaphi_coord_P(i, 1);
+    result(i) = recursive_Ylm(l, m, theta, phi);
+  }
+  return result;
+}
+
+///////////////////////////
+///////////////////////////
+///////////////////////////
+///////////////////////////
+
+inline double series_real_Ylm(int l, int m, double theta, double phi) {
   if (l < 0) {
     throw std::out_of_range("l must be non-negative");
   }
@@ -213,8 +528,8 @@ inline double real_Ylm(int l, int m, double theta, double phi) {
                    : Xlm;
 }
 
-Eigen::VectorXd real_Ylm(int l, int m,
-                         const Eigen::MatrixXd &thetaphi_coord_P) {
+Eigen::VectorXd series_real_Ylm(int l, int m,
+                                const Eigen::MatrixXd &thetaphi_coord_P) {
 
   if (l < 0) {
     throw std::out_of_range("l must be non-negative");
@@ -266,7 +581,7 @@ Eigen::VectorXd real_Ylm(int l, int m,
   return Y;
 }
 
-inline std::complex<double> Ylm(int l, int m, double theta, double phi) {
+inline std::complex<double> series_Ylm(int l, int m, double theta, double phi) {
   if (l < 0) {
     throw std::out_of_range("l must be non-negative");
   }
@@ -306,7 +621,8 @@ inline std::complex<double> Ylm(int l, int m, double theta, double phi) {
              : static_cast<std::complex<double>>(Xlm);
 }
 
-Eigen::VectorXcd Ylm(int l, int m, const Eigen::MatrixXd &thetaphi_coord_P) {
+Eigen::VectorXcd series_Ylm(int l, int m,
+                            const Eigen::MatrixXd &thetaphi_coord_P) {
 
   if (l < 0) {
     throw std::out_of_range("l must be non-negative");
@@ -368,8 +684,9 @@ Eigen::VectorXcd Ylm(int l, int m, const Eigen::MatrixXd &thetaphi_coord_P) {
  * radians.
  * @return A matrix of shape (num_points, l_max * (l_max + 2) + 1)
  */
-Eigen::MatrixXd compute_all_real_Ylm(int l_max,
-                                     const Eigen::MatrixXd &thetaphi_coord_P) {
+Eigen::MatrixXd
+compute_all_series_real_Ylm(int l_max,
+                            const Eigen::MatrixXd &thetaphi_coord_P) {
   // check l_max
   if (l_max < 0) {
     throw std::out_of_range("l_max must be non-negative");
@@ -459,8 +776,8 @@ Eigen::MatrixXd compute_all_real_Ylm(int l_max,
  * radians.
  * @return A matrix of shape (num_points, l_max * (l_max + 2) + 1)
  */
-Eigen::MatrixXcd compute_all_Ylm(int l_max,
-                                 const Eigen::MatrixXd &thetaphi_coord_P) {
+Eigen::MatrixXcd
+compute_all_series_Ylm(int l_max, const Eigen::MatrixXd &thetaphi_coord_P) {
   // check l_max
   if (l_max < 0) {
     throw std::out_of_range("l_max must be non-negative");
@@ -541,110 +858,6 @@ Eigen::MatrixXcd compute_all_Ylm(int l_max,
     }
   }
   return Y;
-}
-
-inline double spherical_Plm(int l, int abs_m, double theta) {
-  int k_max = (l - abs_m) / 2;
-  double cos_theta = std::cos(theta);
-  double sin_theta = std::sin(theta);
-  if ((cos_theta == 0.0 && (l - abs_m & 1)) ||
-      (sin_theta == 0.0 && abs_m != 0)) {
-    return 0.0;
-  }
-
-  auto [log_abs_cos_theta, arg_over_pi_cos_theta] =
-      ReLogRe_ImLogRe_over_pi(cos_theta);
-  auto [log_abs_sin_theta, arg_over_pi_sin_theta] =
-      ReLogRe_ImLogRe_over_pi(sin_theta);
-  double Xlm = 0.0;
-  int no_k_part_ImLog_over_pi_Xklm =
-      (l - abs_m) * arg_over_pi_cos_theta + abs_m * arg_over_pi_sin_theta;
-  double no_k_part_ReLog_Xklm =
-      -0.5 * std::log(4 * M_PI) - abs_m * std::log(2) +
-      0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
-      0.5 * log_factorial(l - abs_m);
-
-  for (int k{0}; k <= k_max; k++) {
-    int ImLog_over_pi_Xklm = k + no_k_part_ImLog_over_pi_Xklm;
-    double ReLog_Xklm = no_k_part_ReLog_Xklm - 2 * k * std::log(2) +
-                        -log_factorial(l - abs_m - 2 * k) -
-                        log_factorial(abs_m + k) - log_factorial(k);
-    int pow_cos = (l - abs_m - 2 * k);
-    int pow_sin = (abs_m + 2 * k);
-    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
-    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
-    Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
-  }
-  return Xlm;
-}
-
-inline double spherical_Plm_even(int l, int abs_m, double theta) {
-  int k_max = (l - abs_m) / 2;
-  double cos_theta = std::cos(theta);
-  double sin_theta = std::sin(theta);
-  if (sin_theta == 0.0 && abs_m != 0) {
-    return 0.0;
-  }
-  auto [log_abs_cos_theta, arg_over_pi_cos_theta] =
-      ReLogRe_ImLogRe_over_pi(cos_theta);
-  auto [log_abs_sin_theta, arg_over_pi_sin_theta] =
-      ReLogRe_ImLogRe_over_pi(sin_theta);
-  double Xlm = 0.0;
-  int no_k_part_ImLog_over_pi_Xklm =
-      (l - abs_m) * arg_over_pi_cos_theta + abs_m * arg_over_pi_sin_theta;
-  double no_k_part_ReLog_Xklm =
-      -0.5 * std::log(4 * M_PI) - abs_m * std::log(2) +
-      0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
-      0.5 * log_factorial(l - abs_m);
-
-  for (int k{0}; k <= k_max; k++) {
-    int ImLog_over_pi_Xklm = k + no_k_part_ImLog_over_pi_Xklm;
-    double ReLog_Xklm = no_k_part_ReLog_Xklm - 2 * k * std::log(2) +
-                        -log_factorial(l - abs_m - 2 * k) -
-                        log_factorial(abs_m + k) - log_factorial(k);
-    int pow_cos = 2 * (k_max - k);
-    int pow_sin = (abs_m + 2 * k);
-    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
-    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
-    Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
-  }
-  return Xlm;
-}
-
-inline double spherical_Plm_odd(int l, int abs_m, double theta) {
-  int k_max = (l - abs_m) / 2;
-  double cos_theta = std::cos(theta);
-  double sin_theta = std::sin(theta);
-  if (cos_theta == 0.0) {
-    return 0.0;
-  }
-  if (sin_theta == 0.0 && abs_m != 0) {
-    return 0.0;
-  }
-  auto [log_abs_cos_theta, arg_over_pi_cos_theta] =
-      ReLogRe_ImLogRe_over_pi(cos_theta);
-  auto [log_abs_sin_theta, arg_over_pi_sin_theta] =
-      ReLogRe_ImLogRe_over_pi(sin_theta);
-  double Xlm = 0.0;
-  int no_k_part_ImLog_over_pi_Xklm =
-      (l - abs_m) * arg_over_pi_cos_theta + abs_m * arg_over_pi_sin_theta;
-  double no_k_part_ReLog_Xklm =
-      -0.5 * std::log(4 * M_PI) - abs_m * std::log(2) +
-      0.5 * std::log(2 * l + 1) + 0.5 * log_factorial(l + abs_m) +
-      0.5 * log_factorial(l - abs_m);
-
-  for (int k{0}; k <= k_max; k++) {
-    int ImLog_over_pi_Xklm = k + no_k_part_ImLog_over_pi_Xklm;
-    double ReLog_Xklm = no_k_part_ReLog_Xklm - 2 * k * std::log(2) +
-                        -log_factorial(l - abs_m - 2 * k) -
-                        log_factorial(abs_m + k) - log_factorial(k);
-    int pow_cos = 2 * (k_max - k) + 1;
-    int pow_sin = (abs_m + 2 * k);
-    ReLog_Xklm += (pow_cos > 0) ? (pow_cos * log_abs_cos_theta) : 0.0;
-    ReLog_Xklm += (pow_sin > 0) ? (pow_sin * log_abs_sin_theta) : 0.0;
-    Xlm += minus_one_to_int_pow(ImLog_over_pi_Xklm) * std::exp(ReLog_Xklm);
-  }
-  return Xlm;
 }
 
 /**

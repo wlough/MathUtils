@@ -11,7 +11,7 @@ from mathutils.special import (
     ReLogRe_ImLogRe_over_pi,
     minus_one_to_int_pow,
 )
-from scipy.special import sph_harm_y_all
+from scipy.special import sph_harm_y_all, sph_harm_y
 
 local_tol = 1e-8
 l_min = 0
@@ -26,8 +26,9 @@ Phi = np.array([*Phi, *np.linspace(2 * np.pi, 22)[1:]])
 ThetaPhi = np.array([[t, p] for t in Theta for p in Phi])
 minus_one_to_int_pow(2)
 ReLogRe_ImLogRe_over_pi(-1.0)
+
 real_Ylm(0, 0, 0, 0)
-real_Ylm(0, 0, np.pi / 2, 0)
+real_Ylm(0, 0, np.pi / 2, 0.1)
 
 real_Ylm(1, -1, 0, 0)
 real_Ylm(1, -1, np.pi / 2, 0)
@@ -45,8 +46,14 @@ real_Ylm(2, 1, np.pi / 2, 0)
 real_Ylm(2, 2, 0, 0)
 real_Ylm(2, 2, np.pi / 2, 0)
 
+real_Ylm(22, 0, 0, 0)
 
 Ylm(0, 0, np.pi / 2, 0)
+real_Ylm(2, 0, np.pi / 2, 0.0)
+
+
+sph_harm_y(1, 0, np.pi / 2, 0.0)
+real_Ylm(1, 0, np.pi / 2, 0.0)
 
 
 allY = old_compute_all_real_Ylm(l_max, ThetaPhi)
@@ -93,7 +100,7 @@ print(
 
 
 # %%
-def check_sph_harm_Nklm_magnitudes():
+def check_sph_harm_coeff_magnitudes():
     from mathutils.jit_funs import log_factorial as jit_log_factorial
     from mathutils.special import (
         log_factorial,
@@ -102,7 +109,19 @@ def check_sph_harm_Nklm_magnitudes():
     )
     import numpy as np
 
-    def sph_harm_Nklm(k, l, m):
+    def sph_harm_NlmMklm(k, l, m):
+        return np.exp(
+            -0.5 * np.log(4 * np.pi)
+            - (np.abs(m) + 2 * k) * np.log(2)
+            + 0.5 * np.log(2 * l + 1)
+            + 0.5 * log_factorial(l + np.abs(m))
+            + 0.5 * log_factorial(l - np.abs(m))
+            - log_factorial(l - np.abs(m) - 2 * k)
+            - log_factorial(np.abs(m) + k)
+            - log_factorial(k)
+        )
+
+    def sph_harm_Nlm(k, l, m):
         return np.exp(
             -0.5 * np.log(4 * np.pi)
             - (np.abs(m) + 2 * k) * np.log(2)
@@ -121,7 +140,7 @@ def check_sph_harm_Nklm_magnitudes():
         for m in range(-l, l + 1):
             for k in range(0, (l - abs(m)) // 2 + 1):
                 klm_indices_Nklm.append([k, l, m])
-                vals_Nklm.append(sph_harm_Nklm(k, l, m))
+                vals_Nklm.append(sph_harm_NlmMklm(k, l, m))
         maxNklm = np.max(vals_Nklm)
         klm_maxNklm = klm_indices_Nklm[vals_Nklm.index(maxNklm)]
         print(f"max(Nklm)={maxNklm} at [k,l,m]={klm_maxNklm}")
