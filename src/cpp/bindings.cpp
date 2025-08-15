@@ -11,17 +11,28 @@ namespace py = pybind11;
 
 PYBIND11_MODULE(mathutils_backend, m) {
   m.doc() = "Fast mathematical utilities backend";
-  m.attr("__version__") = "0.1.19";
+  m.attr("__version__") = "0.1.22";
 
   // Basic utility functions (in main module)
   m.def("sign", &mathutils::sign<double>, "sign function (double)",
         py::arg("x"));
   m.def("sign", &mathutils::sign<int>, "sign function (int)", py::arg("x"));
+  m.def("thetaphi_from_xyz", &mathutils::thetaphi_from_xyz,
+        "Convert Cartesian coordinates (x, y, z) to unit sphere coordinates "
+        "(theta, phi)",
+        py::arg("xyz"));
+  m.def("xyz_from_rthetaphi", &mathutils::xyz_from_rthetaphi,
+        "Convert spherical coordinates (r, theta, phi) to Cartesian "
+        "coordinates (x, y, z)",
+        py::arg("rthetaphi"));
+  m.def("rthetaphi_from_xyz", &mathutils::rthetaphi_from_xyz,
+        "Convert Cartesian coordinates (x, y, z) to spherical coordinates (r, "
+        "theta, phi)",
+        py::arg("xyz"));
 
   // Create a submodule for special functions
   py::module_ special =
       m.def_submodule("special", "Special mathematical functions");
-
   //   special.def("reduced_spherical_Pmm",
   //               &mathutils::special::reduced_spherical_Pmm,
   //               "Compute reduced spherical Pmm", py::arg("m"),
@@ -33,7 +44,6 @@ PYBIND11_MODULE(mathutils_backend, m) {
   //   special.def("spherical_Plm", &mathutils::special::spherical_Plm,
   //               "Compute spherical Plm", py::arg("l"), py::arg("m"),
   //               py::arg("theta"));
-
   special.def("Ylm",
               static_cast<std::complex<double> (*)(int, int, double, double)>(
                   &mathutils::special::Ylm),
@@ -45,7 +55,6 @@ PYBIND11_MODULE(mathutils_backend, m) {
           &mathutils::special::Ylm),
       "Compute spherical harmonic Ylm for multiple points", py::arg("l"),
       py::arg("m"), py::arg("thetaphi_coord_P"));
-
   special.def("real_Ylm",
               static_cast<double (*)(int, int, double, double)>(
                   &mathutils::special::real_Ylm),
@@ -57,14 +66,23 @@ PYBIND11_MODULE(mathutils_backend, m) {
           &mathutils::special::real_Ylm),
       "Compute real spherical harmonic Ylm for multiple points", py::arg("l"),
       py::arg("m"), py::arg("thetaphi_coord_P"));
-
   special.def("spherical_harmonic_index_n_LM",
               &mathutils::special::spherical_harmonic_index_n_LM,
               "Convert (l,m) to linear index", py::arg("l"), py::arg("m"));
-
   special.def("spherical_harmonic_index_lm_N",
               &mathutils::special::spherical_harmonic_index_lm_N,
               "Convert linear index to (l,m)", py::arg("n"));
+  special.def("compute_all_real_Ylm", &mathutils::special::compute_all_real_Ylm,
+              "Compute all real Ylm up to l_max", py::arg("l_max"),
+              py::arg("thetaphi_coord_P"));
+  special.def("compute_all_Ylm", &mathutils::special::compute_all_Ylm,
+              "Compute all complex Ylm up to l_max", py::arg("l_max"),
+              py::arg("thetaphi_coord_P"));
+  special.def("fit_real_sh_coefficients_to_points",
+              &mathutils::special::fit_real_sh_coefficients_to_points,
+              "Fit real spherical harmonic coefficients to points",
+              py::arg("XYZ0"), py::arg("l_max"), py::arg("reg_lambda"));
+
   //////////////////////////////////
   //////////////////////////////////
   //////////////////////////////////
@@ -88,7 +106,6 @@ PYBIND11_MODULE(mathutils_backend, m) {
                   &mathutils::special::series_Ylm),
               "Compute spherical harmonic Ylm for single point", py::arg("l"),
               py::arg("m"), py::arg("theta"), py::arg("phi"));
-
   special.def(
       "series_Ylm",
       static_cast<Eigen::VectorXcd (*)(int, int, const Eigen::MatrixXd &)>(
@@ -101,21 +118,12 @@ PYBIND11_MODULE(mathutils_backend, m) {
                   &mathutils::special::series_real_Ylm),
               "Compute real spherical harmonic Ylm for single point",
               py::arg("l"), py::arg("m"), py::arg("theta"), py::arg("phi"));
-
   special.def(
       "series_real_Ylm",
       static_cast<Eigen::VectorXd (*)(int, int, const Eigen::MatrixXd &)>(
           &mathutils::special::series_real_Ylm),
       "Compute real spherical harmonic Ylm for multiple points", py::arg("l"),
       py::arg("m"), py::arg("thetaphi_coord_P"));
-
-  // Batch computation functions in special submodule
-  special.def("compute_all_real_Ylm", &mathutils::special::compute_all_real_Ylm,
-              "Compute all real Ylm up to l_max", py::arg("l_max"),
-              py::arg("thetaphi_coord_P"));
-  special.def("compute_all_Ylm", &mathutils::special::compute_all_Ylm,
-              "Compute all complex Ylm up to l_max", py::arg("l_max"),
-              py::arg("thetaphi_coord_P"));
 
   special.def("compute_all_series_real_Ylm",
               &mathutils::special::compute_all_series_real_Ylm,

@@ -31,6 +31,87 @@ namespace mathutils {
  */
 template <typename T> inline int sign(T x) { return (x > T{0}) - (x < T{0}); }
 
+/**
+ * @brief Convert Cartesian coordinates (x, y, z) to spherical coordinates (r,
+ * theta, phi).
+ *
+ * @param xyz The input Cartesian coordinates [...(x,y,z)...] (N, 3)
+ * @return The spherical coordinates [...(r, theta, phi)...] (N, 3)
+ */
+inline Eigen::MatrixXd rthetaphi_from_xyz(const Eigen::MatrixXd &xyz) {
+  if (xyz.cols() != 3) {
+    throw std::invalid_argument("xyz must have 3 columns");
+  }
+  int num_points = xyz.rows();
+  Eigen::MatrixXd rthetaphi(num_points, 3);
+  rthetaphi.setZero();
+  for (int i = 0; i < num_points; ++i) {
+    double x = xyz(i, 0);
+    double y = xyz(i, 1);
+    double z = xyz(i, 2);
+    double r = std::sqrt(x * x + y * y + z * z);
+    double rho = std::sqrt(x * x + y * y);
+    double theta = std::atan2(rho, z);
+    double phi = std::atan2(y, x);
+    rthetaphi(i, 0) = r;
+    rthetaphi(i, 1) = theta;
+    rthetaphi(i, 2) = phi;
+  }
+  return rthetaphi;
+}
+
+/**
+ * @brief Convert spherical coordinates (r, theta, phi) to Cartesian coordinates
+ * (x, y, z).
+ *
+ * @param rthetaphi The input spherical coordinates [...(r, theta, phi)...] (N,
+ * 3)
+ * @return The Cartesian coordinates [...(x, y, z)...] (N, 3)
+ */
+inline Eigen::MatrixXd xyz_from_rthetaphi(const Eigen::MatrixXd &rthetaphi) {
+  if (rthetaphi.cols() != 3) {
+    throw std::invalid_argument("rthetaphi must have 3 columns");
+  }
+  int num_points = rthetaphi.rows();
+  Eigen::MatrixXd xyz(num_points, 3);
+  xyz.setZero();
+  for (int i = 0; i < num_points; ++i) {
+    double r = rthetaphi(i, 0);
+    double theta = rthetaphi(i, 1);
+    double phi = rthetaphi(i, 2);
+    xyz(i, 0) = r * std::sin(theta) * std::cos(phi);
+    xyz(i, 1) = r * std::sin(theta) * std::sin(phi);
+    xyz(i, 2) = r * std::cos(theta);
+  }
+  return xyz;
+}
+
+/**
+ * @brief Convert Cartesian coordinates (x, y, z) to unit sphere coordinates
+ * (theta, phi) by projecting onto the unit sphere.
+ *
+ * @param xyz The input Cartesian coordinates [...(x,y,z)...] (N, 3)
+ * @return The spherical coordinates [...(theta, phi)...] (N, 2)
+ */
+inline Eigen::MatrixXd thetaphi_from_xyz(const Eigen::MatrixXd &xyz) {
+  if (xyz.cols() != 3) {
+    throw std::invalid_argument("xyz must have 3 columns");
+  }
+  int num_points = xyz.rows();
+  Eigen::MatrixXd thetaphi(num_points, 2);
+  thetaphi.setZero();
+  for (int i = 0; i < num_points; ++i) {
+    double x = xyz(i, 0);
+    double y = xyz(i, 1);
+    double z = xyz(i, 2);
+    double rho = std::sqrt(x * x + y * y);
+    double theta = std::atan2(rho, z);
+    double phi = std::atan2(y, x);
+    thetaphi(i, 0) = theta;
+    thetaphi(i, 1) = phi;
+  }
+  return thetaphi;
+}
 } // namespace mathutils
 /////////////////////////////////////
 /////////////////////////////////////
@@ -1299,86 +1380,10 @@ old_compute_all_real_Ylm(int l_max, const Eigen::MatrixXd &thetaphi_coord_P) {
 } // namespace special
 } // namespace mathutils
 
-namespace mathutils {
-
-inline Eigen::MatrixXd rthetaphi_from_xyz(const Eigen::MatrixXd &xyz) {
-  if (xyz.cols() != 3) {
-    throw std::invalid_argument("xyz must have 3 columns");
-  }
-  int num_points = xyz.rows();
-  Eigen::MatrixXd rthetaphi(num_points, 3);
-  rthetaphi.setZero();
-  for (int i = 0; i < num_points; ++i) {
-    double x = xyz(i, 0);
-    double y = xyz(i, 1);
-    double z = xyz(i, 2);
-    double r = std::sqrt(x * x + y * y + z * z);
-    double rho = std::sqrt(x * x + y * y);
-    double theta = std::atan2(rho, z);
-    double phi = std::atan2(y, x);
-    rthetaphi(i, 0) = r;
-    rthetaphi(i, 1) = theta;
-    rthetaphi(i, 2) = phi;
-  }
-  return rthetaphi;
-}
-
-inline Eigen::MatrixXd xyz_from_rthetaphi(const Eigen::MatrixXd &rthetaphi) {
-  if (rthetaphi.cols() != 3) {
-    throw std::invalid_argument("rthetaphi must have 3 columns");
-  }
-  int num_points = rthetaphi.rows();
-  Eigen::MatrixXd xyz(num_points, 3);
-  xyz.setZero();
-  for (int i = 0; i < num_points; ++i) {
-    double r = rthetaphi(i, 0);
-    double theta = rthetaphi(i, 1);
-    double phi = rthetaphi(i, 2);
-    xyz(i, 0) = r * std::sin(theta) * std::cos(phi);
-    xyz(i, 1) = r * std::sin(theta) * std::sin(phi);
-    xyz(i, 2) = r * std::cos(theta);
-  }
-  return xyz;
-}
-
-inline Eigen::MatrixXd thetaphi_from_xyz(const Eigen::MatrixXd &xyz) {
-  if (xyz.cols() != 3) {
-    throw std::invalid_argument("xyz must have 3 columns");
-  }
-  int num_points = xyz.rows();
-  Eigen::MatrixXd thetaphi(num_points, 2);
-  thetaphi.setZero();
-  for (int i = 0; i < num_points; ++i) {
-    double x = xyz(i, 0);
-    double y = xyz(i, 1);
-    double z = xyz(i, 2);
-    double rho = std::sqrt(x * x + y * y);
-    double theta = std::atan2(rho, z);
-    double phi = std::atan2(y, x);
-    thetaphi(i, 0) = theta;
-    thetaphi(i, 1) = phi;
-  }
-  return thetaphi;
-}
-} // namespace mathutils
+namespace mathutils {} // namespace mathutils
 
 namespace mathutils {
 namespace special {
-
-// def real_spherical_harmonic_xyz_coefficients_solve(XYZ0, l_max,
-// reg_lambda=0.0):
-//   n_max = n_LM(l_max, l_max)
-//   num_points = len(XYZ0)
-//   ThetaPhi = rthetaphi_from_xyz(XYZ0)[:, 1:]
-//   Y = compute_all_real_Ylm(l_max, ThetaPhi)
-//   L = np.zeros((n_max + 1, n_max + 1))
-//   for n in range(n_max + 1):
-//       l, m = lm_N(n)
-//       L[n, n] = l * (l + 1)  # Regularization term
-//   M = Y.T @ Y + reg_lambda * L.T @ L
-//   M_inv = np.linalg.inv(M)
-//   A = M_inv @ Y.T @ XYZ0
-//   return A
 
 /**
  * @brief Solve for real spherical-harmonic coefficients that best fit a
@@ -1419,7 +1424,7 @@ fit_real_sh_coefficients_to_points(const Eigen::MatrixXd &XYZ0, int l_max,
   // 1. Dimensions
   // ---------------------------------------------------------------------
   const int num_modes = (l_max + 1) * (l_max + 1); // (l_max+1)^2
-  const int N = static_cast<int>(XYZ0.rows());
+  // const int N = static_cast<int>(XYZ0.rows());
 
   // ---------------------------------------------------------------------
   // 2. Build the design matrix  Y  (N × num_modes)
