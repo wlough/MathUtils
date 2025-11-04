@@ -1,0 +1,106 @@
+# ---------- config ----------
+PY      ?= python
+VENV    ?= .venv/build
+BIN     := $(VENV)/bin
+DISTDIR := dist
+PKGNAME := pymathutils
+
+# twine creds usually come from ~/.pypirc, but you may override:
+TWINE_REPOSITORY ?= pypi         # or: testpypi
+# TWINE_USERNAME=__token__
+# TWINE_PASSWORD=pypi-***        # (or use ~/.pypirc)
+
+# ---------- helpers ----------
+.PHONY: help venv clean clean-all dev-editable sdist wheel build repair audit show upload upload-test \
+        test-install-testpypi test-install-wheel test-import
+
+help:
+	@echo 'Common targets:'
+	@echo '  make dev-editable        - editable install in an isolated venv for local hacking'
+	@echo '  make build               - build sdist+wheel into dist/'
+	@echo '  make repair              - repair Linux wheel -> manylinux in dist/ (requires auditwheel)'
+	@echo '  make upload-test         - twine upload dist/* to TestPyPI'
+	@echo '  make upload              - twine upload dist/* to PyPI'
+	@echo '  make test-install-testpypi - install from TestPyPI (with PyPI fallback for deps)'
+	@echo '  make test-import         - quick smoke import from current interpreter'
+	@echo '  make clean               - remove dist/, build/, *.egg-info'
+	@echo '  make clean-all           - clean + remove build venv'
+
+# ---------- environments ----------
+$(VENV):
+	$(PY) -m venv $(VENV)
+	$(BIN)/python -m pip install -U pip
+
+venv: $(VENV)
+	$(BIN)/python -m pip install -U build twine
+
+# ---------- dev loop ----------
+dev-editable: $(VENV)
+	$(BIN)/python -m pip install -U pip
+	$(BIN)/python -m pip install -e . --no-build-isolation
+
+# ---------- build ----------
+sdist: venv
+	rm -rf $(DISTDIR) build *.egg-info
+	$(BIN)/python -m build --sdist
+
+wheel: venv
+	rm -rf $(DISTDIR) build *.egg-info
+	$(BIN)/python -m build --wheel
+
+build: venv
+	rm -rf $(DISTDIR) build *.egg-info
+	$(BIN)/python -m build
+	$(BIN)/python -m twine check $(DISTDIR)/*
+
+# ---------- audit/repair (Linux) ----------
+audit: venv
+	$(BIN)/python -m pip install -U auditwheel
+	$(BIN)/auditwheel show $(DISTDIR)/*.whl || true
+
+repair: audit
+	$(BIN)/auditwheel repair -w $(DISTDIR) $(DISTDIR)/*.whl
+
+# ---------- upload ----------
+upload-test: venv
+	$(BIN)/python -m twine upload --repository testpypi $(DISTDIR)/*
+
+upload: venv
+	$(BIN)/python -m twine upload $(DISTDIR)/*
+
+# ---------- quick tests ----------
+# Install from TestPyPI (with PyPI as fallback for deps) into a throwaway venv
+test-install-testpypi:
+	$(PY) -m venv .venv/testpypi
+	. .venv/testpypi/bin/activate; \
+	python -m pip install -U pip; \
+	python -m pip install -i https://test.pypi.org/simple --extra-index-url https://pypi.org/simple $(PKGNAME)==$$(python -c "import tomllib,sys;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+
+# Install the just-built wheel into a throwaway venv (simulates end-user install)
+test-install-wheel:
+	$(PY) -m venv .venv/wheel
+	. .venv/wheel/bin/activate; \
+	python -m pip install -U pip; \
+	python -m pip install $(DISTDIR)/*.whl; \
+	python - <<'PY'
+import $(PKGNAME) as m
+print("OK wheel import:", m.__version__)
+PY
+
+# Smoke import from the CURRENT interpreter (run outside repo dir to avoid shadowing)
+test-import:
+	$(PY) - <<'PY'
+import $(PKGNAME) as m
+try:
+    from $(PKGNAME) import mathutils_backend as be
+    print("OK import:", m.__version__, "| backend:", be.__name__)
+except Exception as e:
+    print("Imported core OK but failed backend:", e)
+PY
+
+# ---------- cleanup ----------
+clean:
+	rm -rf $(DISTDIR) build *.egg-info .pytest_cache __pycache__
+
+clean-all: clean
+	rm -rf $(VENV) .venv/testpypi .venv/wheel

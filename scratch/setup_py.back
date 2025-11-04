@@ -8,6 +8,7 @@ ext_modules = [
         "mathutils.mathutils_backend",
         [
             "src/cpp/bindings.cpp",
+            "src/cpp/findiff.cpp",
         ],
         include_dirs=[
             "include",  # MathUtils header files

@@ -12,6 +12,7 @@ namespace py = pybind11;
 
 PYBIND11_MODULE(mathutils_backend, m) {
   m.doc() = "Fast mathematical utilities backend";
+  m.attr("__version__") = "0.1.22";
 
   // Basic utility functions (in main module)
   m.def("sign", &mathutils::sign<double>, "sign function (double)",
@@ -144,38 +145,7 @@ PYBIND11_MODULE(mathutils_backend, m) {
   py::module_ findiff =
       m.def_submodule("findiff", "Finite difference utilities");
   // Bindings for findiff functions can be added here
-  //   findiff.def("fornberg_weights", &mathutils::findiff::fornberg_weights,
-  //               "Compute Fornberg weights for finite difference derivatives",
-  //               py::arg("x_stencil"), py::arg("x0"), py::arg("d_max"));
-
-  findiff.def(
-      "fornberg_weights",
-      [](py::EigenDRef<const Eigen::VectorXd> x_stencil, double x0, int d_max) {
-        // Call the Eigen overload directly
-        return mathutils::findiff::fornberg_weights(
-            x_stencil, x0,
-            d_max); // returns Eigen::MatrixXd
-      },
-      py::arg("x_stencil"), py::arg("x0"), py::arg("d_max"),
-      R"doc(
-Compute Fornberg finite-difference weights up to order d_max at x0.
-
-Parameters
-----------
-x_stencil : array_like (n,)
-    Stencil node coordinates (need not be uniform).
-x0 : float
-    Evaluation point.
-d_max : int
-    Maximum derivative order (>= 0).
-
-Returns
--------
-W : ndarray, shape (d_max+1, n)
-    Weight matrix; W[d, j] multiplies f(x_stencil[j]) to approximate the d-th derivative at x0.
-
-Notes
------
-This is a thin wrapper over the C++ Eigen implementation; it throws on invalid input.
-)doc");
+  findiff.def("fornberg_weights", &mathutils::findiff::fornberg_weights,
+              "Compute Fornberg weights for finite difference derivatives",
+              py::arg("x_stencil"), py::arg("x0"), py::arg("d_max"));
 }

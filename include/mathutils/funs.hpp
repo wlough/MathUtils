@@ -1380,8 +1380,6 @@ old_compute_all_real_Ylm(int l_max, const Eigen::MatrixXd &thetaphi_coord_P) {
 } // namespace special
 } // namespace mathutils
 
-namespace mathutils {} // namespace mathutils
-
 namespace mathutils {
 namespace special {
 

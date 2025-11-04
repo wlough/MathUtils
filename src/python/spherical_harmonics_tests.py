@@ -1,8 +1,8 @@
 import numpy as np
 import sympy as sp
-from mathutils.jit_funs import real_Ylm as _jit_real_Ylm
-from mathutils.jit_funs import Ylm as _jit_Ylm
-from mathutils.special import (
+from pymathutils.jit_funs import real_Ylm as _jit_real_Ylm
+from pymathutils.jit_funs import Ylm as _jit_Ylm
+from pymathutils.special import (
     spherical_harmonic_index_n_LM,
     spherical_harmonic_index_lm_N,
     compute_all_series_real_Ylm,
@@ -11,7 +11,7 @@ from mathutils.special import (
     Ylm,
     real_Ylm,
     compute_all_Ylm,
-    compute_all_real_Ylm
+    compute_all_real_Ylm,
 )
 from scipy.special import sph_harm_y_all, sph_harm_y, loggamma
 
@@ -73,7 +73,7 @@ def Plm(l, m, theta):
 
 
 def test_spherical_Plm_funs():
-    from mathutils.special import (
+    from pymathutils.special import (
         spherical_harmonic_index_n_LM,
         spherical_harmonic_index_lm_N,
         compute_all_series_real_Ylm,
@@ -137,8 +137,7 @@ def sympy_precision_scalar_Ylm(l, m, theta_val, phi_val, precision=50):
     theta, phi = sp.symbols("theta phi", real=True)
     ylm_symbolic = sp.Ynm(l, m, theta, phi)
     result = ylm_symbolic.subs(
-        {theta: sp.Float(theta_val, precision),
-         phi: sp.Float(phi_val, precision)}
+        {theta: sp.Float(theta_val, precision), phi: sp.Float(phi_val, precision)}
     ).evalf(precision)
     if result.is_real:
         return complex(float(result), 0.0)
@@ -422,8 +421,7 @@ def run_precision_tests():
     # test_Y_vs_Y(Ylm, jit_Ylm, tol=tol, l_max=100, use_problem_angles=True)
     # test_Y_vs_Y(real_Ylm, jit_real_Ylm, tol=tol, l_max=100, use_problem_angles=True)
     test_Y_vs_Y(Ylm, sciYlm, tol=tol, l_max=200, use_problem_angles=True)
-    test_Y_vs_Y(real_Ylm, real_sciYlm, tol=tol,
-                l_max=200, use_problem_angles=True)
+    test_Y_vs_Y(real_Ylm, real_sciYlm, tol=tol, l_max=200, use_problem_angles=True)
     test_all_Y_vs_Y(
         compute_all_Ylm,
         compute_all_sciYlm,

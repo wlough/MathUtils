@@ -1,6 +1,6 @@
 import numpy as np
-from mathutils.jit_funs import real_Ylm as jit_real_Ylm
-from mathutils.special import (
+from pymathutils.jit_funs import real_Ylm as jit_real_Ylm
+from pymathutils.special import (
     spherical_harmonic_index_n_LM,
     spherical_harmonic_index_lm_N,
     compute_all_real_Ylm,
@@ -101,8 +101,8 @@ print(
 
 # %%
 def check_sph_harm_coeff_magnitudes():
-    from mathutils.jit_funs import log_factorial as jit_log_factorial
-    from mathutils.special import (
+    from pymathutils.jit_funs import log_factorial as jit_log_factorial
+    from pymathutils.special import (
         log_factorial,
         spherical_harmonic_index_lm_N,
         spherical_harmonic_index_n_LM,
@@ -161,8 +161,8 @@ def check_sph_harm_coeff_magnitudes():
 
 def test_all_real_Ylm_against_jit():
     import numpy as np
-    from mathutils import jit_funs
-    from mathutils.special import (
+    from pymathutils import jit_funs
+    from pymathutils.special import (
         spherical_harmonic_index_n_LM,
         spherical_harmonic_index_lm_N,
         compute_all_real_Ylm,
@@ -177,8 +177,7 @@ def test_all_real_Ylm_against_jit():
     l_min = 0
     l_max = 100
     Theta = np.pi * np.array([0.0, 0.25, 0.5, 0.75, 1.0])
-    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25,
-                           0.0, 0.25, 0.5, 0.75, 1.0])
+    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0])
     # Theta = []
     # Phi = []
     Theta = np.array([*Theta, *np.linspace(0, np.pi, 12)[1:-1]])
@@ -233,7 +232,7 @@ def get_allYlm_scipy(l_max, ThetaPhi):
 def test_all_Ylm_against_scipy():
     import numpy as np
     from scipy.special import sph_harm_y
-    from mathutils.special import (
+    from pymathutils.special import (
         spherical_harmonic_index_n_LM,
         spherical_harmonic_index_lm_N,
         compute_all_Ylm,
@@ -299,7 +298,7 @@ test_all_Ylm_against_scipy()
 def test_Ylm_against_scipy():
     import numpy as np
     from scipy.special import sph_harm_y
-    from mathutils.special import (
+    from pymathutils.special import (
         spherical_harmonic_index_n_LM,
         spherical_harmonic_index_lm_N,
         Ylm,
@@ -314,8 +313,7 @@ def test_Ylm_against_scipy():
     l_min = 0
     l_max = 200
     Theta = np.pi * np.array([0.0, 0.25, 0.5, 0.75, 1.0])
-    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25,
-                           0.0, 0.25, 0.5, 0.75, 1.0])
+    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0])
     Theta = np.array([*Theta, *np.linspace(0, np.pi, 11)[1:-1]])
     Phi = np.array([*Phi, *np.linspace(2 * np.pi, 22)[1:]])
 
@@ -361,7 +359,7 @@ test_Ylm_against_scipy()
 def test_scipy_Ylm_against_sympy():
     import sympy as sp
     import numpy as np
-    from mathutils.special import (
+    from pymathutils.special import (
         spherical_harmonic_index_n_LM,
         spherical_harmonic_index_lm_N,
     )
@@ -381,8 +379,7 @@ def test_scipy_Ylm_against_sympy():
 
         # Substitute values and evaluate with specified precision
         result = ylm_symbolic.subs(
-            {theta: sp.Float(theta_val, precision),
-             phi: sp.Float(phi_val, precision)}
+            {theta: sp.Float(theta_val, precision), phi: sp.Float(phi_val, precision)}
         ).evalf(precision)
 
         # Handle complex results
@@ -408,8 +405,7 @@ def test_scipy_Ylm_against_sympy():
             # Compute error
             abs_error = abs(your_result - sympy_result)
             rel_error = (
-                abs_error
-                / abs(sympy_result) if sympy_result != 0 else abs_error
+                abs_error / abs(sympy_result) if sympy_result != 0 else abs_error
             )
 
             errors.append(
@@ -429,8 +425,7 @@ def test_scipy_Ylm_against_sympy():
     l_min = 10
     l_max = 100
     Theta = np.pi * np.array([0.0, 0.25, 0.5, 0.75, 1.0])
-    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25,
-                           0.0, 0.25, 0.5, 0.75, 1.0])
+    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0])
     Theta = np.array([*Theta, *np.linspace(0, np.pi, 11)[1:-1]])
     Phi = np.array([*Phi, *np.linspace(2 * np.pi, 22)[1:]])
 
@@ -474,7 +469,7 @@ test_scipy_Ylm_against_sympy()
 def test_mathutils_Ylm_against_sympy():
     import sympy as sp
     import numpy as np
-    from mathutils.special import (
+    from pymathutils.special import (
         Ylm,
         spherical_harmonic_index_n_LM,
         spherical_harmonic_index_lm_N,
@@ -494,8 +489,7 @@ def test_mathutils_Ylm_against_sympy():
 
         # Substitute values and evaluate with specified precision
         result = ylm_symbolic.subs(
-            {theta: sp.Float(theta_val, precision),
-             phi: sp.Float(phi_val, precision)}
+            {theta: sp.Float(theta_val, precision), phi: sp.Float(phi_val, precision)}
         ).evalf(precision)
 
         # Handle complex results
@@ -521,8 +515,7 @@ def test_mathutils_Ylm_against_sympy():
             # Compute error
             abs_error = abs(your_result - sympy_result)
             rel_error = (
-                abs_error
-                / abs(sympy_result) if sympy_result != 0 else abs_error
+                abs_error / abs(sympy_result) if sympy_result != 0 else abs_error
             )
 
             errors.append(
@@ -542,8 +535,7 @@ def test_mathutils_Ylm_against_sympy():
     l_min = 0
     l_max = 100
     Theta = np.pi * np.array([0.0, 0.5, 1.0])
-    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25,
-                           0.0, 0.25, 0.5, 0.75, 1.0])
+    Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0])
     # Theta = np.pi * np.array([0.0, 0.25, 0.5, 0.75, 1.0])
     # Phi = np.pi * np.array([-1.0, -0.75, -0.5, -0.25,
     #                        0.0, 0.25, 0.5, 0.75, 1.0])
