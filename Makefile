@@ -49,19 +49,29 @@ audit: venv
 
 # Only attempt to repair plain linux-tagged wheels; ignore if none exist
 repair: audit
-> $(BIN)/auditwheel repair -w $(DISTDIR) $(DISTDIR)/*linux_*.whl || true
+> $(BIN)/auditwheel repair -w $(DISTDIR) $(DISTDIR)/*-linux_*.whl || true
+> find $(DISTDIR) -maxdepth 1 -type f -name "*linux_*.whl" ! -name "*manylinux*" -delete
 
 upload-test: venv
-> $(BIN)/python -m twine upload --repository testpypi $(DISTDIR)/*
+> $(BIN)/python -m twine upload --verbose --repository testpypi $(DISTDIR)/*
 
 upload: venv
-> $(BIN)/python -m twine upload $(DISTDIR)/*
+> $(BIN)/python -m twine upload --verbose $(DISTDIR)/*
+
+# ---------- quick tests ----------
+# Install from TestPyPI (with PyPI as fallback for deps) into a throwaway venv
+test-install-testpypi:
+> $(PY) -m venv .venv/testpypi
+> . .venv/testpypi/bin/activate; \
+> python -m pip install -U pip; \
+> python -m pip install -i https://test.pypi.org/simple --extra-index-url https://pypi.org/simple $(PKGNAME)==$$(python -c "import tomllib,sys;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
 
 test-import: $(VENV)
 > "$(ABSBIN)/python" -c "import os, sys; \
 >   (sys.path.pop(0) if os.path.abspath(sys.path[0]) == os.path.abspath('$(REPO_ROOT)') else None); \
 >   import $(PKGNAME) as m; from $(PKGNAME) import mathutils_backend as be; \
 >   print('OK import:', m.__version__, '| backend:', be.__name__)"
+
 
 clean:
 > rm -rf $(DISTDIR) build *.egg-info .pytest_cache __pycache__

@@ -41,7 +41,7 @@ make clean-all    # plus removes .venv/build and test venvs
 
 ---
 
-## Full Release Flow (recommended)
+## Full Release Flow
 
 ```bash
 # Dev loop

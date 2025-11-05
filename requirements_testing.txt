@@ -11,7 +11,7 @@ jedi
 mccabe
 pycodestyle
 matplotlib
-# pymathutils
+pymathutils
 # pybind11
 # tifffile>=2023.7.10
 # opencv-python>=4.8.0
