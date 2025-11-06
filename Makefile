@@ -53,10 +53,10 @@ repair: audit
 > find $(DISTDIR) -maxdepth 1 -type f -name "*linux_*.whl" ! -name "*manylinux*" -delete
 
 upload-test: venv
-> $(BIN)/python -m twine upload --verbose --repository testpypi $(DISTDIR)/*
+> $(BIN)/python -m twine upload --verbose --repository test-pymathutils $(DISTDIR)/*
 
 upload: venv
-> $(BIN)/python -m twine upload --verbose $(DISTDIR)/*
+> $(BIN)/python -m twine upload --verbose --repository pymathutils $(DISTDIR)/*
 
 # ---------- quick tests ----------
 # Install from TestPyPI (with PyPI as fallback for deps) into a throwaway venv
