@@ -133,7 +133,7 @@ def recursiverealYlm(l, m, theta, phi):
         return np.sqrt(2) * (-1) ** m * np.real(complex_Y)
 
 
-def sympy_precision_scalar_Ylm(l, m, theta_val, phi_val, precision=50):
+def sympy_precision_scalar_Ylm(l, m, theta_val, phi_val, precision=20):
     theta, phi = sp.symbols("theta phi", real=True)
     ylm_symbolic = sp.Ynm(l, m, theta, phi)
     result = ylm_symbolic.subs(
@@ -147,7 +147,7 @@ def sympy_precision_scalar_Ylm(l, m, theta_val, phi_val, precision=50):
         return complex(real_part, imag_part)
 
 
-def sympy_precision_Ylm(l, m, ThetaPhi, precision=50):
+def sympy_precision_Ylm(l, m, ThetaPhi, precision=20):
     num_points = len(ThetaPhi)
     Y = np.zeros(num_points, dtype=np.complex128)
     for _, (th, ph) in enumerate(ThetaPhi):
@@ -382,20 +382,52 @@ def test_all_Y_vs_Y(
     )
 
 
-def time_all_Y_vs_Y(
-    compute_all_Yfun1, compute_all_Yfun2, l_max=100, use_problem_angles=True
-):
+def timeit_like_ipython(fun, *, repeat=7, precision=3):
+    import math
+    from timeit import Timer
 
-    # Yfun1 = Ylm
-    # Yfun2 = jit_Ylm
-    # tol = 1e-8
-    # l_max = 100
-    # use_problem_angles = True
+    t = Timer(fun)
+
+    # Choose loops (N) so total time >= ~0.2 s (same idea as %timeit)
+    N, _ = t.autorange()
+
+    # Repeat R times, then convert to "per loop"
+    totals = t.repeat(repeat=repeat, number=N)
+    per_loop = [x / N for x in totals]
+    mean = sum(per_loop) / repeat
+    var = sum((x - mean) ** 2 for x in per_loop) / repeat
+    sd = math.sqrt(var)
+
+    # Pretty units like %timeit
+    def scale(x):
+        for unit, factor in (("ns", 1e-9), ("µs", 1e-6), ("ms", 1e-3), ("s", 1.0)):
+            if x < 1000 * factor:
+                return x / factor, unit
+        return x, "s"
+
+    m_val, m_u = scale(mean)
+    s_val, s_u = scale(sd)  # same unit for ±
+    fmt = f"{{:.{precision}g}}"
+
+    print(
+        f"{fmt.format(m_val)} {m_u} ± {fmt.format(s_val)} {s_u} per loop "
+        f"(mean ± std. dev. of {repeat} runs, {N} loops each)"
+    )
+
+    # Return raw data too
+    return {
+        "number": N,
+        "repeat": repeat,
+        "per_loop": per_loop,
+        "mean": mean,
+        "stdev": sd,
+    }
+
+
+def time_all_mathutils_vs_scipy(l_max=100, use_problem_angles=True):
 
     print(20 * "_")
-    print("time_all_Y_vs_Y")
-    print(f"Yfun1={compute_all_Yfun1}")
-    print(f"Yfun2={compute_all_Yfun2}")
+    print("time_all_mathutils_vs_scipy")
     print(f"l_max={l_max}")
     print(f"use_problem_angles={use_problem_angles}\n")
 
@@ -404,38 +436,115 @@ def time_all_Y_vs_Y(
     if use_problem_angles:
         Theta = np.sort([*get_problem_theta(), *Theta])
     ThetaPhi = np.array([[t, p] for t in Theta for p in Phi])
+    Theta, Phi = ThetaPhi.T
+    sci_allY = sph_harm_y_all(l_max, l_max, Theta, Phi)
+    mathutils_allY = compute_all_Ylm(l_max, ThetaPhi)
+    mathutils_allrealY = compute_all_real_Ylm(l_max, ThetaPhi)
 
-    print("%timeit compute_all_Yfun1(l_max, ThetaPhi)")
-    # %timeit compute_all_Yfun1(l_max, ThetaPhi)
-    print("%timeit compute_all_Yfun2(l_max, ThetaPhi)")
-    # %timeit compute_all_Yfun2(l_max, ThetaPhi)
+    print("timeit sph_harm_y_all(l_max, l_max, Theta, Phi)")
+    # %timeit sph_harm_y_all(l_max, l_max, Theta, Phi)
+    timeit_like_ipython(lambda: sph_harm_y_all(l_max, l_max, Theta, Phi))
+    print("timeit compute_all_Ylm(l_max, ThetaPhi)")
+    # %timeit compute_all_Ylm(l_max, ThetaPhi)
+    timeit_like_ipython(lambda: compute_all_Ylm(l_max, ThetaPhi))
+    print("timeit compute_all_real_Ylm(l_max, ThetaPhi)")
+    # %timeit compute_all_real_Ylm(l_max, ThetaPhi)
+    timeit_like_ipython(lambda: compute_all_real_Ylm(l_max, ThetaPhi))
 
 
-def run_precision_tests():
-    tol = 1e-12
-    # test_scalar_Y_vs_Y(Ylm, sph_harm_y, tol=tol, l_max=100, use_problem_angles=True)
+def run_mathutils_vs_sympy_tests(
+    tol=1e-12,
+    precision=20,
+    l_max=20,
+):
+    print(2 * "----------------\n")
+    print(
+        f"Testing pymathutils.Ylm against sympy.Ynm with {tol=}, {precision=}, {l_max=}"
+    )
+    test_Y_vs_Y(
+        Ylm,
+        lambda l, m, ThetaPhi: sympy_precision_Ylm(l, m, ThetaPhi, precision=precision),
+        tol=tol,
+        l_max=l_max,
+        use_problem_angles=True,
+    )
 
-    # test_Y_vs_Y(Ylm, sympy_precision_Ylm, tol=tol, l_max=20, use_problem_angles=True)
-    # test_Y_vs_Y(sciYlm, sympy_precision_Ylm, tol=tol, l_max=20, use_problem_angles=True)
 
-    # test_Y_vs_Y(Ylm, jit_Ylm, tol=tol, l_max=100, use_problem_angles=True)
-    # test_Y_vs_Y(real_Ylm, jit_real_Ylm, tol=tol, l_max=100, use_problem_angles=True)
-    test_Y_vs_Y(Ylm, sciYlm, tol=tol, l_max=200, use_problem_angles=True)
-    test_Y_vs_Y(real_Ylm, real_sciYlm, tol=tol, l_max=200, use_problem_angles=True)
+def run_scipy_vs_sympy_tests(
+    tol=1e-12,
+    precision=20,
+    l_max=20,
+):
+    print(2 * "----------------\n")
+    print(
+        f"Testing scipy.special.sph_harm_y against sympy.Ynm with {tol=}, {precision=}, {l_max=}"
+    )
+    test_Y_vs_Y(
+        sciYlm,
+        lambda l, m, ThetaPhi: sympy_precision_Ylm(l, m, ThetaPhi, precision=precision),
+        tol=tol,
+        l_max=l_max,
+        use_problem_angles=True,
+    )
+
+
+def run_mathutils_vs_scipy_tests(
+    tol=1e-12,
+    l_max=120,
+):
+    """
+    Ylm, sph_harm_y (non-vectorized)
+    Ylm, sciYlm
+    real_Ylm, real_sciYlm
+    compute_all_Ylm, compute_all_sciYlm
+    compute_all_real_Ylm, compute_all_real_sciYlm
+    """
+    print(2 * "----------------\n")
+    print(
+        f"Testing pymathutils.Ylm against scipy.special.sph_harm_y with {tol=}, {l_max=}"
+    )
+
+    test_scalar_Y_vs_Y(
+        Ylm,
+        sph_harm_y,
+        tol=tol,
+        l_max=l_max,
+        use_problem_angles=True,
+    )
+
+    test_Y_vs_Y(
+        Ylm,
+        sciYlm,
+        tol=tol,
+        l_max=l_max,
+        use_problem_angles=True,
+    )
+
+    test_Y_vs_Y(
+        real_Ylm,
+        real_sciYlm,
+        tol=tol,
+        l_max=l_max,
+        use_problem_angles=True,
+    )
+
     test_all_Y_vs_Y(
         compute_all_Ylm,
         compute_all_sciYlm,
         tol=tol,
-        l_max=200,
+        l_max=l_max,
         use_problem_angles=True,
     )
+
     test_all_Y_vs_Y(
         compute_all_real_Ylm,
         compute_all_real_sciYlm,
         tol=tol,
-        l_max=200,
+        l_max=l_max,
         use_problem_angles=True,
     )
 
-
-run_precision_tests()
+    time_all_mathutils_vs_scipy(
+        l_max=l_max,
+        use_problem_angles=True,
+    )

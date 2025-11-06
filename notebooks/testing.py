@@ -1,3 +1,10 @@
+from src.python.spherical_harmonics_tests import run_mathutils_vs_scipy_tests
+
+
+run_mathutils_vs_scipy_tests()
+
+
+# %%
 import numpy as np
 from pymathutils.jit_funs import real_Ylm as jit_real_Ylm
 from pymathutils.special import (

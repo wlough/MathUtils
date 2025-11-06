@@ -66,8 +66,6 @@ make upload
 
 ---
 
-## Notes & Tips
-
 * Bump the version in `pyproject.toml` before building; PyPI/TestPyPI reject re-uploads.
 * The backend builds a module installed as `pymathutils.mathutils_backend`.
 * If you changed C++ code, re-run `make dev-editable` to rebuild. Python-only changes require no rebuild.
@@ -86,7 +84,7 @@ make upload
 
 
 
-
+<!-- 
 
 # Create build venv
 python -m venv .venv/mathutils_build
@@ -178,4 +176,4 @@ python -c "import pymathutils, pymathutils.mathutils_backend as be; print('OK', 
 
 
 # Clean local build junk
-rm -rf build/ dist/ *.egg-info *.egg .pytest_cache
+rm -rf build/ dist/ *.egg-info *.egg .pytest_cache -->

@@ -1,0 +1,4 @@
+from src.python.spherical_harmonics_tests import run_mathutils_vs_scipy_tests
+
+
+run_mathutils_vs_scipy_tests()
