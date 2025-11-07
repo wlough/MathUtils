@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pymathutils"
-version = "0.1.24.dev0"
+version = "0.1.25"
 description = "Fast mathematical utilities"
 authors = [{ name = "wlough", email = "wilson.lough@colorado.edu" }]
 license = { text = "MIT" }
@@ -30,7 +30,7 @@ Repository = "https://github.com/wlough/MathUtils"
 Issues = "https://github.com/wlough/MathUtils/issues"
 
 [project.optional-dependencies]
-dev = ["pytest", "build", "twine", "scipy", "sympy"]
+dev = ["pytest", "build", "twine", "scipy", "sympy", "matplotlib"]
 
 
 [tool.scikit-build]
