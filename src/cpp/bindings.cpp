@@ -10,6 +10,27 @@
 
 namespace py = pybind11;
 
+
+// py::dict halfedge_to_dict(const HalfEdgeData& H) {
+//     py::dict d;
+//     d["xyz_coord_V"]   = H.xyz_coord_V;
+//     d["V_cycle_E"]     = H.V_cycle_E;
+//     d["V_cycle_F"]     = H.V_cycle_F;
+//
+//     d["h_out_V"]       = H.h_out_V;
+//     d["h_directed_E"]  = H.h_directed_E;
+//     d["h_right_F"]     = H.h_right_F;
+//     d["h_negative_B"]  = H.h_negative_B;
+//
+//     d["v_origin_H"]    = H.v_origin_H;
+//     d["e_undirected_H"]= H.e_undirected_H;
+//     d["f_left_H"]      = H.f_left_H;
+//
+//     d["h_next_H"]      = H.h_next_H;
+//     d["h_twin_H"]      = H.h_twin_H;
+//     return d;
+// }
+
 PYBIND11_MODULE(mathutils_backend, m) {
   m.doc() = "Fast mathematical utilities backend";
 
@@ -29,8 +50,9 @@ PYBIND11_MODULE(mathutils_backend, m) {
         "Convert Cartesian coordinates (x, y, z) to spherical coordinates (r, "
         "theta, phi)",
         py::arg("xyz"));
-
-  // Create a submodule for special functions
+  ///////////////////////////////////////////
+  // Special functions submodule `special` //
+  ///////////////////////////////////////////
   py::module_ special =
       m.def_submodule("special", "Special mathematical functions");
   //   special.def("reduced_spherical_Pmm",
@@ -140,7 +162,9 @@ PYBIND11_MODULE(mathutils_backend, m) {
               "Compute all complex Ylm up to l_max", py::arg("l_max"),
               py::arg("thetaphi_coord_P"));
 
-  // Create a submodule for finite differences
+  ////////////////////////////////////////////
+  // Finite differences submodule `findiff` //
+  ////////////////////////////////////////////
   py::module_ findiff =
       m.def_submodule("findiff", "Finite difference utilities");
 

@@ -144,7 +144,10 @@ celerybeat.pid
 .ropeproject
 
 # mkdocs documentation
-/site
+site/
+# doxygen documentation
+docs/html
+docs/latex
 
 # mypy
 .mypy_cache/
