@@ -11,8 +11,6 @@ except PackageNotFoundError:
     # Not installed (e.g., running from a source checkout without `pip install -e .`)
     __version__ = "0+unknown"
 
-# numba jit compiled functions
-from . import jit_funs
 
 # general utility functions
 from .mathutils_backend import (
@@ -27,3 +25,17 @@ from . import special
 
 # finite difference utilities
 from . import findiff
+
+# mesh utilities
+from . import mesh
+
+
+__all__ = [
+    "special",
+    "findiff",
+    "mesh",
+    "sign",
+    "thetaphi_from_xyz",
+    "rthetaphi_from_xyz",
+    "xyz_from_rthetaphi",
+]

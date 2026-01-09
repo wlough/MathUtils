@@ -36,7 +36,7 @@ venv: $(VENV)
 dev-editable: $(VENV)
 > $(BIN)/python -m pip install -U pip
 > $(BIN)/python -m pip install -U scikit-build-core pybind11 cmake ninja
-> $(BIN)/python -m pip install -e . --no-build-isolation
+> $(BIN)/python -m pip install -e ".[dev]" --no-build-isolation
 
 build: venv
 > rm -rf $(DISTDIR) build *.egg-info

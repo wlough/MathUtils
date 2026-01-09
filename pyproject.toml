@@ -30,8 +30,23 @@ Repository = "https://github.com/wlough/MathUtils"
 Issues = "https://github.com/wlough/MathUtils/issues"
 
 [project.optional-dependencies]
-dev = ["pytest", "build", "twine", "scipy", "sympy", "matplotlib"]
-
+# dev = ["pytest", "build", "twine", "scipy", "sympy", "matplotlib"]
+dev=[
+  "black",
+  "build",
+  "ipykernel",
+  "jedi",
+  "jupyterlab",
+  "matplotlib",
+  "mccabe",
+  "notebook",
+  "pycodestyle",
+  "pytest",
+  "python-lsp-server[all]",
+  "scipy",
+  "sympy",
+  "twine",
+  ]
 
 [tool.scikit-build]
 wheel.packages = ["src/pymathutils"]

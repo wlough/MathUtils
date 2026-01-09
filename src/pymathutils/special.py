@@ -1,6 +1,7 @@
 """Special mathematical functions module."""
 
 from .mathutils_backend.special import *
+from . import special_pyutils as pyutils
 
 # from .mathutils_backend.special import (
 #     log_factorial,
