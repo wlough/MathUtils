@@ -16,3 +16,17 @@ matplotlib
 # tifffile>=2023.7.10
 # opencv-python>=4.8.0
 # scikit-image>=0.21.0
+
+# numpy==1.24.3
+# sympy==1.11.1
+# apptools==5.2.1
+# configobj==5.0.8
+# envisage==7.0.3
+# mayavi==4.8.1
+# pyface==8.0.0
+# pygments==2.17.2
+# traits==6.4.3
+# traitsui==8.0.0
+# vtk==9.2.6
+# PyQt5==5.15.10
+# numba==0.57.0

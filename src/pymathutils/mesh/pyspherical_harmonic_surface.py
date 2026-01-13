@@ -6,7 +6,7 @@ from ..mathutils_backend.special import (
     spherical_harmonic_index_lm_N,
     fit_real_sh_coefficients_to_points,
 )
-from ..jit_pyutils import fib_sphere
+from ..pyutils import fib_sphere
 import numpy as np
 from numba import njit
 

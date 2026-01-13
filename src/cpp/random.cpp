@@ -1,11 +1,11 @@
-#include "mathutils/funs.hpp"
+#include "mathutils/random/random.hpp"
 #include <cmath>
 #include <complex>
 
 namespace mathutils {
-namespace special {
+namespace random {
 //
 //
 
-} // namespace special
+} // namespace random
 } // namespace mathutils

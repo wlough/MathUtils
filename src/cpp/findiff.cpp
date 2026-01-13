@@ -3,7 +3,7 @@
  * @brief Implementation of finite difference utilities
  */
 
-#include "mathutils/findiff.hpp"
+#include "mathutils/findiff/findiff.hpp"
 #include <Eigen/Dense> // Eigen::MatrixXd, Eigen::VectorXd, Zero()
 #include <algorithm>   // std::min
 #include <cmath>

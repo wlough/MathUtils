@@ -1,6 +1,24 @@
 import numpy as np
-from numba import njit, int64 as NUMBA_INT, float64 as NUMBA_FLOAT
-from numba.typed import Dict as NUMBA_DICT
+from numba import njit, typeof, int64 as NUMBA_INT, float64 as NUMBA_FLOAT
+from numba.typed import Dict as NUMBA_DICT, List as NUMBA_LIST
+from numba.types import UniTuple as NUMBA_UNITUPLE, Tuple as NUMBA_TUPLE, Set as NUMBA_SET
+from ..mathutils_backend.mesh import tri_vertex_cycles_to_half_edge_samples, load_vf_samples_from_ply
+
+NUMBA_SIMPLEX0 = NUMBA_UNITUPLE(NUMBA_INT, 1)
+NUMBA_SIMPLEX1 = NUMBA_UNITUPLE(NUMBA_INT, 2)
+NUMBA_SIMPLEX2 = NUMBA_UNITUPLE(NUMBA_INT, 3)
+NUMBA_SIMPLEX3 = NUMBA_UNITUPLE(NUMBA_INT, 4)
+NUMBA_DART2 = NUMBA_TUPLE([NUMBA_SIMPLEX0, NUMBA_SIMPLEX1, NUMBA_SIMPLEX2])
+NUMBA_DART3 = NUMBA_TUPLE([NUMBA_SIMPLEX0, NUMBA_SIMPLEX1, NUMBA_SIMPLEX2, NUMBA_SIMPLEX3])
+
+DART2_0_01_012 = ((0,), (0, 1), (0, 1, 2))
+DART2_1_12_012 = ((1,), (1, 2), (0, 1, 2))
+DART2_2_02_012 = ((2,), (0, 2), (0, 1, 2))
+DART2_1_01_012 = ((1,), (0, 1), (0, 1, 2))
+DART2_2_12_012 = ((2,), (1, 2), (0, 1, 2))
+DART2_0_02_012 = ((0,), (0, 2), (0, 1, 2))
+# NUMBA_DART2_SET = typeof(set([DART2_0_01_012]))
+NUMBA_DART2_SET = NUMBA_SET(NUMBA_DART2, True)
 
 
 @njit
@@ -28,16 +46,643 @@ def get_halfedge_index_of_twin(H, h):
 
 
 @njit
-def vf_samples_to_he_samples(xyz_coord_V, vvv_of_F):
-    Nfaces = len(vvv_of_F)
+def jit_tri_vertex_cycles_to_edge_vertex_cycles(V_cycle_F):
+    E = set(
+        [
+            (0, 0),
+        ],
+    )
+    E.pop()
+    for i, j, k in V_cycle_F:
+        if i > j:
+            i, j = j, i
+        if i > k:
+            i, k = k, i
+        if j > k:
+            j, k = k, j
+        i, j, k = NUMBA_INT(i), NUMBA_INT(j), NUMBA_INT(k)
+        E.update([(i, j), (j, k), (i, k)])
+        # E.add((i, j))
+    return np.array([[i, j] for i, j in E], dtype=NUMBA_INT)
+
+
+# def f_samples_to_combinatorialmap(xyz_coord_V, V_cycle_E, V_cycle_F):
+#     arrE = np.sort(V_cycle_E, axis=1)
+#     arrF = np.sort(V_cycle_F, axis=1)
+#     D = set(
+#         [
+#             (
+#                 NUMBA_INT(0),
+#                 (NUMBA_INT(0), NUMBA_INT(0)),
+#                 (NUMBA_INT(0), NUMBA_INT(0), NUMBA_INT(0)),
+#             ),
+#         ]
+#     )
+#     D.pop()
+#     for i,j,k
+
+
+# @njit(inline="always")
+# def jit_combinatorialmap_dict_rot(d, D_diff0_D, D_diff1_D, D_diff2_D):
+#     return D_diff1_D[D_diff2_D[d]]
+
+
+def vertex2_orbit(d0, cmap1, cmap2):
+    stack = [d0]
+    seen = {d0}
+    while stack:
+        d = stack.pop()
+        for cmap in (cmap1, cmap2):
+            dn = cmap(d)
+            if dn not in seen:
+                seen.add(dn)
+                stack.append(dn)
+    return seen
+
+
+def edge2_orbit(d0, cmap0, cmap2):
+    stack = [d0]
+    seen = {d0}
+    while stack:
+        d = stack.pop()
+        for cmap in (cmap0, cmap2):
+            dn = cmap(d)
+            if dn not in seen:
+                seen.add(dn)
+                stack.append(dn)
+    return seen
+
+
+def face2_orbit(d0, cmap0, cmap1):
+    stack = [d0]
+    seen = {d0}
+    while stack:
+        d = stack.pop()
+        for cmap in (cmap0, cmap1):
+            dn = cmap(d)
+            if dn not in seen:
+                seen.add(dn)
+                stack.append(dn)
+    return seen
+
+
+def generate_dart_orbit(d0, *cmaps):
+    stack = [d0]
+    seen = {d0}
+    while stack:
+        d = stack.pop()
+        for cmap in cmaps:
+            dn = cmap(d)
+            if dn not in seen:
+                seen.add(dn)
+                stack.append(dn)
+                yield dn
+
+
+def tri_samples_to_combinatorialmap(V_cycle_F):
+    NUMBA_INT = int
+
+    V_cycle_F = np.asarray(V_cycle_F, dtype=NUMBA_INT)
+
+    D = set()
+    S0 = set()
+    S1 = set()
+    S2 = set()
+
+    # D_diff0_D = NUMBA_DICT.empty(key_type=NUMBA_DART2, value_type=NUMBA_DART2)
+    # D_diff1_D = NUMBA_DICT.empty(key_type=NUMBA_DART2, value_type=NUMBA_DART2)
+    # D_diff2_D = NUMBA_DICT.empty(key_type=NUMBA_DART2, value_type=NUMBA_DART2)
+    #
+    # # darts through k-simplices
+    # D_S0 = NUMBA_DICT.empty(key_type=NUMBA_SIMPLEX0, value_type=NUMBA_DART2)
+    # D_S1 = NUMBA_DICT.empty(key_type=NUMBA_SIMPLEX1, value_type=NUMBA_DART2)
+    # D_S2 = NUMBA_DICT.empty(key_type=NUMBA_SIMPLEX2, value_type=NUMBA_DART2)
+
+    D_diff0_D = dict()
+    D_diff1_D = dict()
+    D_diff2_D = dict()
+
+    # darts through k-simplices
+    D_S0 = dict()
+    D_S1 = dict()
+    D_S2 = dict()
+
+    # orientedS2 = set()  # 2-chains
+    # Define simplices and darts.
+    # Define cmap0(v,e,f)=(v',e,f)
+    # Define cmap1(v,e,f)=(v,e',f)
+    v_max = 0
+    for i, j, k in V_cycle_F:
+        # i, j, k = NUMBA_INT(i), NUMBA_INT(j), NUMBA_INT(k)
+        # orientedS2.add((i, j, k))
+        if i > j:
+            i, j = j, i
+        if i > k:
+            i, k = k, i
+        if j > k:
+            j, k = k, j
+        if k > v_max:
+            v_max = k
+
+        s_i, s_j, s_k = (i,), (j,), (k,)
+        s_ij = (i, j)
+        s_jk = (j, k)
+        s_ik = (i, k)
+        s_ijk = (i, j, k)
+
+        i_ij_ijk = ((i,), (i, j), (i, j, k))
+        j_jk_ijk = ((j,), (j, k), (i, j, k))
+        k_ik_ijk = ((k,), (i, k), (i, j, k))
+
+        j_ij_ijk = ((j,), (i, j), (i, j, k))
+        k_jk_ijk = ((k,), (j, k), (i, j, k))
+        i_ik_ijk = ((i,), (i, k), (i, j, k))
+
+        S0.update([s_i, s_j, s_k])
+        S1.update([s_ij, s_jk, s_ik])
+        S2.add(s_ijk)
+        D.update(
+            [
+                i_ij_ijk,
+                j_jk_ijk,
+                k_ik_ijk,
+                j_ij_ijk,
+                k_jk_ijk,
+                i_ik_ijk,
+            ],
+        )
+
+        D_S0[s_i] = i_ij_ijk
+        D_S0[s_j] = j_jk_ijk
+        D_S0[s_k] = k_ik_ijk
+
+        D_S1[s_ij] = i_ij_ijk
+        D_S1[s_jk] = j_jk_ijk
+        D_S1[s_ik] = i_ik_ijk
+
+        D_S2[s_ijk] = i_ij_ijk
+
+        D_diff0_D[i_ij_ijk] = j_ij_ijk
+        D_diff0_D[j_jk_ijk] = k_jk_ijk
+        D_diff0_D[k_ik_ijk] = i_ik_ijk
+        D_diff0_D[j_ij_ijk] = i_ij_ijk
+        D_diff0_D[k_jk_ijk] = j_jk_ijk
+        D_diff0_D[i_ik_ijk] = k_ik_ijk
+
+        D_diff1_D[i_ij_ijk] = i_ik_ijk
+        D_diff1_D[j_jk_ijk] = j_ij_ijk
+        D_diff1_D[k_ik_ijk] = k_jk_ijk
+        D_diff1_D[j_ij_ijk] = j_jk_ijk
+        D_diff1_D[k_jk_ijk] = k_ik_ijk
+        D_diff1_D[i_ik_ijk] = i_ij_ijk
+
+    Dbdry = set()
+    needdiff2D = D.copy()
+    # Define d'=D_diff2_D[d] with same v'=v, e'=e, and f'!=f.
+    # Set D_diff2_D[d]=d for boundary darts.
+    while needdiff2D:
+        d = needdiff2D.pop()
+        (v, e, f) = d
+        D_diff2_D[d] = d
+        for dd in needdiff2D:
+            (vv, ee, ff) = d
+            if v == vv and e == ee:  # never d==dd since d already popped
+                D_diff2_D[d] = dd
+                D_diff2_D[dd] = d
+                needdiff2D.remove(dd)
+                break
+        if d == dd:
+            Dbdry.add(d)
+
+    def twin(d):
+        return D_diff0_D[D_diff2_D[d]]
+
+    def next(d):
+        return D_diff1_D[D_diff0_D[d]]
+
+    # def prev(d):
+    #     return D_diff0_D[D_diff1_D[d]]
+
+    def rot_cw(d):
+        return D_diff1_D[D_diff2_D[d]]
+
+    def rot_ccw(d):
+        return D_diff2_D[D_diff1_D[d]]
+
+    # print(f"{len(D_diff2_D)=}") # this f-string breaks numba
+    #
+    Dplus = set()
+    Dminus = set()
+    need2visitD = D.copy()
+    d_plus = need2visitD.pop()
+    while need2visitD:
+        while True:
+            d_minus = D_diff0_D[d_plus]
+            need2visitD.discard(d_plus)
+            need2visitD.discard(d_minus)
+            if d_plus in Dplus:
+                d_plus = rot_ccw(d_plus)
+                d_plus = next(d_plus)
+                break
+            Dplus.add(d_plus)
+            Dminus.add(d_minus)
+            d_plus = rot_cw(d_plus)
+
+    print(f"{len(D)=}, {len(Dplus)=}, {len(Dminus)=}")
+    bad_next = 0
+    bad_twin = 0
+    for d in Dplus:
+        v, e, f = d
+        next_d = next(d)
+        twin_d = twin(d)
+        if next_d not in Dplus:
+            bad_next += 1
+        elif next_d not in Dminus:
+            raise ValueError
+        if twin_d not in Dplus:
+            bad_twin += 1
+        elif twin_d not in Dminus:
+            raise ValueError
+
+    num_darts = len(D)
+    num_verts = len(S0)
+    num_edges = len(S1)
+    num_faces = len(S2)
+    num_half_edges = len(Dplus)
+    num_boundaries = len(Dbdry)
+
+    i, j, k = V_cycle_F[0]
+    positive = True
+    if i > j:
+        i, j = j, i
+        positive = not positive
+    if i > k:
+        i, k = k, i
+        positive = not positive
+    if j > k:
+        j, k = k, j
+        positive = not positive
+    i_ij_ijk = ((i,), (i, j), (i, j, k))
+    if i_ij_ijk in Dminus:
+        Dplus, Dminus = Dminus, Dplus
+    elif i_ij_ijk not in Dplus:
+        raise ValueError
+
+    enumeration_Dplus = {d: _ for _, d in enumerate(Dplus)}
+    # enumeration_S0 = {s: _ for _, s in enumerate(S0)}
+    enumeration_S1 = {s: _ for _, s in enumerate(S1)}
+    enumeration_S2 = {s: _ for _, s in enumerate(S2)}
+
+    v_origin_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+    e_undirected_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+    f_left_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+
+    h_next_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+    h_twin_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+
+    h_out_V = np.empty(num_verts, dtype=NUMBA_INT)
+    h_directed_E = np.empty(num_edges, dtype=NUMBA_INT)
+    h_right_F = np.empty(num_faces, dtype=NUMBA_INT)
+    h_negative_B = np.empty(num_boundaries, dtype=NUMBA_INT)
+
+    for d, h in enumeration_Dplus.items():
+        s_v, s_e, s_f = d
+        v = s_v[0]
+        e = enumeration_S1[s_e]
+        f = enumeration_S2[s_f]
+
+        v_origin_H[h] = v
+        e_undirected_H[h] = enumeration_S1[s_e]
+        f_left_H[h] = enumeration_S2[s_f]
+
+        h_next_H[h] = enumeration_Dplus[next(d)]
+        h_twin_H[h] = enumeration_Dplus[twin(d)]
+
+        h_out_V[v] = enumeration_Dplus[d]
+        h_directed_E[e] = enumeration_Dplus[d]
+        h_right_F[f] = enumeration_Dplus[d]
+
+    V_cycle_E = np.empty((len(S1), 2), dtype=NUMBA_INT)
+    for _, e in enumeration_S1.items():
+        # h = h_directed_E[e]
+        V_cycle_E[e] = v_origin_H[h_directed_E[e]], v_origin_H[h_next_H[h_directed_E[e]]]
+    V_cycle_F_ = np.empty((len(S2), 3), dtype=NUMBA_INT)
+    for ijk, f in enumeration_S2.items():
+        V_cycle_F_[f] = (
+            v_origin_H[h_right_F[f]],
+            v_origin_H[h_next_H[h_right_F[f]]],
+            v_origin_H[h_next_H[h_next_H[h_right_F[f]]]],
+        )
+
+    cmaps = {
+        "D_diff0_D": D_diff0_D,
+        "D_diff1_D": D_diff1_D,
+        "D_diff2_D": D_diff2_D,
+    }
+    he_samples = {
+        "v_origin_H": v_origin_H,
+        "e_undirected_H": e_undirected_H,
+        "f_left_H": f_left_H,
+        "h_next_H": h_next_H,
+        "h_twin_H": h_twin_H,
+        "h_out_V": h_out_V,
+        "h_directed_E": h_directed_E,
+        "h_right_F": h_right_F,
+        "h_negative_B": h_negative_B,
+    }
+    v_cycles = {
+        "V_cycle_E": V_cycle_E,
+        "V_cycle_F": V_cycle_F_,
+    }
+    return (
+        cmaps,
+        D_S0,
+        D_S1,
+        D_S2,
+        D,
+        Dplus,
+        Dminus,
+        S0,
+        S1,
+        S2,
+        enumeration_Dplus,
+        he_samples,
+        v_cycles,
+    )
+
+
+@njit
+def jit_tri_samples_to_combinatorialmap(V_cycle_F):
+    V_cycle_F = np.asarray(V_cycle_F, dtype=NUMBA_INT)
+
+    D = set()
+    S0 = set()
+    S1 = set()
+    S2 = set()
+
+    D_diff0_D = NUMBA_DICT.empty(key_type=NUMBA_DART2, value_type=NUMBA_DART2)
+    D_diff1_D = NUMBA_DICT.empty(key_type=NUMBA_DART2, value_type=NUMBA_DART2)
+    D_diff2_D = NUMBA_DICT.empty(key_type=NUMBA_DART2, value_type=NUMBA_DART2)
+
+    # darts through k-simplices
+    D_S0 = NUMBA_DICT.empty(key_type=NUMBA_SIMPLEX0, value_type=NUMBA_DART2)
+    D_S1 = NUMBA_DICT.empty(key_type=NUMBA_SIMPLEX1, value_type=NUMBA_DART2)
+    D_S2 = NUMBA_DICT.empty(key_type=NUMBA_SIMPLEX2, value_type=NUMBA_DART2)
+
+    # orientedS2 = set()  # 2-chains
+    # Define simplices and darts.
+    # Define cmap0(v,e,f)=(v',e,f)
+    # Define cmap1(v,e,f)=(v,e',f)
+    v_max = 0
+    for i, j, k in V_cycle_F:
+        # i, j, k = NUMBA_INT(i), NUMBA_INT(j), NUMBA_INT(k)
+        # orientedS2.add((i, j, k))
+        if i > j:
+            i, j = j, i
+        if i > k:
+            i, k = k, i
+        if j > k:
+            j, k = k, j
+        if k > v_max:
+            v_max = k
+
+        s_i, s_j, s_k = (i,), (j,), (k,)
+        s_ij = (i, j)
+        s_jk = (j, k)
+        s_ik = (i, k)
+        s_ijk = (i, j, k)
+
+        i_ij_ijk = ((i,), (i, j), (i, j, k))
+        j_jk_ijk = ((j,), (j, k), (i, j, k))
+        k_ik_ijk = ((k,), (i, k), (i, j, k))
+
+        j_ij_ijk = ((j,), (i, j), (i, j, k))
+        k_jk_ijk = ((k,), (j, k), (i, j, k))
+        i_ik_ijk = ((i,), (i, k), (i, j, k))
+
+        S0.update([s_i, s_j, s_k])
+        S1.update([s_ij, s_jk, s_ik])
+        S2.add(s_ijk)
+        D.update(
+            [
+                i_ij_ijk,
+                j_jk_ijk,
+                k_ik_ijk,
+                j_ij_ijk,
+                k_jk_ijk,
+                i_ik_ijk,
+            ],
+        )
+
+        D_S0[s_i] = i_ij_ijk
+        D_S0[s_j] = j_jk_ijk
+        D_S0[s_k] = k_ik_ijk
+
+        D_S1[s_ij] = i_ij_ijk
+        D_S1[s_jk] = j_jk_ijk
+        D_S1[s_ik] = i_ik_ijk
+
+        D_S2[s_ijk] = i_ij_ijk
+
+        D_diff0_D[i_ij_ijk] = j_ij_ijk
+        D_diff0_D[j_jk_ijk] = k_jk_ijk
+        D_diff0_D[k_ik_ijk] = i_ik_ijk
+        D_diff0_D[j_ij_ijk] = i_ij_ijk
+        D_diff0_D[k_jk_ijk] = j_jk_ijk
+        D_diff0_D[i_ik_ijk] = k_ik_ijk
+
+        D_diff1_D[i_ij_ijk] = i_ik_ijk
+        D_diff1_D[j_jk_ijk] = j_ij_ijk
+        D_diff1_D[k_ik_ijk] = k_jk_ijk
+        D_diff1_D[j_ij_ijk] = j_jk_ijk
+        D_diff1_D[k_jk_ijk] = k_ik_ijk
+        D_diff1_D[i_ik_ijk] = i_ij_ijk
+
+    Dbdry = set()
+    needdiff2D = D.copy()
+    # Define d'=D_diff2_D[d] with same v'=v, e'=e, and f'!=f.
+    # Set D_diff2_D[d]=d for boundary darts.
+    while needdiff2D:
+        d = needdiff2D.pop()
+        (v, e, f) = d
+        D_diff2_D[d] = d
+        for dd in needdiff2D:
+            (vv, ee, ff) = d
+            if v == vv and e == ee:  # never d==dd since d already popped
+                D_diff2_D[d] = dd
+                D_diff2_D[dd] = d
+                needdiff2D.remove(dd)
+                break
+        if d == dd:
+            Dbdry.add(d)
+
+    def twin(d):
+        return D_diff0_D[D_diff2_D[d]]
+
+    def next(d):
+        return D_diff1_D[D_diff0_D[d]]
+
+    # def prev(d):
+    #     return D_diff0_D[D_diff1_D[d]]
+
+    def rot_cw(d):
+        return D_diff1_D[D_diff2_D[d]]
+
+    def rot_ccw(d):
+        return D_diff2_D[D_diff1_D[d]]
+
+    # print(f"{len(D_diff2_D)=}") # this f-string breaks numba
+    #
+    Dplus = set()
+    Dminus = set()
+    need2visitD = D.copy()
+    d_plus = need2visitD.pop()
+    while need2visitD:
+        while True:
+            d_minus = D_diff0_D[d_plus]
+            need2visitD.discard(d_plus)
+            need2visitD.discard(d_minus)
+            if d_plus in Dplus:
+                d_plus = rot_ccw(d_plus)
+                d_plus = next(d_plus)
+                break
+            Dplus.add(d_plus)
+            Dminus.add(d_minus)
+            d_plus = rot_cw(d_plus)
+
+    bad_next = 0
+    bad_twin = 0
+    for d in Dplus:
+        v, e, f = d
+        next_d = next(d)
+        twin_d = twin(d)
+        if next_d not in Dplus:
+            bad_next += 1
+        elif next_d not in Dminus:
+            raise ValueError
+        if twin_d not in Dplus:
+            bad_twin += 1
+        elif twin_d not in Dminus:
+            raise ValueError
+
+    num_darts = len(D)
+    num_verts = len(S0)
+    num_edges = len(S1)
+    num_faces = len(S2)
+    num_half_edges = len(Dplus)
+    num_boundaries = len(Dbdry)
+
+    i, j, k = V_cycle_F[0]
+    positive = True
+    if i > j:
+        i, j = j, i
+        positive = not positive
+    if i > k:
+        i, k = k, i
+        positive = not positive
+    if j > k:
+        j, k = k, j
+        positive = not positive
+    i_ij_ijk = ((i,), (i, j), (i, j, k))
+    if i_ij_ijk in Dminus:
+        Dplus, Dminus = Dminus, Dplus
+    elif i_ij_ijk not in Dplus:
+        raise ValueError
+
+    enumeration_Dplus = {d: _ for _, d in enumerate(Dplus)}
+    # enumeration_S0 = {s: _ for _, s in enumerate(S0)}
+    enumeration_S1 = {s: _ for _, s in enumerate(S1)}
+    enumeration_S2 = {s: _ for _, s in enumerate(S2)}
+
+    v_origin_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+    e_undirected_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+    f_left_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+
+    h_next_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+    h_twin_H = np.empty(num_half_edges, dtype=NUMBA_INT)
+
+    h_out_V = np.empty(num_verts, dtype=NUMBA_INT)
+    h_directed_E = np.empty(num_edges, dtype=NUMBA_INT)
+    h_right_F = np.empty(num_faces, dtype=NUMBA_INT)
+    h_negative_B = np.empty(num_boundaries, dtype=NUMBA_INT)
+
+    for d, h in enumeration_Dplus.items():
+        s_v, s_e, s_f = d
+        v = s_v[0]
+        e = enumeration_S1[s_e]
+        f = enumeration_S2[s_f]
+
+        v_origin_H[h] = v
+        e_undirected_H[h] = enumeration_S1[s_e]
+        f_left_H[h] = enumeration_S2[s_f]
+
+        h_next_H[h] = enumeration_Dplus[next(d)]
+        h_twin_H[h] = enumeration_Dplus[twin(d)]
+
+        h_out_V[v] = enumeration_Dplus[d]
+        h_directed_E[e] = enumeration_Dplus[d]
+        h_right_F[f] = enumeration_Dplus[d]
+
+    V_cycle_E = np.empty((len(S1), 2), dtype=NUMBA_INT)
+    for _, e in enumeration_S1.items():
+        # h = h_directed_E[e]
+        V_cycle_E[e] = v_origin_H[h_directed_E[e]], v_origin_H[h_next_H[h_directed_E[e]]]
+    V_cycle_F_ = np.empty((len(S2), 3), dtype=NUMBA_INT)
+    for ijk, f in enumeration_S2.items():
+        V_cycle_F_[f] = (
+            v_origin_H[h_right_F[f]],
+            v_origin_H[h_next_H[h_right_F[f]]],
+            v_origin_H[h_next_H[h_next_H[h_right_F[f]]]],
+        )
+
+    cmaps = {
+        "D_diff0_D": D_diff0_D,
+        "D_diff1_D": D_diff1_D,
+        "D_diff2_D": D_diff2_D,
+    }
+    he_samples = {
+        "v_origin_H": v_origin_H,
+        "e_undirected_H": e_undirected_H,
+        "f_left_H": f_left_H,
+        "h_next_H": h_next_H,
+        "h_twin_H": h_twin_H,
+        "h_out_V": h_out_V,
+        "h_directed_E": h_directed_E,
+        "h_right_F": h_right_F,
+        "h_negative_B": h_negative_B,
+    }
+    v_cycles = {
+        "V_cycle_E": V_cycle_E,
+        "V_cycle_F": V_cycle_F_,
+    }
+    return (
+        cmaps,
+        D_S0,
+        D_S1,
+        D_S2,
+        D,
+        Dplus,
+        Dminus,
+        S0,
+        S1,
+        S2,
+        enumeration_Dplus,
+        he_samples,
+        v_cycles,
+    )
+
+
+@njit
+def vf_samples_to_he_samples(xyz_coord_V, V_cycle_F):
+    Nfaces = len(V_cycle_F)
     Nvertices = len(xyz_coord_V)
     _Nhedges = 3 * Nfaces * 2
-    _H = np.zeros((_Nhedges, 2), dtype=int)
-    h_out_V = -np.ones(Nvertices, dtype=int)
-    _v_origin_H = np.zeros(_Nhedges, dtype=int)
-    _h_next_H = -np.ones(_Nhedges, dtype=int)
-    _f_left_H = np.zeros(_Nhedges, dtype=int)
-    h_right_F = np.zeros(Nfaces, dtype=int)
+    _H = np.zeros((_Nhedges, 2), dtype=NUMBA_INT)
+    h_out_V = -np.ones(Nvertices, dtype=NUMBA_INT)
+    _v_origin_H = np.zeros(_Nhedges, dtype=NUMBA_INT)
+    _h_next_H = -np.ones(_Nhedges, dtype=NUMBA_INT)
+    _f_left_H = np.zeros(_Nhedges, dtype=NUMBA_INT)
+    h_right_F = np.zeros(Nfaces, dtype=NUMBA_INT)
 
     # h_count = 0
     for f in range(Nfaces):
@@ -45,8 +690,8 @@ def vf_samples_to_he_samples(xyz_coord_V, vvv_of_F):
         for i in range(3):
             h = 3 * f + i
             h_next = 3 * f + (i + 1) % 3
-            v0 = vvv_of_F[f, i]
-            v1 = vvv_of_F[f, (i + 1) % 3]
+            v0 = V_cycle_F[f, i]
+            v1 = V_cycle_F[f, (i + 1) % 3]
             _H[h] = [v0, v1]
             _v_origin_H[h] = v0
             _f_left_H[h] = f
@@ -57,7 +702,7 @@ def vf_samples_to_he_samples(xyz_coord_V, vvv_of_F):
     need_twins = set([NUMBA_INT(_) for _ in range(h_count)])
     need_next = set([NUMBA_INT(0)])
     need_next.pop()
-    _h_twin_H = NUMBA_INT(-2) * np.ones(_Nhedges, dtype=int)  # -2 means not set
+    _h_twin_H = NUMBA_INT(-2) * np.ones(_Nhedges, dtype=NUMBA_INT)  # -2 means not set
     while need_twins:
         h = need_twins.pop()
         if _h_twin_H[h] == -2:  # if twin not set
@@ -103,7 +748,7 @@ def vf_samples_to_he_samples(xyz_coord_V, vvv_of_F):
             H_need2visit.remove(h)
             f_left_H[h] = -(b + 1)
             h = h_next_H[h]
-    h_negative_B = np.array(_h_comp_B, dtype=int)
+    h_negative_B = np.array(_h_comp_B, dtype=NUMBA_INT)
     return (
         xyz_coord_V,
         h_out_V,
@@ -161,8 +806,8 @@ def jit_refine_icososphere(Vm1, Fm1, r):
 
     Nv = len(V)
     Nf = len(F)
-    xyz_coord_V = np.zeros((Nv, 3), dtype=float)
-    V_cycle_F = np.zeros((Nf, 3), dtype=int)
+    xyz_coord_V = np.zeros((Nv, 3), dtype=NUMBA_FLOAT)
+    V_cycle_F = np.zeros((Nf, 3), dtype=NUMBA_INT)
     for v in range(Nv):
         xyz_coord_V[v] = V[v]
     for f in range(Nf):
@@ -224,6 +869,8 @@ class HalfEdgeMesh:
         f_left_H,
         h_right_F,
         h_negative_B,
+        V_cycle_E=None,
+        V_cycle_F=None,
         *args,
         **kwargs,
     ):
@@ -236,8 +883,8 @@ class HalfEdgeMesh:
         self.h_right_F = h_right_F
         self.h_negative_B = h_negative_B
 
-        self.V_cycle_E = np.zeros((0, 2), dtype=int)
-        self.V_cycle_F = np.zeros((0, 3), dtype=int)
+        self.V_cycle_E = np.zeros((0, 2), dtype=int) if V_cycle_E is None else V_cycle_E
+        self.V_cycle_F = np.zeros((0, 3), dtype=int) if V_cycle_F is None else V_cycle_F
 
     #######################################################
     # Initilization methods
@@ -258,7 +905,7 @@ class HalfEdgeMesh:
         )
 
     @classmethod
-    def init_icososphere(cls, num_refinements=0, radius=1.0):
+    def init_icososphere(cls, num_refinements=0, radius=1.0, compute_he_stuff=False):
         phi = (1.0 + np.sqrt(5.0)) * 0.5
         a = 1.0
         b = 1.0 / phi
@@ -314,15 +961,37 @@ class HalfEdgeMesh:
         )
         xyz_coord_V *= radius
         for _ in range(num_refinements):
-            xyz_coord_V, V_cycle_F = jit_refine_icososphere(
-                xyz_coord_V, V_cycle_F, radius
-            )
-        return cls.from_vf_samples(xyz_coord_V, V_cycle_F, compute_he_stuff=True)
+            xyz_coord_V, V_cycle_F = jit_refine_icososphere(xyz_coord_V, V_cycle_F, radius)
+        return cls.from_vf_samples(xyz_coord_V, V_cycle_F, compute_he_stuff=compute_he_stuff)
 
     @classmethod
-    def from_vf_samples(
-        cls, xyz_coord_V, V_cycle_F, *args, compute_he_stuff=True, **kwargs
-    ):
+    def from_samples(cls, **samples_dict):
+        he_keys = [
+            "v_origin_H",
+            "e_undirected_H",
+            "f_left_H",
+            "h_next_H",
+            "h_twin_H",
+            "h_out_V",
+            "h_directed_E",
+            "h_right_F",
+            "h_negative_B",
+        ]
+        he_keys += [
+            "xyz_coord_V",
+        ]
+        he_keys += [
+            "V_cycle_E",
+            "V_cycle_F",
+        ]
+        # he_samples = {key: samples_dict.get(key, np.zeros(0, dtype=int)) for key in he_keys}
+        m = cls.init_empty()
+        for name, value in samples_dict.items():
+            m.__setattr__(name, value)
+        return m
+
+    @classmethod
+    def from_vf_samples(cls, xyz_coord_V, V_cycle_F, *args, compute_he_stuff=True, **kwargs):
         """
         Initialize a half-edge mesh from vertex/face data.
 
@@ -340,8 +1009,38 @@ class HalfEdgeMesh:
         if compute_he_stuff:
             m = cls(
                 *vf_samples_to_he_samples(xyz_coord_V, V_cycle_F),
-                *args,
-                **kwargs,
+                # *args,
+                # **kwargs,
+            )
+            m.V_cycle_F = V_cycle_F
+        else:
+            m = cls.init_empty()
+            m.xyz_coord_V = xyz_coord_V
+            m.V_cycle_F = V_cycle_F
+        return m
+
+    @classmethod
+    def load_vf_ply(cls, ply_path, *args, compute_he_stuff=True, **kwargs):
+        """
+        Initialize a half-edge mesh from vertex/face data.
+
+        Parameters:
+        ----------
+        xyz_coord_V : list of numpy.array
+            xyz_coord_V[i] = xyz coordinates of vertex i
+        V_cycle_F : list of lists of integers
+            V_cycle_F[j] = [v0, v1, v2] = vertices in face j.
+
+        Returns:
+        -------
+            HalfEdgeMesh: An instance of the HalfEdgeMesh class with the given vertices and faces.
+        """
+        xyz_coord_V, V_cycle_F = load_vf_samples_from_ply(ply_path)
+        if compute_he_stuff:
+            m = cls(
+                *vf_samples_to_he_samples(xyz_coord_V, V_cycle_F),
+                # *args,
+                # **kwargs,
             )
             m.V_cycle_F = V_cycle_F
         else:
@@ -395,6 +1094,129 @@ class HalfEdgeMesh:
             h_right_F=h_right_F,
             h_negative_B=h_negative_B,
         )
+
+    #######################################################
+    # Fundamental accessors and properties ###############
+    #######################################################
+    @property
+    def xyz_coord_V(self):
+        return self.xyz_coord_V_
+
+    @xyz_coord_V.setter
+    def xyz_coord_V(self, value):
+        self.xyz_coord_V_ = np.array(value, dtype=float)
+
+    @property
+    def h_out_V(self):
+        return self.h_out_V_
+
+    @h_out_V.setter
+    def h_out_V(self, value):
+        self.h_out_V_ = np.array(value, dtype=int)
+
+    @property
+    def v_origin_H(self):
+        return self.v_origin_H_
+
+    @v_origin_H.setter
+    def v_origin_H(self, value):
+        self.v_origin_H_ = np.array(value, dtype=int)
+
+    @property
+    def h_next_H(self):
+        return self.h_next_H_
+
+    @h_next_H.setter
+    def h_next_H(self, value):
+        self.h_next_H_ = np.array(value, dtype=int)
+
+    @property
+    def h_twin_H(self):
+        return self.h_twin_H_
+
+    @h_twin_H.setter
+    def h_twin_H(self, value):
+        self.h_twin_H_ = np.array(value, dtype=int)
+
+    @property
+    def f_left_H(self):
+        return self.f_left_H_
+
+    @f_left_H.setter
+    def f_left_H(self, value):
+        self.f_left_H_ = np.array(value, dtype=int)
+
+    @property
+    def h_right_F(self):
+        return self.h_right_F_
+
+    @h_right_F.setter
+    def h_right_F(self, value):
+        self.h_right_F_ = np.array(value, dtype=int)
+
+    @property
+    def h_negative_B(self):
+        return self.h_negative_B_
+
+    @h_negative_B.setter
+    def h_negative_B(self, value):
+        self.h_negative_B_ = np.array(value, dtype=int)
+
+    @property
+    def V_cycle_E(self):
+        if len(self.V_cycle_E_) > 0:
+            return self.V_cycle_E_
+        self.V_cycle_E = jit_tri_vertex_cycles_to_edge_vertex_cycles(self.V_cycle_F)
+        return self.V_cycle_E_
+
+    @V_cycle_E.setter
+    def V_cycle_E(self, value):
+        self.V_cycle_E_ = np.array(value, dtype=int)
+
+    @property
+    def V_cycle_F(self):
+        if len(self.V_cycle_F_) > 0:
+            return self.V_cycle_F_
+        self.V_cycle_F = np.array(
+            [
+                self.v_origin_H[self.h_right_F],
+                self.v_origin_H[self.h_next_H[self.h_right_F]],
+                self.v_origin_H[self.h_next_H[self.h_next_H[self.h_right_F]]],
+            ]
+        ).T
+        return self.V_cycle_F_
+
+    @V_cycle_F.setter
+    def V_cycle_F(self, value):
+        self.V_cycle_F_ = np.array(value, dtype=int)
+
+    @property
+    def num_vertices(self):
+        return len(self.xyz_coord_V)
+
+    @property
+    def num_edges(self):
+        return len(self.v_origin_H_) // 2
+
+    @property
+    def num_half_edges(self):
+        return len(self.v_origin_H_)
+
+    @property
+    def num_faces(self):
+        return len(self.h_right_F_)
+
+    @property
+    def euler_characteristic(self):
+        return self.num_vertices - self.num_edges + self.num_faces
+
+    @property
+    def num_boundaries(self):
+        return len(self.h_negative_B_)
+
+    @property
+    def genus(self):
+        return 1 - (self.euler_characteristic + self.num_boundaries) // 2
 
     #######################################################
     # Combinatorial maps #################################
@@ -549,9 +1371,7 @@ class HalfEdgeMesh:
     def boundary_contains_h(self, h):
         """check if half-edge h is on the boundary of the mesh"""
         # return self.f_left_h(h) < 0 or self.f_left_h(self.h_twin_h(h)) < 0
-        return np.logical_or(
-            self.negative_boundary_contains_h(h), self.positive_boundary_contains_h(h)
-        )
+        return np.logical_or(self.negative_boundary_contains_h(h), self.positive_boundary_contains_h(h))
 
     def boundary_contains_v(self, v):
         """check if vertex v is on the boundary of the mesh"""
@@ -580,12 +1400,8 @@ class HalfEdgeMesh:
         rkj = self.xyz_coord_v(vj) - self.xyz_coord_v(vk)
         rkl = self.xyz_coord_v(vl) - self.xyz_coord_v(vk)
 
-        alphai = np.arccos(
-            np.dot(rij, ril) / (np.linalg.norm(rij) * np.linalg.norm(ril))
-        )
-        alphak = np.arccos(
-            np.dot(rkl, rkj) / (np.linalg.norm(rkl) * np.linalg.norm(rkj))
-        )
+        alphai = np.arccos(np.dot(rij, ril) / (np.linalg.norm(rij) * np.linalg.norm(ril)))
+        alphak = np.arccos(np.dot(rkl, rkj) / (np.linalg.norm(rkl) * np.linalg.norm(rkj)))
 
         return alphai + alphak <= np.pi
 
@@ -843,10 +1659,7 @@ class HalfEdgeMesh:
 
     def get_unsigned_simplicial_sets(self):
         S0 = {frozenset(v) for v in range(self.num_vertices)}
-        S1 = {
-            frozenset([self.v_origin_h(h), self.v_head_h(h)])
-            for h in range(self.num_half_edges)
-        }
+        S1 = {frozenset([self.v_origin_h(h), self.v_head_h(h)]) for h in range(self.num_half_edges)}
         S2 = {frozenset(self.generate_V_of_f(f)) for f in range(self.num_faces)}
         return S0, S1, S2
 
@@ -1059,15 +1872,9 @@ class HalfEdgeMesh:
 
         self.xyz_coord_V += weight * lapQ
 
-    def taubin_smooth_graph_laplacian(
-        self, weight_shrink=0.25, weight_inflate=-0.25, smooth_boundary=False
-    ):
-        self.smooth_graph_laplacian(
-            weight=weight_shrink, smooth_boundary=smooth_boundary
-        )
-        self.smooth_graph_laplacian(
-            weight=weight_inflate, smooth_boundary=smooth_boundary
-        )
+    def taubin_smooth_graph_laplacian(self, weight_shrink=0.25, weight_inflate=-0.25, smooth_boundary=False):
+        self.smooth_graph_laplacian(weight=weight_shrink, smooth_boundary=smooth_boundary)
+        self.smooth_graph_laplacian(weight=weight_inflate, smooth_boundary=smooth_boundary)
 
     def update_V_slice(self, index_slice, xyz_coord_V=None, h_out_V=None):
         """ """
@@ -1076,9 +1883,7 @@ class HalfEdgeMesh:
         if h_out_V is not None:
             self.h_out_V[index_slice] = h_out_V
 
-    def update_H_slice(
-        self, index_slice, h_next_H=None, h_twin_H=None, v_origin_H=None, f_left_H=None
-    ):
+    def update_H_slice(self, index_slice, h_next_H=None, h_twin_H=None, v_origin_H=None, f_left_H=None):
         """ """
         if h_next_H is not None:
             self.h_next_H[index_slice] = h_next_H
@@ -1124,24 +1929,14 @@ class HalfEdgeMesh:
             [[h0, h1, h2], list(range(self.num_half_edges, self.num_half_edges + dNh))],
             dtype=int,
         )
-        F = np.concatenate(
-            [[f0], list(range(self.num_faces, self.num_faces + dNf))], dtype=int
-        )
+        F = np.concatenate([[f0], list(range(self.num_faces, self.num_faces + dNf))], dtype=int)
 
         #####
-        self.update_vertex(
-            V[3], xyz=np.sum(self.xyz_coord_V[V[:3]], axis=0), h_out=H[4]
-        )
+        self.update_vertex(V[3], xyz=np.sum(self.xyz_coord_V[V[:3]], axis=0), h_out=H[4])
         self.update_H_slice(H[3:], v_origin_H=[V[1], V[3], V[2], V[3], V[0], V[3]])
-        self.update_H_slice(
-            H, h_next_H=[H[3], H[5], H[7], H[8], H[1], H[4], H[2], H[6], H[0]]
-        )
-        self.update_H_slice(
-            H[3:], h_next_H=None, h_twin_H=[H[4], H[3], H[6], H[5], H[8], H[7]]
-        )
-        self.update_H_slice(
-            H[1:], f_left_H=[F[1], F[2], F[0], F[1], F[1], F[2], F[2], F[0]]
-        )
+        self.update_H_slice(H, h_next_H=[H[3], H[5], H[7], H[8], H[1], H[4], H[2], H[6], H[0]])
+        self.update_H_slice(H[3:], h_next_H=None, h_twin_H=[H[4], H[3], H[6], H[5], H[8], H[7]])
+        self.update_H_slice(H[1:], f_left_H=[F[1], F[2], F[0], F[1], F[1], F[2], F[2], F[0]])
         self.update_F_slice(F, h_right_F=H[:3])
         return dNv, dNh, dNf
 
@@ -1309,46 +2104,21 @@ class HalfEdgeMesh:
             normDrjjp1 = np.sqrt(rj_rj - 2 * rj_rjp1 + rjp1_rjp1)
             # normu2 = np.sqrt(r2_r2 - 2 * r1_r2 + r1_r1)  # jitnorm(u2)
             normDrjp1i = np.sqrt(rjp1_rjp1 - 2 * rjp1_ri + ri_ri)
-            cos_thetajijp1 = (ri_ri + rj_rjp1 - ri_rj - rjp1_ri) / (
-                normDrij * normDrjp1i
-            )
-            cos_thetajp1ji = (rj_rj + rjp1_ri - rj_rjp1 - ri_rj) / (
-                normDrij * normDrjjp1
-            )
-            cos_thetaijp1j = (rjp1_rjp1 + ri_rj - rj_rjp1 - rjp1_ri) / (
-                normDrjp1i * normDrjjp1
-            )
+            cos_thetajijp1 = (ri_ri + rj_rjp1 - ri_rj - rjp1_ri) / (normDrij * normDrjp1i)
+            cos_thetajp1ji = (rj_rj + rjp1_ri - rj_rjp1 - ri_rj) / (normDrij * normDrjjp1)
+            cos_thetaijp1j = (rjp1_rjp1 + ri_rj - rj_rjp1 - rjp1_ri) / (normDrjp1i * normDrjjp1)
             if cos_thetajijp1 < 0:
                 semiP = (normDrij + normDrjjp1 + normDrjp1i) / 2
-                Atot += (
-                    np.sqrt(
-                        semiP
-                        * (semiP - normDrij)
-                        * (semiP - normDrjjp1)
-                        * (semiP - normDrjp1i)
-                    )
-                    / 2
-                )
+                Atot += np.sqrt(semiP * (semiP - normDrij) * (semiP - normDrjjp1) * (semiP - normDrjp1i)) / 2
                 # Atot += normDrij * normDrjp1i * np.sqrt(1 - cos_thetajijp1**2) / 4
             elif cos_thetajp1ji < 0 or cos_thetaijp1j < 0:
                 semiP = (normDrij + normDrjjp1 + normDrjp1i) / 2
-                Atot += (
-                    np.sqrt(
-                        semiP
-                        * (semiP - normDrij)
-                        * (semiP - normDrjjp1)
-                        * (semiP - normDrjp1i)
-                    )
-                    / 4
-                )
+                Atot += np.sqrt(semiP * (semiP - normDrij) * (semiP - normDrjjp1) * (semiP - normDrjp1i)) / 4
                 # Atot += normDrij * normDrjp1i * np.sqrt(1 - cos_thetajijp1**2) / 8
             else:
                 cot_thetaijp1j = cos_thetaijp1j / np.sqrt(1 - cos_thetaijp1j**2)
                 cot_thetajp1ji = cos_thetajp1ji / np.sqrt(1 - cos_thetajp1ji**2)
-                Atot += (
-                    normDrij**2 * cot_thetaijp1j / 8
-                    + normDrjp1i**2 * cot_thetajp1ji / 8
-                )
+                Atot += normDrij**2 * cot_thetaijp1j / 8 + normDrjp1i**2 * cot_thetajp1ji / 8
 
         return Atot
 

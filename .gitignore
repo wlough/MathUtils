@@ -153,3 +153,10 @@ docs/latex
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+
+
+
+
+
+.virtual_documents

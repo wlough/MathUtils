@@ -20,14 +20,19 @@ from .mathutils_backend import (
     xyz_from_rthetaphi,
 )
 
+from . import pyutils
+
+
+# mesh utilities
+from . import mesh
+
 # special functions
 from . import special
 
 # finite difference utilities
 from . import findiff
 
-# mesh utilities
-from . import mesh
+from . import random
 
 
 __all__ = [
