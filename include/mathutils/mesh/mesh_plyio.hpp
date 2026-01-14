@@ -9,9 +9,11 @@
 #include <chrono> // std::chrono::high_resolution_clock and std::chrono::duration
 #include <fstream>   // std::ifstream
 #include <istream>   // std::istream
+#include <map>       // std::map
 #include <stdexcept> // std::runtime_error
 #include <streambuf> // std::streambuf
 #include <string>    // std::string
+#include <variant>   // std::variant
 #include <vector>    // std::vector
 
 /**
@@ -27,7 +29,36 @@ namespace mesh_io {
 using Samplesi = Eigen::VectorXi;
 using Samples2i = Eigen::Matrix<int, Eigen::Dynamic, 2>;
 using Samples3i = Eigen::Matrix<int, Eigen::Dynamic, 3>;
+using Samples4i = Eigen::Matrix<int, Eigen::Dynamic, 4>;
+using Samplesd = Eigen::VectorXd;
+using Samples2d = Eigen::Matrix<double, Eigen::Dynamic, 2>;
 using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3>;
+using Samples4d = Eigen::Matrix<double, Eigen::Dynamic, 4>;
+using RaggedSamplesi = std::vector<Eigen::VectorXi>;
+
+using MeshSamples =
+    std::map<std::string,
+             std::variant<Samplesi, Samples2i, Samples3i, Samples4i, Samplesd,
+                          Samples2d, Samples3d, Samples4d, RaggedSamplesi>>;
+
+struct double2 {
+  double x, y;
+};
+struct double3 {
+  double x, y, z;
+};
+struct double4 {
+  double x, y, z, w;
+};
+struct int2 {
+  int x, y;
+};
+struct int3 {
+  int x, y, z;
+};
+struct int4 {
+  int x, y, z, w;
+};
 ////////////////////////////////////////////
 // misc tinyply helpers ////////////////////
 ////////////////////////////////////////////
@@ -115,7 +146,6 @@ public:
 };
 /** @}*/ // end of group utils
 
-// START HERE
 ////////////////////////////////////////////
 // half-edge mesh funs /////////////////////
 ////////////////////////////////////////////
@@ -123,19 +153,8 @@ public:
 // /** @addtogroup MeshIO
 //  *  @{
 //  */
-// /**
-//  * @brief Convert vertex-face mesh data to half-edge mesh data. See:
-//  * `meshbrane::VertexFaceTuple`, `meshbrane::HalfEdgeTuple`.
-//  * @param xyz_coord_V Nvx3 Eigen matrix of vertex Cartesian coordinates.
-//  * @param vvv_of_F Nfx3 Eigen matrix of vertex indices of faces.
-//  * @return A tuple containing:
-//  */
-// meshbrane::HalfEdgeTuple
-// vf_samples_to_he_samples(const meshbrane::Samples3d &xyz_coord_V,
-//                          const meshbrane::Samples3i &V_cycle_F);
-
 /**
- * @brief loads ply file into mathutils::VertexFaceTuple tuple.
+ * @brief loads ply file of vertex-face samples.
  *
  * @param filepath
  * @param preload_into_memory
@@ -148,7 +167,7 @@ load_vf_samples_from_ply(const std::string &filepath,
                          const bool verbose = false);
 
 /**
- * @brief writes mathutils::VertexFaceTuple to a .ply file.
+ * @brief writes vertex-face samples to a ply file.
  *
  * @param xyz_coord_V
  * @param V_cycle_F
@@ -159,51 +178,56 @@ void write_vf_samples_to_ply(Samples3d &xyz_coord_V, Samples3i &V_cycle_F,
                              const std::string &ply_path,
                              const bool use_binary = true);
 
-// VertexFaceTuple
-// he_samples_to_vf_samples(const Samples3d &xyz_coord_V, const Samplesi
-// &h_out_V,
-//                          const Samplesi &v_origin_H, const Samplesi
-//                          &h_next_H, const Samplesi &h_twin_H, const Samplesi
-//                          &f_left_H, const Samplesi &h_right_F, const Samplesi
-//                          &h_negative_B);
+/**
+ * @brief loads ply file of half-edge samples.
+ *
+ * @param filepath
+ * @param preload_into_memory
+ * @param verbose
+ * @return std::map<std::string, Samplesi>
+ */
+std::map<std::string, Samplesi>
+load_he_samples_from_ply(const std::string &filepath,
+                         const bool preload_into_memory = true,
+                         const bool verbose = false);
 
-// VertexEdgeFaceTuple
-// he_samples_to_vef_samples(const Samples3d &xyz_coord_V, const Samplesi
-// &h_out_V,
-//                           const Samplesi &v_origin_H, const Samplesi
-//                           &h_next_H, const Samplesi &h_twin_H, const Samplesi
-//                           &f_left_H, const Samplesi &h_right_F, const
-//                           Samplesi &h_negative_B);
+/**
+ * @brief writes half-edge samples to a ply file.
+ *
+ * @param xyz_coord_V
+ * ...
+ * @param ply_path
+ * @param use_binary
+ */
+void write_he_samples_to_ply(
+    const Samples3d &xyz_coord_V, const Samplesi &h_out_V,
+    const Samplesi &v_origin_H, const Samplesi &h_next_H,
+    const Samplesi &h_twin_H, const Samplesi &f_left_H,
+    const Samplesi &h_right_F, const Samplesi &h_negative_B,
+    const std::string &ply_path, const bool use_binary = true);
 
-// /**
-//  * @brief loads ply file into `meshbrane::HalfEdgeTuple` structure.
-//  *
-//  * @param filepath
-//  * @param preload_into_memory
-//  * @param verbose
-//  * @return meshbrane::HalfEdgeTuple
-//  */
-// meshbrane::HalfEdgeTuple
-// load_he_samples_from_ply(const std::string &filepath,
-//                          const bool preload_into_memory = true,
-//                          const bool verbose = false);
+/**
+ * @brief loads ply file into map of mesh samples.
+ *
+ * @param filepath
+ * @param preload_into_memory
+ * @param verbose
+ * @return std::map<std::string, std::variant<...>>;
+ */
+MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
+                                       const bool preload_into_memory = true,
+                                       const bool verbose = false);
 
-// /**
-//  * @brief writes meshbrane::HalfEdgeTuple to a .ply file.
-//  *
-//  * @param xyz_coord_V
-//  * ...
-//  * @param ply_path
-//  * @param use_binary
-//  */
-// void write_he_samples_to_ply(
-//     const meshbrane::Samples3d &xyz_coord_V, const meshbrane::Samplesi
-//     &h_out_V, const meshbrane::Samplesi &v_origin_H, const
-//     meshbrane::Samplesi &h_next_H, const meshbrane::Samplesi &h_twin_H, const
-//     meshbrane::Samplesi &f_left_H, const meshbrane::Samplesi &h_right_F,
-//     const meshbrane::Samplesi &h_negative_B, const std::string &ply_path,
-//     const bool use_binary = true);
-
+/**
+ * @brief writes mesh samples to a ply file.
+ *
+ * @param mesh_samples
+ * @param ply_path
+ * @param use_binary
+ */
+void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
+                               const std::string &ply_path,
+                               const bool use_binary = true);
 // EdgeFaceCellTuple cmap_to_efc_tuple(const CombinatorialMapTuple &cm);
 
 // /**

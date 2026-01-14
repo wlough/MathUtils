@@ -11,6 +11,7 @@
 #include <Eigen/Core>             // Eigen::MatrixXd, Eigen::VectorXd
 #include <algorithm>              // For std::min and std::max
 #include <chrono> // std::chrono::high_resolution_clock and std::chrono::duration
+#include <cstdint>       // std::uint32_t
 #include <iostream>      // std::cout
 #include <set>           // std::set
 #include <tuple>         // std::tuple
@@ -19,14 +20,6 @@
 
 namespace mathutils {
 namespace mesh_io {
-
-using Samplesi = Eigen::VectorXi;
-using Samples2i = Eigen::Matrix<int, Eigen::Dynamic, 2>;
-using Samples3i = Eigen::Matrix<int, Eigen::Dynamic, 3>;
-using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3>;
-
-//
-//
 
 std::pair<Samples3d, Samples3i>
 load_vf_samples_from_ply(const std::string &filepath,
@@ -233,5 +226,1062 @@ void write_vf_samples_to_ply(Samples3d &xyz_coord_V, Samples3i &V_cycle_F,
   mesh_file.write(outstream, use_binary);
 }
 
+MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
+                                       const bool preload_into_memory,
+                                       const bool verbose) {
+  std::streambuf *oldCoutStreamBuf = nullptr;
+  std::ofstream nullStream;
+
+  if (!verbose) {
+    // Save the old buffer
+    oldCoutStreamBuf = std::cout.rdbuf();
+
+    // Redirect std::cout to /dev/null
+    nullStream.open("/dev/null");
+    std::cout.rdbuf(nullStream.rdbuf());
+  }
+
+  MeshSamples mesh_samples;
+
+  std::unique_ptr<std::istream> file_stream;
+  std::vector<uint8_t> byte_buffer;
+  try {
+    // For most files < 1gb, pre-loading the entire file upfront and wrapping it
+    // into a stream is a net win for parsing speed, about 40% faster.
+    if (preload_into_memory) {
+      byte_buffer = read_file_binary(filepath);
+      file_stream.reset(
+          new memory_stream((char *)byte_buffer.data(), byte_buffer.size()));
+    } else {
+      file_stream.reset(new std::ifstream(filepath, std::ios::binary));
+    }
+
+    if (!file_stream || file_stream->fail()) {
+      throw std::runtime_error("file_stream failed to open " + filepath);
+    }
+
+    tinyply::PlyFile file;
+    file.parse_header(*file_stream);
+
+    std::cout << "\t[ply_header] Type: "
+              << (file.is_binary_file() ? "binary" : "ascii") << std::endl;
+    for (const auto &c : file.get_comments()) {
+      std::cout << "\t[ply_header] Comment: " << c << std::endl;
+    }
+    for (const auto &c : file.get_info()) {
+      std::cout << "\t[ply_header] Info: " << c << std::endl;
+    }
+    std::vector<std::string> element_names;
+    std::vector<std::vector<std::string>> property_names_per_element;
+
+    std::vector<std::string> vertex_property_names;
+    bool has_vertex_element = false;
+    bool load_xyz_coord_V = false;
+    std::shared_ptr<tinyply::PlyData> xyz_coord_V_data;
+    bool load_quat_frame_V = false;
+    std::shared_ptr<tinyply::PlyData> quat_frame_V_data;
+    bool load_h_out_V = false;
+    std::shared_ptr<tinyply::PlyData> h_out_V_data;
+    bool load_d_through_V = false;
+    std::shared_ptr<tinyply::PlyData> d_through_V_data;
+    bool load_rgba_V = false; // all 4 color channels must exist
+    std::shared_ptr<tinyply::PlyData> rgba_V_data;
+
+    std::vector<std::string> edge_property_names;
+    bool has_edge_element = false;
+    bool load_V_cycle_E = false;
+    std::shared_ptr<tinyply::PlyData> V_cycle_E_data;
+    bool load_h_directed_E = false;
+    std::shared_ptr<tinyply::PlyData> h_directed_E_data;
+    bool load_d_through_E = false;
+    std::shared_ptr<tinyply::PlyData> d_through_E_data;
+
+    std::vector<std::string> face_property_names;
+    bool has_face_element = false;
+    bool load_V_cycle_F = false;
+    std::shared_ptr<tinyply::PlyData> V_cycle_F_data;
+    bool load_h_right_F = false;
+    std::shared_ptr<tinyply::PlyData> h_right_F_data;
+    bool load_d_through_F = false;
+    std::shared_ptr<tinyply::PlyData> d_through_F_data;
+
+    std::vector<std::string> cell_property_names;
+    bool has_cell_element = false;
+    bool load_V_cycle_C = false;
+    std::shared_ptr<tinyply::PlyData> V_cycle_C_data;
+    bool load_h_above_C = false;
+    std::shared_ptr<tinyply::PlyData> h_above_C_data;
+    bool load_d_through_C = false;
+    std::shared_ptr<tinyply::PlyData> d_through_C_data;
+
+    std::vector<std::string> boundary_property_names;
+    bool has_boundary_element = false;
+    bool load_h_negative_B = false;
+    std::shared_ptr<tinyply::PlyData> h_negative_B_data;
+    bool load_d_through_B = false;
+    std::shared_ptr<tinyply::PlyData> d_through_B_data;
+
+    std::vector<std::string> halfedge_property_names;
+    bool has_halfedge_element = false;
+    bool load_v_origin_H = false;
+    std::shared_ptr<tinyply::PlyData> v_origin_H_data;
+    bool load_e_undirected_H = false;
+    std::shared_ptr<tinyply::PlyData> e_undirected_H_data;
+    bool load_f_left_H = false;
+    std::shared_ptr<tinyply::PlyData> f_left_H_data;
+    bool load_c_below_H = false;
+    std::shared_ptr<tinyply::PlyData> c_below_H_data;
+    bool load_h_next_H = false;
+    std::shared_ptr<tinyply::PlyData> h_next_H_data;
+    bool load_h_twin_H = false;
+    std::shared_ptr<tinyply::PlyData> h_twin_H_data;
+    bool load_h_flip_H = false;
+    std::shared_ptr<tinyply::PlyData> h_flip_H_data;
+
+    std::vector<std::string> dart_property_names;
+    bool has_dart_element = false;
+    bool load_v_in_D = false;
+    std::shared_ptr<tinyply::PlyData> v_in_D_data;
+    bool load_e_in_D = false;
+    std::shared_ptr<tinyply::PlyData> e_in_D_data;
+    bool load_f_in_D = false;
+    std::shared_ptr<tinyply::PlyData> f_in_D_data;
+    bool load_c_in_D = false;
+    std::shared_ptr<tinyply::PlyData> c_in_D_data;
+    bool load_d_diff0_D = false;
+    std::shared_ptr<tinyply::PlyData> d_diff0_D_data;
+    bool load_d_diff1_D = false;
+    std::shared_ptr<tinyply::PlyData> d_diff1_D_data;
+    bool load_d_diff2_D = false;
+    std::shared_ptr<tinyply::PlyData> d_diff2_D_data;
+    bool load_d_diff3_D = false;
+    std::shared_ptr<tinyply::PlyData> d_diff3_D_data;
+
+    for (const auto &e : file.get_elements()) {
+      std::cout << "\t[ply_header] element: " << e.name << " (" << e.size << ")"
+                << std::endl;
+      element_names.push_back(e.name);
+      std::vector<std::string> property_names;
+      for (const auto &p : e.properties) {
+        std::cout << "\t[ply_header] \tproperty: " << p.name
+                  << " (type=" << tinyply::PropertyTable[p.propertyType].str
+                  << ")";
+        property_names.push_back(p.name);
+        if (p.isList) {
+          std::cout << " (list_type=" << tinyply::PropertyTable[p.listType].str
+                    << ")";
+          std::cout << std::endl;
+        }
+      }
+      property_names_per_element.push_back(property_names);
+      if (e.name == "vertex") {
+        has_vertex_element = true;
+        vertex_property_names = property_names;
+      } else if (e.name == "edge") {
+        has_edge_element = true;
+        edge_property_names = property_names;
+      } else if (e.name == "face") {
+        has_face_element = true;
+        face_property_names = property_names;
+      } else if (e.name == "cell") {
+        has_cell_element = true;
+        cell_property_names = property_names;
+      } else if (e.name == "boundary") {
+        has_boundary_element = true;
+        boundary_property_names = property_names;
+      } else if (e.name == "half_edge") {
+        has_halfedge_element = true;
+        halfedge_property_names = property_names;
+      } else if (e.name == "dart") {
+        has_dart_element = true;
+        dart_property_names = property_names;
+      }
+    }
+
+    ///////////////////////////////////////////
+    // Vertices
+    ///////////////////////////////////////////
+    if (has_vertex_element) {
+      bool has_x = false;
+      bool has_y = false;
+      bool has_z = false;
+      bool has_qw = false, has_qx = false, has_qy = false, has_qz = false;
+      bool has_h_out = false, has_h = false; // h for backward compatibility
+      bool has_d_through = false;
+      bool has_red = false, has_green = false, has_blue = false,
+           has_alpha = false;
+      for (const auto &prop_name : vertex_property_names) {
+        if (prop_name == "x") {
+          has_x = true;
+        } else if (prop_name == "y") {
+          has_y = true;
+        } else if (prop_name == "z") {
+          has_z = true;
+        } else if (prop_name == "h_out") {
+          has_h_out = true;
+        } else if (prop_name == "h") {
+          has_h = true;
+        } else if (prop_name == "d_through") {
+          has_d_through = true;
+        } else if (prop_name == "red") {
+          has_red = true;
+        } else if (prop_name == "green") {
+          has_green = true;
+        } else if (prop_name == "blue") {
+          has_blue = true;
+        } else if (prop_name == "alpha") {
+          has_alpha = true;
+        } else if (prop_name == "qw") {
+          has_qw = true;
+        } else if (prop_name == "qx") {
+          has_qx = true;
+        } else if (prop_name == "qy") {
+          has_qy = true;
+        } else if (prop_name == "qz") {
+          has_qz = true;
+        }
+      }
+
+      load_xyz_coord_V = has_x && has_y && has_z;
+      load_quat_frame_V = has_qw && has_qx && has_qy && has_qz;
+      load_h_out_V = has_h_out || has_h;
+      load_d_through_V = has_d_through;
+      load_rgba_V = has_red && has_green && has_blue &&
+                    has_alpha; // all 4 color channels must exist
+
+      if (load_xyz_coord_V) {
+        xyz_coord_V_data =
+            file.request_properties_from_element("vertex", {"x", "y", "z"});
+      }
+      if (load_quat_frame_V) {
+        quat_frame_V_data = file.request_properties_from_element(
+            "vertex", {"qw", "qx", "qy", "qz"});
+      }
+      if (load_h_out_V) {
+        try {
+          h_out_V_data =
+              file.request_properties_from_element("vertex", {"h_out"});
+        } catch (const std::exception &e) {
+          // backward compatibility: try to load "h" property
+          h_out_V_data = file.request_properties_from_element("vertex", {"h"});
+        }
+      }
+      if (load_d_through_V) {
+        d_through_V_data =
+            file.request_properties_from_element("vertex", {"d_through"});
+      }
+    }
+
+    ///////////////////////////////////////////
+    // Edges
+    ///////////////////////////////////////////
+    if (has_edge_element) {
+      bool has_vertex_indices = false;
+      bool has_h_directed = false;
+      bool has_d_through = false;
+
+      for (const auto &prop_name : edge_property_names) {
+        if (prop_name == "vertex_indices") {
+          has_vertex_indices = true;
+        } else if (prop_name == "h_directed") {
+          has_h_directed = true;
+        } else if (prop_name == "d_through") {
+          has_d_through = true;
+        }
+      }
+
+      load_V_cycle_E = has_vertex_indices;
+      load_h_directed_E = has_h_directed;
+      load_d_through_E = has_d_through;
+
+      if (load_V_cycle_E) {
+        V_cycle_E_data =
+            file.request_properties_from_element("edge", {"vertex_indices"});
+      }
+      if (load_h_directed_E) {
+        h_directed_E_data =
+            file.request_properties_from_element("edge", {"h_directed"});
+      }
+      if (load_d_through_E) {
+        d_through_E_data =
+            file.request_properties_from_element("edge", {"d_through"});
+      }
+    }
+
+    ///////////////////////////////////////////
+    // Faces
+    ///////////////////////////////////////////
+    if (has_face_element) {
+      bool has_vertex_indices = false;
+      bool has_h_right = false, has_h = false; // h for backward compatibility
+      bool has_d_through = false;
+
+      for (const auto &prop_name : face_property_names) {
+        if (prop_name == "vertex_indices") {
+          has_vertex_indices = true;
+        } else if (prop_name == "h_right") {
+          has_h_right = true;
+        } else if (prop_name == "h") {
+          has_h = true;
+        } else if (prop_name == "d_through") {
+          has_d_through = true;
+        }
+      }
+
+      load_V_cycle_F = has_vertex_indices;
+      load_h_right_F = has_h_right || has_h;
+      load_d_through_F = has_d_through;
+
+      if (load_V_cycle_F) {
+        V_cycle_F_data =
+            file.request_properties_from_element("face", {"vertex_indices"});
+      }
+      if (load_h_right_F) {
+        try {
+          h_right_F_data =
+              file.request_properties_from_element("face", {"h_right"});
+        } catch (const std::exception &e) {
+          // backward compatibility: try to load "h" property
+          h_right_F_data = file.request_properties_from_element("face", {"h"});
+        }
+      }
+      if (load_d_through_F) {
+        d_through_F_data =
+            file.request_properties_from_element("face", {"d_through"});
+      }
+    }
+
+    ///////////////////////////////////////////
+    // Cells
+    ///////////////////////////////////////////
+    if (has_cell_element) {
+      bool has_vertex_indices = false;
+      bool has_h_above = false;
+      bool has_d_through = false;
+
+      for (const auto &prop_name : cell_property_names) {
+        if (prop_name == "vertex_indices") {
+          has_vertex_indices = true;
+        } else if (prop_name == "h_above") {
+          has_h_above = true;
+        } else if (prop_name == "d_through") {
+          has_d_through = true;
+        }
+      }
+
+      load_V_cycle_C = has_vertex_indices;
+      load_h_above_C = has_h_above;
+      load_d_through_C = has_d_through;
+
+      if (load_V_cycle_C) {
+        V_cycle_C_data =
+            file.request_properties_from_element("cell", {"vertex_indices"});
+      }
+      if (load_h_above_C) {
+        h_above_C_data =
+            file.request_properties_from_element("cell", {"h_above"});
+      }
+      if (load_d_through_C) {
+        d_through_C_data =
+            file.request_properties_from_element("cell", {"d_through"});
+      }
+    }
+
+    ///////////////////////////////////////////
+    // Boundaries
+    ///////////////////////////////////////////
+    if (has_boundary_element) {
+      bool has_h_negative = false,
+           has_h = false; // h for backward compatibility
+      bool has_d_through = false;
+
+      for (const auto &prop_name : boundary_property_names) {
+        if (prop_name == "h_negative") {
+          has_h_negative = true;
+        } else if (prop_name == "h") {
+          has_h = true;
+        } else if (prop_name == "d_through") {
+          has_d_through = true;
+        }
+      }
+
+      load_h_negative_B = has_h_negative || has_h;
+      load_d_through_B = has_d_through;
+
+      if (load_h_negative_B) {
+        try {
+          h_negative_B_data =
+              file.request_properties_from_element("boundary", {"h_negative"});
+        } catch (const std::exception &e) {
+          // backward compatibility: try to load "h" property
+          h_negative_B_data =
+              file.request_properties_from_element("boundary", {"h"});
+        }
+      }
+      if (load_d_through_B) {
+        d_through_B_data =
+            file.request_properties_from_element("boundary", {"d_through"});
+      }
+    }
+
+    ///////////////////////////////////////////
+    // Half-edges
+    ///////////////////////////////////////////
+    if (has_halfedge_element) {
+      bool has_v_origin = false, has_v = false; // v for backward compatibility
+      bool has_e_undirected = false;
+      bool has_f_left = false, has_f = false; // f for backward compatibility
+      bool has_c_below = false;
+      bool has_h_next = false, has_n = false; // n for backward compatibility
+      bool has_h_twin = false, has_t = false; // t for backward compatibility
+      bool has_h_flip = false;
+
+      for (const auto &prop_name : halfedge_property_names) {
+        if (prop_name == "v_origin") {
+          has_v_origin = true;
+        } else if (prop_name == "v") {
+          has_v = true;
+        } else if (prop_name == "e_undirected") {
+          has_e_undirected = true;
+        } else if (prop_name == "f_left") {
+          has_f_left = true;
+        } else if (prop_name == "f") {
+          has_f = true;
+        } else if (prop_name == "c_below") {
+          has_c_below = true;
+        } else if (prop_name == "h_next") {
+          has_h_next = true;
+        } else if (prop_name == "n") {
+          has_n = true;
+        } else if (prop_name == "h_twin") {
+          has_h_twin = true;
+        } else if (prop_name == "t") {
+          has_t = true;
+        } else if (prop_name == "h_flip") {
+          has_h_flip = true;
+        }
+      }
+
+      load_v_origin_H = has_v_origin || has_v;
+      load_e_undirected_H = has_e_undirected;
+      load_f_left_H = has_f_left || has_f;
+      load_c_below_H = has_c_below;
+      load_h_next_H = has_h_next || has_n;
+      load_h_twin_H = has_h_twin || has_t;
+      load_h_flip_H = has_h_flip;
+
+      if (load_v_origin_H) {
+        try {
+          v_origin_H_data =
+              file.request_properties_from_element("half_edge", {"v_origin"});
+        } catch (const std::exception &e) {
+          // backward compatibility: try to load "v" property
+          v_origin_H_data =
+              file.request_properties_from_element("half_edge", {"v"});
+        }
+      }
+      if (load_e_undirected_H) {
+        e_undirected_H_data =
+            file.request_properties_from_element("half_edge", {"e_undirected"});
+      }
+      if (load_f_left_H) {
+        try {
+          f_left_H_data =
+              file.request_properties_from_element("half_edge", {"f_left"});
+        } catch (const std::exception &e) {
+          // backward compatibility: try to load "f" property
+          f_left_H_data =
+              file.request_properties_from_element("half_edge", {"f"});
+        }
+      }
+      if (load_c_below_H) {
+        c_below_H_data =
+            file.request_properties_from_element("half_edge", {"c_below"});
+      }
+      if (load_h_next_H) {
+        try {
+          h_next_H_data =
+              file.request_properties_from_element("half_edge", {"h_next"});
+        } catch (const std::exception &e) {
+          // backward compatibility: try to load "n" property
+          h_next_H_data =
+              file.request_properties_from_element("half_edge", {"n"});
+        }
+      }
+      if (load_h_twin_H) {
+        try {
+          h_twin_H_data =
+              file.request_properties_from_element("half_edge", {"h_twin"});
+        } catch (const std::exception &e) {
+          // backward compatibility: try to load "t" property
+          h_twin_H_data =
+              file.request_properties_from_element("half_edge", {"t"});
+        }
+      }
+      if (load_h_flip_H) {
+        h_flip_H_data =
+            file.request_properties_from_element("half_edge", {"h_flip"});
+      }
+    }
+
+    ///////////////////////////////////////////
+    // Darts
+    ///////////////////////////////////////////
+    if (has_dart_element) {
+      bool has_v_in = false;
+      bool has_e_in = false;
+      bool has_f_in = false;
+      bool has_c_in = false;
+      bool has_d_diff0 = false;
+      bool has_d_diff1 = false;
+      bool has_d_diff2 = false;
+      bool has_d_diff3 = false;
+
+      for (const auto &prop_name : dart_property_names) {
+        if (prop_name == "v_in") {
+          has_v_in = true;
+        } else if (prop_name == "e_in") {
+          has_e_in = true;
+        } else if (prop_name == "f_in") {
+          has_f_in = true;
+        } else if (prop_name == "c_in") {
+          has_c_in = true;
+        } else if (prop_name == "d_diff0") {
+          has_d_diff0 = true;
+        } else if (prop_name == "d_diff1") {
+          has_d_diff1 = true;
+        } else if (prop_name == "d_diff2") {
+          has_d_diff2 = true;
+        } else if (prop_name == "d_diff3") {
+          has_d_diff3 = true;
+        }
+      }
+
+      load_v_in_D = has_v_in;
+      load_e_in_D = has_e_in;
+      load_f_in_D = has_f_in;
+      load_c_in_D = has_c_in;
+      load_d_diff0_D = has_d_diff0;
+      load_d_diff1_D = has_d_diff1;
+      load_d_diff2_D = has_d_diff2;
+      load_d_diff3_D = has_d_diff3;
+
+      if (load_v_in_D) {
+        v_in_D_data = file.request_properties_from_element("dart", {"v_in"});
+      }
+      if (load_e_in_D) {
+        e_in_D_data = file.request_properties_from_element("dart", {"e_in"});
+      }
+      if (load_f_in_D) {
+        f_in_D_data = file.request_properties_from_element("dart", {"f_in"});
+      }
+      if (load_c_in_D) {
+        c_in_D_data = file.request_properties_from_element("dart", {"c_in"});
+      }
+      if (load_d_diff0_D) {
+        d_diff0_D_data =
+            file.request_properties_from_element("dart", {"d_diff0"});
+      }
+      if (load_d_diff1_D) {
+        d_diff1_D_data =
+            file.request_properties_from_element("dart", {"d_diff1"});
+      }
+      if (load_d_diff2_D) {
+        d_diff2_D_data =
+            file.request_properties_from_element("dart", {"d_diff2"});
+      }
+      if (load_d_diff3_D) {
+        d_diff3_D_data =
+            file.request_properties_from_element("dart", {"d_diff3"});
+      }
+    }
+
+    file.read(*file_stream);
+
+    ///////////////////////////////////////////
+    // Vertices
+    ///////////////////////////////////////////
+    if (load_xyz_coord_V) {
+      const size_t count = xyz_coord_V_data->count;
+      Samples3d xyz_coord_V(count, 3);
+      const double *data_ptr =
+          reinterpret_cast<const double *>(xyz_coord_V_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        for (size_t j = 0; j < 3; ++j) {
+          xyz_coord_V(i, j) = data_ptr[i * 3 + j];
+        }
+      }
+      mesh_samples["xyz_coord_V"] = xyz_coord_V;
+    }
+    if (load_quat_frame_V) {
+      const size_t count = quat_frame_V_data->count;
+      Samples4d quat_frame_V(count, 4);
+      const double *data_ptr =
+          reinterpret_cast<const double *>(quat_frame_V_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        for (size_t j = 0; j < 4; ++j) {
+          quat_frame_V(i, j) = data_ptr[i * 4 + j];
+        }
+      }
+      mesh_samples["quat_frame_V"] = quat_frame_V;
+    }
+    if (load_h_out_V) {
+      const size_t count = h_out_V_data->count;
+      Samplesi h_out_V(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_out_V_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_out_V(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_out_V"] = h_out_V;
+    }
+    if (load_d_through_V) {
+      const size_t count = d_through_V_data->count;
+      Samplesi d_through_V(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_through_V_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_through_V(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_through_V"] = d_through_V;
+    }
+    if (load_rgba_V) {
+      const size_t count = rgba_V_data->count;
+      Samples4i rgba_V(count, 4);
+      const uint8_t *data_ptr =
+          reinterpret_cast<const uint8_t *>(rgba_V_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        for (size_t j = 0; j < 4; ++j) {
+          rgba_V(i, j) = static_cast<int>(data_ptr[i * 4 + j]);
+        }
+      }
+      mesh_samples["rgba_V"] = rgba_V;
+    }
+
+    ///////////////////////////////////////////
+    // Edges
+    ///////////////////////////////////////////
+    if (load_V_cycle_E) {
+      const size_t count = V_cycle_E_data->count;
+      Samples2i V_cycle_E(count, 2);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(V_cycle_E_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        for (size_t j = 0; j < 2; ++j) {
+          V_cycle_E(i, j) = data_ptr[i * 2 + j];
+        }
+      }
+      mesh_samples["V_cycle_E"] = V_cycle_E;
+    }
+    if (load_h_directed_E) {
+      const size_t count = h_directed_E_data->count;
+      Samplesi h_directed_E(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_directed_E_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_directed_E(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_directed_E"] = h_directed_E;
+    }
+    if (load_d_through_E) {
+      const size_t count = d_through_E_data->count;
+      Samplesi d_through_E(count, 1);
+      const double *data_ptr =
+          reinterpret_cast<const double *>(d_through_E_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_through_E(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_through_E"] = d_through_E;
+    }
+
+    ///////////////////////////////////////////
+    // Faces
+    ///////////////////////////////////////////
+    if (load_V_cycle_F) {
+      const size_t count = V_cycle_F_data->count;
+      Samples3i V_cycle_F(count, 3);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(V_cycle_F_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        for (size_t j = 0; j < 3; ++j) {
+          V_cycle_F(i, j) = data_ptr[i * 3 + j];
+        }
+      }
+      mesh_samples["V_cycle_F"] = V_cycle_F;
+    }
+    if (load_h_right_F) {
+      const size_t count = h_right_F_data->count;
+      Samplesi h_right_F(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_right_F_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_right_F(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_right_F"] = h_right_F;
+    }
+    if (load_d_through_F) {
+      const size_t count = d_through_F_data->count;
+      Samplesi d_through_F(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_through_F_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_through_F(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_through_F"] = d_through_F;
+    }
+
+    ///////////////////////////////////////////
+    // Cells
+    ///////////////////////////////////////////
+    if (load_V_cycle_C) {
+      const size_t count = V_cycle_C_data->count;
+      Samples4i V_cycle_C(count, 4);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(V_cycle_C_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        for (size_t j = 0; j < 4; ++j) {
+          V_cycle_C(i, j) = data_ptr[i * 4 + j];
+        }
+      }
+      mesh_samples["V_cycle_C"] = V_cycle_C;
+    }
+    if (load_h_above_C) {
+      const size_t count = h_above_C_data->count;
+      Samplesi h_above_C(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_above_C_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_above_C(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_above_C"] = h_above_C;
+    }
+    if (load_d_through_C) {
+      const size_t count = d_through_C_data->count;
+      Samplesi d_through_C(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_through_C_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_through_C(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_through_C"] = d_through_C;
+    }
+
+    ///////////////////////////////////////////
+    // Half-edges
+    ///////////////////////////////////////////
+    if (load_v_origin_H) {
+      const size_t count = v_origin_H_data->count;
+      Samplesi v_origin_H(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(v_origin_H_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        v_origin_H(i, 0) = data_ptr[i];
+      }
+      mesh_samples["v_origin_H"] = v_origin_H;
+    }
+    if (load_e_undirected_H) {
+      const size_t count = e_undirected_H_data->count;
+      Samplesi e_undirected_H(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(e_undirected_H_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        e_undirected_H(i, 0) = data_ptr[i];
+      }
+      mesh_samples["e_undirected_H"] = e_undirected_H;
+    }
+    if (load_f_left_H) {
+      const size_t count = f_left_H_data->count;
+      Samplesi f_left_H(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(f_left_H_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        f_left_H(i, 0) = data_ptr[i];
+      }
+      mesh_samples["f_left_H"] = f_left_H;
+    }
+    if (load_c_below_H) {
+      const size_t count = c_below_H_data->count;
+      Samplesi c_below_H(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(c_below_H_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        c_below_H(i, 0) = data_ptr[i];
+      }
+      mesh_samples["c_below_H"] = c_below_H;
+    }
+    if (load_h_next_H) {
+      const size_t count = h_next_H_data->count;
+      Samplesi h_next_H(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_next_H_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_next_H(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_next_H"] = h_next_H;
+    }
+    if (load_h_twin_H) {
+      const size_t count = h_twin_H_data->count;
+      Samplesi h_twin_H(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_twin_H_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_twin_H(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_twin_H"] = h_twin_H;
+    }
+    if (load_h_flip_H) {
+      const size_t count = h_flip_H_data->count;
+      Samplesi h_flip_H(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_flip_H_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_flip_H(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_flip_H"] = h_flip_H;
+    }
+
+    ///////////////////////////////////////////
+    // Darts
+    ///////////////////////////////////////////
+    if (load_v_in_D) {
+      const size_t count = v_in_D_data->count;
+      Samplesi v_in_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(v_in_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        v_in_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["v_in_D"] = v_in_D;
+    }
+    if (load_e_in_D) {
+      const size_t count = e_in_D_data->count;
+      Samplesi e_in_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(e_in_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        e_in_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["e_in_D"] = e_in_D;
+    }
+    if (load_f_in_D) {
+      const size_t count = f_in_D_data->count;
+      Samplesi f_in_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(f_in_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        f_in_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["f_in_D"] = f_in_D;
+    }
+    if (load_c_in_D) {
+      const size_t count = c_in_D_data->count;
+      Samplesi c_in_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(c_in_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        c_in_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["c_in_D"] = c_in_D;
+    }
+    if (load_d_diff0_D) {
+      const size_t count = d_diff0_D_data->count;
+      Samplesi d_diff0_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_diff0_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_diff0_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_diff0_D"] = d_diff0_D;
+    }
+    if (load_d_diff1_D) {
+      const size_t count = d_diff1_D_data->count;
+      Samplesi d_diff1_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_diff1_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_diff1_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_diff1_D"] = d_diff1_D;
+    }
+    if (load_d_diff2_D) {
+      const size_t count = d_diff2_D_data->count;
+      Samplesi d_diff2_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_diff2_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_diff2_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_diff2_D"] = d_diff2_D;
+    }
+    if (load_d_diff3_D) {
+      const size_t count = d_diff3_D_data->count;
+      Samplesi d_diff3_D(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_diff3_D_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_diff3_D(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_diff3_D"] = d_diff3_D;
+    }
+
+  } catch (const std::exception &e) {
+    std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
+  }
+  return mesh_samples;
+}
+
+void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
+                               const std::string &ply_path,
+                               const bool use_binary) {
+
+  std::filebuf fb;
+  fb.open(ply_path,
+          use_binary ? std::ios::out | std::ios::binary : std::ios::out);
+  std::ostream outstream(&fb);
+  if (outstream.fail())
+    throw std::runtime_error("failed to open " + ply_path);
+
+  tinyply::PlyFile mesh_file;
+
+  const Samples3d *xyz_coord_V = nullptr;
+  const Samplesi *h_out_V = nullptr;
+  // Samplesi d_through_V;
+  // Samples4i rgba_V;
+
+  // Samples2i V_cycle_E;
+  // Samplesi h_directed_E;
+  // Samplesi d_through_E;
+
+  // Samples3i V_cycle_F;
+  const Samplesi *h_right_F = nullptr;
+  // Samplesi d_through_F;
+
+  const Samplesi *v_origin_H = nullptr;
+  // Samplesi e_undirected_H;
+  const Samplesi *f_left_H = nullptr;
+  // Samplesi c_below_H;
+  const Samplesi *h_next_H = nullptr;
+  const Samplesi *h_twin_H = nullptr;
+  // Samplesi h_flip_H;
+
+  // Samplesi v_in_D;
+  // Samplesi e_in_D;
+  // Samplesi f_in_D;
+  // Samplesi c_in_D;
+  // Samplesi d_diff0_D;
+  // Samplesi d_diff1_D;
+  // Samplesi d_diff2_D;
+  // Samplesi d_diff3_D;
+
+  // Retrieve samples from the map if they exist
+  if (auto it = mesh_samples.find("xyz_coord_V"); it != mesh_samples.end()) {
+    xyz_coord_V = std::get_if<Samples3d>(&it->second);
+    if (!xyz_coord_V) {
+      throw std::runtime_error(
+          R"(mesh_samples["xyz_coord_V"] exists but is not Samples3d)");
+    }
+    if (xyz_coord_V->cols() != 3) {
+      throw std::runtime_error("xyz_coord_V must be (#V x 3)");
+    }
+
+    mesh_file.add_properties_to_element(
+        "vertex", {"x"}, tinyply::Type::FLOAT64,
+        static_cast<uint32_t>(xyz_coord_V->rows()),
+        reinterpret_cast<uint8_t *>(
+            const_cast<double *>(xyz_coord_V->col(0).data())),
+        tinyply::Type::INVALID, 0);
+
+    mesh_file.add_properties_to_element(
+        "vertex", {"y"}, tinyply::Type::FLOAT64,
+        static_cast<uint32_t>(xyz_coord_V->rows()),
+        reinterpret_cast<uint8_t *>(
+            const_cast<double *>(xyz_coord_V->col(1).data())),
+        tinyply::Type::INVALID, 0);
+
+    mesh_file.add_properties_to_element(
+        "vertex", {"z"}, tinyply::Type::FLOAT64,
+        static_cast<uint32_t>(xyz_coord_V->rows()),
+        reinterpret_cast<uint8_t *>(
+            const_cast<double *>(xyz_coord_V->col(2).data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("h_out_V"); it != mesh_samples.end()) {
+    h_out_V = std::get_if<Samplesi>(&it->second);
+    if (!h_out_V) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_out_V"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "vertex", {"h_out"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_out_V->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_out_V->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("h_right_F"); it != mesh_samples.end()) {
+    h_right_F = std::get_if<Samplesi>(&it->second);
+    if (!h_right_F) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_right_F"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "face", {"h_right"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_right_F->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_right_F->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("v_origin_H"); it != mesh_samples.end()) {
+    v_origin_H = std::get_if<Samplesi>(&it->second);
+    if (!v_origin_H) {
+      throw std::runtime_error(
+          R"(mesh_samples["v_origin_H"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "half_edge", {"v_origin"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(v_origin_H->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(v_origin_H->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("f_left_H"); it != mesh_samples.end()) {
+    f_left_H = std::get_if<Samplesi>(&it->second);
+    if (!f_left_H) {
+      throw std::runtime_error(
+          R"(mesh_samples["f_left_H"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "half_edge", {"f_left"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(f_left_H->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(f_left_H->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("h_next_H"); it != mesh_samples.end()) {
+    h_next_H = std::get_if<Samplesi>(&it->second);
+    if (!h_next_H) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_next_H"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "half_edge", {"h_next"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_next_H->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_next_H->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("h_twin_H"); it != mesh_samples.end()) {
+    h_twin_H = std::get_if<Samplesi>(&it->second);
+    if (!h_twin_H) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_twin_H"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "half_edge", {"h_twin"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_twin_H->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_twin_H->data())),
+        tinyply::Type::INVALID, 0);
+  }
+
+  mesh_file.get_comments().push_back("MathUtils ply");
+
+  // Write an ply file
+  mesh_file.write(outstream, use_binary);
+}
 } // namespace mesh_io
 } // namespace mathutils

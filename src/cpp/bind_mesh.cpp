@@ -56,4 +56,30 @@ Returns:
       ply_path: Output PLY file path
       use_binary: Whether to write binary format (default: True)
   )doc");
+
+  m.def("load_mesh_samples_from_ply",
+        &mathutils::mesh_io::load_mesh_samples_from_ply,
+        "Load mesh samples from a PLY file", py::arg("filepath"),
+        py::arg("preload_into_memory") = true, py::arg("verbose") = false,
+        R"doc(
+Load mesh samples from a PLY file.
+Args:
+    filepath: Path to the PLY file
+    preload_into_memory: Whether to preload the file into memory (default: True)
+    verbose: Whether to print verbose output (default: False)
+Returns:
+    A dict of mesh samples with keys as sample names and values as ndarrays.
+)doc");
+
+  m.def("write_mesh_samples_to_ply",
+        &mathutils::mesh_io::write_mesh_samples_to_ply,
+        "Write mesh samples to a PLY file", py::arg("mesh_samples"),
+        py::arg("ply_path"), py::arg("use_binary") = true,
+        R"doc(
+Write mesh samples to a PLY file.
+Args:
+    mesh_samples: A dict of mesh samples with keys as sample names and values as ndarrays.
+    ply_path: Output PLY file path
+    use_binary: Whether to write binary format (default: True)
+)doc");
 }

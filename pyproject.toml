@@ -5,22 +5,21 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "pymathutils"
 version = "0.1.25"
-description = "Fast mathematical utilities"
+description = "Mathematical utilities"
 authors = [{ name = "wlough", email = "wilson.lough@colorado.edu" }]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = ["numpy", "numba"]
 keywords = ["mathematics", "scientific-computing", "numerical-methods"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 
@@ -72,7 +71,7 @@ sdist.exclude = [
     "requirements_testing.txt",
 ]
 # Pin the backend minimum to lock defaults
-# minimum-version = "0.10"
+minimum-version = "0.1.24"
 # declare CMake/Ninja minimums so skbuild will fetch wheels if needed
 # cmake.minimum-version = "3.15"
 # ninja.minimum-version = "1.10"
