@@ -23,32 +23,18 @@
 namespace mathutils {
 namespace mesh {
 
-/**
- * @brief Column vector of integers.
- */
 using Samplesi = Eigen::VectorXi;
-/**
- * @brief N-by-2 matrix of ints
- */
 using Samples2i = Eigen::Matrix<int, Eigen::Dynamic, 2>;
-/**
- * @brief N-by-3 matrix of ints
- */
 using Samples3i = Eigen::Matrix<int, Eigen::Dynamic, 3>;
-/**
- * @brief N-by-3 matrix of doubles. Represents 3D spatial coordinates of a
- * vertices in a vertex set.
- */
 using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3>;
 using Samples2d = Eigen::Matrix<double, Eigen::Dynamic, 2>;
+using Generatori = mathutils::SimpleGenerator<int>;
 
-// mesh of control points for a surface
 class HalfEdgeMesh {
   // using mathutils::SimpleGenerator
-  using GeneratorInt = mathutils::SimpleGenerator<int>;
 
 public:
-  GeneratorInt generate_V_cycle_f(int f) const;
+  Generatori generate_V_cycle_f(int f) const;
 
   ////////////////////////////
   // Core data structure /////
@@ -114,14 +100,13 @@ public:
   ///////////////////////////////////////////////////////
   // Generators /////////////////////////////////////////
   ///////////////////////////////////////////////////////
-  mathutils::SimpleGenerator<int> generate_V_of_f(int f) const;
-  mathutils::SimpleGenerator<int>
-  generate_H_out_v_clockwise(int v, int h_start = -1) const;
-  mathutils::SimpleGenerator<int> generate_H_right_f(int f) const;
-  mathutils::SimpleGenerator<int> generate_H_rotcw_h(int h) const;
-  mathutils::SimpleGenerator<int> generate_H_next_h(int h) const;
-  mathutils::SimpleGenerator<int> generate_H_right_b(int b) const;
-  mathutils::SimpleGenerator<int> generate_F_incident_v(int v) const;
+  Generatori generate_V_of_f(int f) const;
+  Generatori generate_H_out_v_clockwise(int v, int h_start = -1) const;
+  Generatori generate_H_right_f(int f) const;
+  Generatori generate_H_rotcw_h(int h) const;
+  Generatori generate_H_next_h(int h) const;
+  Generatori generate_H_right_b(int b) const;
+  Generatori generate_F_incident_v(int v) const;
 
   ///////////////////////////////////////////
   // Miscellaneous properties ///////////////
@@ -139,17 +124,23 @@ public:
    */
   int num_edges() const;
   /**
-   * @brief Get the numberhalf edges in the mesh
-   *
-   * @return int
-   */
-  int num_half_edges() const;
-  /**
    * @brief Get the number of faces in the mesh
    *
    * @return int
    */
   int num_faces() const;
+  /**
+   * @brief Get the number of cells in the mesh
+   *
+   * @return int
+   */
+  int num_cells() const;
+  /**
+   * @brief Get the numberhalf edges in the mesh
+   *
+   * @return int
+   */
+  int num_half_edges() const;
   /**
    * @brief Get the Euler characteristic of the mesh
    *
