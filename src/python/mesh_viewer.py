@@ -1,6 +1,7 @@
 # from mayavi import mlab
 import numpy as np
 import os
+import pyvista as pv
 
 # from .pretty_pictures import movie
 
@@ -12,7 +13,6 @@ def get_half_edge_vector_field(self):
     """halfedge vector shifted toward face centroid for visualization"""
     shift_to_center = 0.15
     num_half_edges = len(self.v_origin_H)
-    # num_half_edges = self.get_num_half_edges()
     points_vecs = np.array(
         [
             (
@@ -24,7 +24,9 @@ def get_half_edge_vector_field(self):
                     * (
                         self.xyz_coord_v(self.v_origin_h(h))
                         + self.xyz_coord_v(self.v_origin_h(self.h_next_h(h)))
-                        + self.xyz_coord_v(self.v_origin_h(self.h_next_h(self.h_next_h(h))))
+                        + self.xyz_coord_v(
+                            self.v_origin_h(self.h_next_h(self.h_next_h(h)))
+                        )
                     )
                     / 3
                     + (1 - shift_to_center) * self.xyz_coord_v(self.v_origin_h(h)),
@@ -48,8 +50,14 @@ def get_half_edge_vector_field(self):
                         )
                         - (
                             self.xyz_coord_v(self.v_origin_h(self.h_twin_h(h)))
-                            + self.xyz_coord_v(self.v_origin_h(self.h_next_h(self.h_twin_h(h))))
-                            + self.xyz_coord_v(self.v_origin_h(self.h_next_h(self.h_next_h(self.h_twin_h(h)))))
+                            + self.xyz_coord_v(
+                                self.v_origin_h(self.h_next_h(self.h_twin_h(h)))
+                            )
+                            + self.xyz_coord_v(
+                                self.v_origin_h(
+                                    self.h_next_h(self.h_next_h(self.h_twin_h(h)))
+                                )
+                            )
                         )
                         / 3
                     )
@@ -216,19 +224,19 @@ class MeshViewer:
         if radius_V is not None:
             self.radius_V = radius_V
         else:
-            self.radius_V = np.array(self.M.get_num_vertices() * [self.radius_vertex])
+            self.radius_V = np.array(len(self.M.xyz_coord_V) * [self.radius_vertex])
         if rgba_V is not None:
             self.rgba_V = rgba_V
         else:
-            self.rgba_V = np.array(self.M.get_num_vertices() * [self.rgba_vertex])
+            self.rgba_V = np.array(len(self.M.xyz_coord_V) * [self.rgba_vertex])
         if rgba_H is not None:
             self.rgba_H = rgba_H
         else:
-            self.rgba_H = np.array(self.M.get_num_half_edges() * [self.rgba_half_edge])
+            self.rgba_H = np.array(len(self.M.v_origin_H) * [self.rgba_half_edge])
         if rgba_F is not None:
             self.rgba_F = rgba_F
         else:
-            self.rgba_F = np.array(self.M.get_num_faces() * [self.rgba_face])
+            self.rgba_F = np.array(len(self.M.h_right_F) * [self.rgba_face])
 
         ################################
         # Additional vector field data
@@ -348,7 +356,7 @@ class MeshViewer:
 
     def update_rgba_h_negative_B(self, value):
         """."""
-        for b in range(self.M.get_num_boundaries()):
+        for b in range(len(self.M.h_negative_B)):
             self.update_rgba_h_right_b(value, b)
 
     def update_rgba_F_incident_b(self, value, b):
@@ -356,7 +364,7 @@ class MeshViewer:
         self.update_rgba_F(value, indices=F_incident_b)
 
     def update_rgba_F_incident_B(self, value):
-        for b in range(self.M.get_num_boundaries()):
+        for b in range(len(self.M.h_negative_B)):
             self.update_rgba_F_incident_b(value, b)
 
     def update(self, **kwargs):
@@ -456,7 +464,9 @@ class MeshViewer:
         vert_cloud.mlab_source.dataset.point_data.vectors = rad_vecs
         vert_cloud.mlab_source.dataset.point_data.vectors.name = "radius_vectors"
 
-        vert_cloud.module_manager.scalar_lut_manager.lut.number_of_colors = len(rgba_int)
+        vert_cloud.module_manager.scalar_lut_manager.lut.number_of_colors = len(
+            rgba_int
+        )
         vert_cloud.module_manager.scalar_lut_manager.lut.table = rgba_int
         vert_cloud.module_manager.lut_data_mode = "point data"
         vert_cloud.mlab_source.dataset.point_data.scalars = color_scalars
@@ -504,7 +514,7 @@ class MeshViewer:
 
         if ordered_V:
             h_start = self.M.h_out_v(0)
-            max_num = self.M.get_num_vertices()
+            max_num = len(self.M.xyz_coord_V)
             return self.add_next_cycle_to_fig(h_start=h_start, max_num=max_num)
         else:
             raise NotImplementedError("Unordered edge curves not implemented")
@@ -532,7 +542,7 @@ class MeshViewer:
         if downsampled:
             V = self.Msimp.xyz_coord_V
             F = self.Msimp.V_cycle_F
-            rgba = np.array(self.Msimp.get_num_faces() * [self.rgba_face])
+            rgba = np.array(len(self.Msimp.h_right_F) * [self.rgba_face])
         else:
             # V = self.M.xyz_coord_V
             # F = self.M.V_cycle_F
@@ -640,7 +650,7 @@ class MeshViewer:
     def add_half_edges_fig(self, downsampled=False):
         if downsampled:
             points, vectors = get_half_edge_vector_field(self.Msimp)
-            rgba = np.array(self.Msimp.get_num_half_edges() * [self.rgba_half_edge])
+            rgba = np.array(len(self.Msimp.v_origin_H) * [self.rgba_half_edge])
         else:
             points, vectors = get_half_edge_vector_field(self.M)
             rgba = self.rgba_H
@@ -688,11 +698,17 @@ class MeshViewer:
                 self.add_vector_field_to_fig(**data)
 
         if show_face_colored_surface:
-            face_colored_surface = self.add_face_colored_surface_to_fig(downsampled=downsampled)
+            face_colored_surface = self.add_face_colored_surface_to_fig(
+                downsampled=downsampled
+            )
         if show_vertex_colored_surface:
-            vertex_colored_surface = self.add_vertex_colored_surface_to_fig(downsampled=downsampled)
+            vertex_colored_surface = self.add_vertex_colored_surface_to_fig(
+                downsampled=downsampled
+            )
         if show_wireframe_surface:
-            wireframe_surface = self.add_wireframe_surface_to_fig(fig, downsampled=downsampled)
+            wireframe_surface = self.add_wireframe_surface_to_fig(
+                fig, downsampled=downsampled
+            )
         if show_vertices:
             vert_cloud = self.add_vertices_to_fig(downsampled=downsampled)
         if show_half_edges:
@@ -811,6 +827,7 @@ class MeshViewer:
             downsampled=downsampled,
         )
 
+    # ***
     def clear_mlab_figures(self):
         mlab.close(all=True)
 
@@ -845,19 +862,202 @@ class MeshViewer:
             points, vectors = fun(m)
             self.clear_vector_field_data()
             self.add_vector_field(points, vectors)
-            com = np.sum(m.xyz_coord_V, axis=0) / m.get_num_vertices()
+            com = np.sum(m.xyz_coord_V, axis=0) / len(m.xyz_coord_V)
             self.view["focalpoint"] = com
             self.plot(save=True, show=False, title=f"iter_{i+1}")
         self.movie()
 
-    ###############################################################
-    # to be deprecated
-    def _color_boundary_H(self, b, rgba=None):
-        if rgba is None:
-            rgba = self.colors["boundary_half_edge_default"]
-        h = self.M.h_negative_B(b)
-        Hindices = list(self.M.generate_H_next_h(h))
-        self._rgba_H[Hindices] = rgba
+    # def pv_add_mesh_to_plotter(self, pv_m):
+
+    def pv_add_face_colored_surface_to_fig(self, plotter):
+        m = self.M
+        numF = len(m.h_right_F)
+        F3 = np.hstack([np.full((numF, 1), 3), m.V_cycle_F]).astype(INT_TYPE)
+        pv_m = pv.PolyData(m.xyz_coord_V, faces=F3)
+        rgba_F = (255 * self.rgba_F).round().astype(INT_TYPE)
+        pv_m.cell_data["RGBA"] = rgba_F
+        plotter.add_mesh(pv_m, scalars="RGBA", rgba=True, show_edges=True)
+
+    def pv_add_wireframe_surface_to_fig(self, plotter):
+        m = self.M
+        numF = len(m.h_right_F)
+        F3 = np.hstack([np.full((numF, 1), 3), m.V_cycle_F]).astype(INT_TYPE)
+        pv_m = pv.PolyData(m.xyz_coord_V, faces=F3)
+        rgba_F = (self.rgba_F).round().astype(INT_TYPE)
+        rgba_F[:, 3] = 0  # set low alpha for wireframe
+        pv_m.cell_data["RGBA"] = rgba_F
+        plotter.add_mesh(pv_m, scalars="RGBA", rgba=True, show_edges=True)
+
+    def pv_add_half_edges_to_fig(self, plotter):
+        m = self.M
+        # numH = len(m.h_right_F)
+
+        pts_H, vecs_H = get_half_edge_vector_field(m)
+        rgba_H = (255 * self.rgba_H).round().astype(INT_TYPE)
+        # vecs_H_source = pv.Arrow(
+        #     tip_length=0.125,  # Arrow tip length (0.0-1.0)
+        #     tip_radius=0.025,  # Arrow tip radius
+        #     tip_resolution=5,  # Tip smoothness
+        #     shaft_radius=0.00625,  # Shaft thickness
+        #     shaft_resolution=3,  # Shaft smoothness
+        # )
+        vecs_H_source = pv.Arrow(
+            tip_length=0.25,  # Arrow tip length (0.0-1.0)
+            tip_radius=0.035,  # Arrow tip radius
+            tip_resolution=6,  # Tip smoothness
+            shaft_radius=0.0125,  # Shaft thickness
+            shaft_resolution=3,  # Shaft smoothness
+        )
+        pv_pts_H = pv.PolyData(pts_H)
+        pv_pts_H["half_edges"] = vecs_H
+        pv_pts_H["RGBA"] = rgba_H
+        pv_H = pv_pts_H.glyph(
+            orient="half_edges",
+            scale="half_edges",
+            factor=1,
+            geom=vecs_H_source,
+        )
+        plotter.add_mesh(pv_H, scalars="RGBA", rgba=True, show_edges=False)
+
+    def set_view_pyvista(
+        self, plotter, azimuth=0.0, elevation=0.0, distance=4.0, focalpoint=(0, 0, 0)
+    ):
+        # print(f"f{azimuth=}, {elevation=}, {distance=}, {focalpoint=}")
+        # fazimuth = float(azimuth)
+        # felevation = float(elevation)
+        # fdistance = float(distance)
+        # ffocalpoint = np.asarray(focalpoint, dtype=float).tolist()
+        # print(f"{fazimuth=}, {felevation=}, {fdistance=}, {ffocalpoint=}")
+        # # cam = plotter.camera
+        # cam = pv.Camera()
+        # fp = np.asarray(focalpoint, dtype=float)
+
+        # # Start from a known canonical view direction (+Z looking toward the focal point)
+        # # i.e. camera is "distance" units away from focal point along +Z.
+        # cam.focal_point = fp.tolist()
+        # cam.position = (fp + np.array([distance, 0.0, 0.0], dtype=float)).tolist()
+        # cam.up = (0.0, 0.0, 1.0)  # choose a consistent 'up' direction
+
+        # # Apply rotations about the focal point (VTK interprets these as degrees)
+        # # cam.azimuth(fazimuth)
+        # cam.elevation(felevation)
+
+        # plotter.reset_camera_clipping_range()
+        # plotter.render()
+        plotter.camera_position = "yz"
+        plotter.camera.azimuth = azimuth
+        plotter.camera.elevation = elevation
+        plotter.camera.distance = distance
+
+    def pv_options_plot(
+        self,
+        show=True,
+        save=False,
+        title="",
+        show_wireframe_surface=True,
+        show_face_colored_surface=False,
+        show_vertex_colored_surface=False,
+        show_vertices=True,
+        show_half_edges=False,
+        show_vector_fields=True,
+        show_plot_axes=False,
+        view=None,
+        figsize=(2180, 2180),
+        fig_path=None,
+    ):
+        """
+        fig_path=f"{output_directory}/temp_images/fig_{image_count:0>4}.png"
+        """
+        # pv.set_jupyter_backend("none")
+        m = self.M
+        numV = len(m.xyz_coord_V)
+        numE = len(m.h_directed_E)
+        numF = len(m.h_right_F)
+        numH = len(m.v_origin_H)
+        plotter = pv.Plotter(
+            notebook=False,
+            off_screen=not show,
+        )
+
+        ################################
+        if show_face_colored_surface:
+            self.pv_add_face_colored_surface_to_fig(plotter)
+            # F3 = np.hstack([np.full((numF, 1), 3), m.V_cycle_F]).astype(int)
+            # pv_m = pv.PolyData(m.xyz_coord_V, faces=F3)
+            # # rgba_F = (self.rgba_F).round().astype(INT_TYPE)
+            # rgba_F = np.zeros((numF, 4), dtype=int)  # color faces of pv_m
+            # rgba_F[:, 0], rgba_F[:, 1], rgba_F[:, 2], rgba_F[:, 3] = 255, 189, 0, 255
+            # pv_m.cell_data["RGBA"] = rgba_F
+            # plotter.add_mesh(pv_m, scalars="RGBA", rgba=True, show_edges=True)
+        if show_half_edges:
+            self.pv_add_half_edges_to_fig(plotter)
+            # pts_H, vecs_H = get_half_edge_vector_field(m)
+            # # rgba_H = (self.rgba_H).round().astype(INT_TYPE)
+            # rgba_H = np.zeros((numH, 4), dtype=int)
+            # rgba_H[:, 0], rgba_H[:, 1], rgba_H[:, 2], rgba_H[:, 3] = 148, 0, 211, 255
+            # vecs_H_source = pv.Arrow(
+            #     tip_length=0.125,  # Arrow tip length (0.0-1.0)
+            #     tip_radius=0.025,  # Arrow tip radius
+            #     tip_resolution=5,  # Tip smoothness
+            #     shaft_radius=0.00625,  # Shaft thickness
+            #     shaft_resolution=3,  # Shaft smoothness
+            # )
+            # pv_pts_H = pv.PolyData(pts_H)
+            # pv_pts_H["half_edges"] = vecs_H
+            # pv_pts_H["RGBA"] = rgba_H
+            # pv_H = pv_pts_H.glyph(
+            #     orient="half_edges",
+            #     scale="half_edges",
+            #     factor=1,
+            #     geom=vecs_H_source,
+            # )
+            # plotter.add_mesh(pv_H, scalars="RGBA", rgba=True, show_edges=False)
+        if show_plot_axes:
+            plotter.add_axes()
+            plotter.show_axes()
+        if view is not None:
+            self.set_view_pyvista(plotter, **view)
+
+        if save:
+            if fig_path is None:
+                print("fig_path is None")
+            else:
+                plotter.screenshot(
+                    fig_path,
+                    #    window_size=figsize,
+                    # off_screen=True,
+                )
+        if show:
+            plotter.show()
+
+        plotter.close()
+        return plotter
+
+    def pv_plot(self, show=True, save=False, title=""):
+        """
+        Default plot with options set in __init__
+        """
+        if save:
+            fig_path = self.get_fig_path()
+            self.image_count += 1
+        else:
+            fig_path = None
+        plotter = self.pv_options_plot(
+            show=show,
+            save=save,
+            title=title,
+            show_wireframe_surface=self.show_wireframe_surface,
+            show_face_colored_surface=self.show_face_colored_surface,
+            show_vertex_colored_surface=self.show_vertex_colored_surface,
+            show_vertices=self.show_vertices,
+            show_half_edges=self.show_half_edges,
+            show_vector_fields=self.show_vector_fields,
+            show_plot_axes=self.show_plot_axes,
+            view=self.view,
+            figsize=self.figsize,
+            fig_path=fig_path,
+        )
+        return plotter
 
 
 class MultiMeshViewer:
@@ -892,7 +1092,9 @@ class MultiMeshViewer:
         if mesh_params is None:
             self.mesh_params = [self.params.copy() for _ in range(len(meshes))]
 
-        self.mesh_viewers = [MeshViewer(mesh, **params) for mesh, params in zip(meshes, self.mesh_params)]
+        self.mesh_viewers = [
+            MeshViewer(mesh, **params) for mesh, params in zip(meshes, self.mesh_params)
+        ]
         ###############################################################
         # image/movie output options
         ###############################################################
@@ -973,6 +1175,7 @@ class MultiMeshViewer:
         self.mesh_params[mesh_index].update(**kwargs)
         self.mesh_viewers[mesh_index].update(**kwargs)
 
+    # ***
     def options_plot(
         self,
         show=True,

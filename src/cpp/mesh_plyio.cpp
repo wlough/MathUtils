@@ -1145,8 +1145,8 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
 
   const Samples3d *xyz_coord_V = nullptr;
   const Samplesi *h_out_V = nullptr;
-  // Samplesi d_through_V;
-  // Samples4i rgba_V;
+  const Samplesi *d_through_V = nullptr;
+  const Samples4i *rgba_V = nullptr;
 
   // Samples2i V_cycle_E;
   // Samplesi h_directed_E;
@@ -1215,6 +1215,48 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
         "vertex", {"h_out"}, tinyply::Type::INT32,
         static_cast<uint32_t>(h_out_V->size()),
         reinterpret_cast<uint8_t *>(const_cast<int *>(h_out_V->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_through_V"); it != mesh_samples.end()) {
+    d_through_V = std::get_if<Samplesi>(&it->second);
+    if (!d_through_V) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_through_V"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "vertex", {"d_through"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_through_V->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_through_V->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("rgba_V"); it != mesh_samples.end()) {
+    rgba_V = std::get_if<Samples4i>(&it->second);
+    if (!rgba_V) {
+      throw std::runtime_error(
+          R"(mesh_samples["rgba_V"] exists but is not Samples4i)");
+    }
+    if (rgba_V->cols() != 4) {
+      throw std::runtime_error("rgba_V must be (#V x 4)");
+    }
+    mesh_file.add_properties_to_element(
+        "vertex", {"red"}, tinyply::Type::UINT8,
+        static_cast<uint32_t>(rgba_V->rows()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(0).data())),
+        tinyply::Type::INVALID, 0);
+    mesh_file.add_properties_to_element(
+        "vertex", {"green"}, tinyply::Type::UINT8,
+        static_cast<uint32_t>(rgba_V->rows()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(1).data())),
+        tinyply::Type::INVALID, 0);
+    mesh_file.add_properties_to_element(
+        "vertex", {"blue"}, tinyply::Type::UINT8,
+        static_cast<uint32_t>(rgba_V->rows()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(2).data())),
+        tinyply::Type::INVALID, 0);
+    mesh_file.add_properties_to_element(
+        "vertex", {"alpha"}, tinyply::Type::UINT8,
+        static_cast<uint32_t>(rgba_V->rows()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(3).data())),
         tinyply::Type::INVALID, 0);
   }
   if (auto it = mesh_samples.find("h_right_F"); it != mesh_samples.end()) {

@@ -41,12 +41,19 @@ dev = [
     "notebook",
     "pycodestyle",
     "pytest",
-    "python-lsp-server[all]",
-    "pyvista",
+    "python-lsp-server",
+    "pyvista[all]",
+    # "mayavi==4.8.1",
+    # "PyQt5==5.15.10",
+    # "vtk==9.2.6",
+    # "mayavi",
+    "PyQt5",
+    "vtk",
     "scipy",
     "sympy",
     "twine",
 ]
+# graphics = ["pyvista[trame]", "trame", "trame-vuetify", "trame-vtk"]
 
 [tool.scikit-build]
 wheel.packages = ["src/pymathutils"]
