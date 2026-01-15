@@ -1,0 +1,61 @@
+output_dir: output # Path to output directory
+run_name: convergence_test03 # Name of the run
+surface_type: sphere
+clear_output_dir: true # Whether to clear the output directory
+cotan_laplacian_tests: true
+adaptive_belkin_laplacian_tests: true
+belkin_laplacian_tests: true
+adaptive_guckenberger_laplacian_tests: true
+guckenberger_laplacian_tests: true
+heat_laplacian_tests: true
+higher_order_quad_heat_laplacian_tests: false
+# build_spheres: false
+# make_ply_type: "messy_torus"
+# num_divs: 12
+ply_paths:
+  # - data/convergence_test_ply/unit_sphere_000320_he.ply
+  # - data/convergence_test_ply/unit_sphere_001280_he.ply
+  # - data/convergence_test_ply/unit_sphere_005120_he.ply
+  # - data/convergence_test_ply/unit_sphere_020480_he.ply
+  # - data/convergence_test_ply/unit_sphere_081920_he.ply
+  # - data/convergence_test_ply/unit_sphere_327680_he.ply
+  # - data/convergence_test_ply/noisy/sphere_0000320_he.ply
+  - data/convergence_test_ply/noisy/sphere_0000628_he.ply
+  - data/convergence_test_ply/noisy/sphere_0001232_he.ply
+  - data/convergence_test_ply/noisy/sphere_0002454_he.ply
+  - data/convergence_test_ply/noisy/sphere_0004968_he.ply
+  - data/convergence_test_ply/noisy/sphere_0009932_he.ply
+  - data/convergence_test_ply/noisy/sphere_0019874_he.ply
+  - data/convergence_test_ply/noisy/sphere_0039846_he.ply
+  - data/convergence_test_ply/noisy/sphere_0079724_he.ply
+  - data/convergence_test_ply/noisy/sphere_0159066_he.ply
+  # - data/convergence_test_ply/unit_torus_3_1_raw_000384_he.ply
+  # - data/convergence_test_ply/unit_torus_3_1_raw_001536_he.ply
+  # - data/convergence_test_ply/unit_torus_3_1_raw_006144_he.ply
+  # - data/convergence_test_ply/unit_torus_3_1_raw_024576_he.ply
+  # - data/convergence_test_ply/unit_torus_3_1_raw_098304_he.ply
+  # - data/convergence_test_ply/unit_torus_3_1_raw_393216_he.ply
+  # - data/convergence_test_ply/torus_0000384_he.ply
+  # - data/convergence_test_ply/torus_0001536_he.ply
+  # - data/convergence_test_ply/torus_0006144_he.ply
+  # - data/convergence_test_ply/torus_0024576_he.ply
+  # - data/convergence_test_ply/torus_0098304_he.ply
+  # - data/convergence_test_ply/torus_0393216_he.ply
+  # - data/convergence_test_ply/noisy/torus_0000384_he.ply
+  # - data/convergence_test_ply/noisy/torus_0000754_he.ply
+  # - data/convergence_test_ply/noisy/torus_0001474_he.ply
+  # - data/convergence_test_ply/noisy/torus_0003000_he.ply
+  # - data/convergence_test_ply/noisy/torus_0005974_he.ply
+  # - data/convergence_test_ply/noisy/torus_0011880_he.ply
+  # - data/convergence_test_ply/noisy/torus_0023706_he.ply
+  # - data/convergence_test_ply/noisy/torus_0047430_he.ply
+  # - data/convergence_test_ply/noisy/torus_0094838_he.ply
+  # - data/convergence_test_ply/noisy/torus_0190002_he.ply
+envelope:
+  atol: 1e-8
+  rtol: 1e-4
+  # belkin_dt: 0.0625
+  belkin_dt: 0.0125
+  belkin_min_ring: 2
+  heat_dt_multiple: 8
+  construct_laplacian_matrix: false
