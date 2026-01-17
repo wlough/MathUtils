@@ -77,6 +77,26 @@ def jit_tri_vertex_cycles_to_edge_vertex_cycles(V_cycle_F):
     return np.array([[i, j] for i, j in E], dtype=NUMBA_INT)
 
 
+def py_tri_vertex_cycles_to_edge_vertex_cycles(V_cycle_F):
+    E = set(
+        [
+            (0, 0),
+        ],
+    )
+    E.pop()
+    for i, j, k in V_cycle_F:
+        if i > j:
+            i, j = j, i
+        if i > k:
+            i, k = k, i
+        if j > k:
+            j, k = k, j
+        # i, j, k = NUMBA_INT(i), NUMBA_INT(j), NUMBA_INT(k)
+        E.update([(i, j), (j, k), (i, k)])
+        # E.add((i, j))
+    return np.array([[i, j] for i, j in E], dtype=np.intc)
+
+
 # def f_samples_to_combinatorialmap(xyz_coord_V, V_cycle_E, V_cycle_F):
 #     arrE = np.sort(V_cycle_E, axis=1)
 #     arrF = np.sort(V_cycle_F, axis=1)
@@ -878,14 +898,14 @@ class HalfEdgeMesh:
 
     def __init__(
         self,
-        xyz_coord_V=None,
-        h_out_V=None,
-        v_origin_H=None,
-        h_next_H=None,
-        h_twin_H=None,
-        f_left_H=None,
-        h_right_F=None,
-        h_negative_B=None,
+        xyz_coord_V,
+        h_out_V,
+        v_origin_H,
+        h_next_H,
+        h_twin_H,
+        f_left_H,
+        h_right_F,
+        h_negative_B,
         V_cycle_E=None,
         V_cycle_F=None,
         *args,
@@ -905,23 +925,24 @@ class HalfEdgeMesh:
 
         for key, val in defaults.items():
             if getattr(self, key, None) is None:
+                print(f"Setting default for {key}")
                 self.__setattr__(key, val)
 
     @classmethod
     def default_samples(cls):
         return {
             "xyz_coord_V": np.empty((0, 3), dtype=float),
-            "h_out_V": np.empty((0,), dtype=int),
-            "V_cycle_E": np.empty((0, 2), dtype=int),
-            "h_directed_E": np.empty((0,), dtype=int),
-            "V_cycle_F": np.empty((0, 3), dtype=int),
-            "h_right_F": np.empty((0,), dtype=int),
-            "v_origin_H": np.empty((0,), dtype=int),
-            "e_undirected_H": np.empty((0,), dtype=int),
-            "f_left_H": np.empty((0,), dtype=int),
-            "h_next_H": np.empty((0,), dtype=int),
-            "h_twin_H": np.empty((0,), dtype=int),
-            "h_negative_B": np.empty((0,), dtype=int),
+            "h_out_V": np.empty((0,), dtype=np.intc),
+            "V_cycle_E": np.empty((0, 2), dtype=np.intc),
+            "h_directed_E": np.empty((0,), dtype=np.intc),
+            "V_cycle_F": np.empty((0, 3), dtype=np.intc),
+            "h_right_F": np.empty((0,), dtype=np.intc),
+            "v_origin_H": np.empty((0,), dtype=np.intc),
+            "e_undirected_H": np.empty((0,), dtype=np.intc),
+            "f_left_H": np.empty((0,), dtype=np.intc),
+            "h_next_H": np.empty((0,), dtype=np.intc),
+            "h_twin_H": np.empty((0,), dtype=np.intc),
+            "h_negative_B": np.empty((0,), dtype=np.intc),
         }
 
     @classmethod
@@ -938,13 +959,13 @@ class HalfEdgeMesh:
     def init_empty(cls, *args, **kwargs):
         return cls(
             np.zeros((0, 3), dtype=float),
-            np.zeros(0, dtype=int),
-            np.zeros(0, dtype=int),
-            np.zeros(0, dtype=int),
-            np.zeros(0, dtype=int),
-            np.zeros(0, dtype=int),
-            np.zeros(0, dtype=int),
-            np.zeros(0, dtype=int),
+            np.zeros(0, dtype=np.intc),
+            np.zeros(0, dtype=np.intc),
+            np.zeros(0, dtype=np.intc),
+            np.zeros(0, dtype=np.intc),
+            np.zeros(0, dtype=np.intc),
+            np.zeros(0, dtype=np.intc),
+            np.zeros(0, dtype=np.intc),
             *args,
             **kwargs,
         )
@@ -958,7 +979,7 @@ class HalfEdgeMesh:
         # num_vertices = 12
         # num_faces = 20
         # xyz_coord_V = np.zeros(num_vertices, 3, dtype=float)
-        # V_cycle_F = np.zeros(num_faces, 3, dtype=int)
+        # V_cycle_F = np.zeros(num_faces, 3, dtype=np.intc)
         xyz_coord_V = np.array(
             [
                 [0.0, b, -a],
@@ -1002,7 +1023,7 @@ class HalfEdgeMesh:
                 [5, 11, 4],
                 [10, 8, 4],
             ],
-            dtype=int,
+            dtype=np.intc,
         )
         xyz_coord_V *= radius
         for _ in range(num_refinements):
@@ -1033,7 +1054,7 @@ class HalfEdgeMesh:
             "V_cycle_E",
             "V_cycle_F",
         ]
-        # he_samples = {key: samples_dict.get(key, np.zeros(0, dtype=int)) for key in he_keys}
+        # he_samples = {key: samples_dict.get(key, np.zeros(0, dtype=np.intc)) for key in he_keys}
         m = cls.init_empty()
         for name, value in samples_dict.items():
             m.__setattr__(name, value)
@@ -1195,7 +1216,7 @@ class HalfEdgeMesh:
 
     @h_out_V.setter
     def h_out_V(self, value):
-        self.h_out_V_ = np.array(value, dtype=int)
+        self.h_out_V_ = np.array(value, dtype=np.intc)
 
     @property
     def v_origin_H(self):
@@ -1203,7 +1224,7 @@ class HalfEdgeMesh:
 
     @v_origin_H.setter
     def v_origin_H(self, value):
-        self.v_origin_H_ = np.array(value, dtype=int)
+        self.v_origin_H_ = np.array(value, dtype=np.intc)
 
     @property
     def h_next_H(self):
@@ -1211,7 +1232,7 @@ class HalfEdgeMesh:
 
     @h_next_H.setter
     def h_next_H(self, value):
-        self.h_next_H_ = np.array(value, dtype=int)
+        self.h_next_H_ = np.array(value, dtype=np.intc)
 
     @property
     def h_twin_H(self):
@@ -1219,7 +1240,7 @@ class HalfEdgeMesh:
 
     @h_twin_H.setter
     def h_twin_H(self, value):
-        self.h_twin_H_ = np.array(value, dtype=int)
+        self.h_twin_H_ = np.array(value, dtype=np.intc)
 
     @property
     def f_left_H(self):
@@ -1227,7 +1248,7 @@ class HalfEdgeMesh:
 
     @f_left_H.setter
     def f_left_H(self, value):
-        self.f_left_H_ = np.array(value, dtype=int)
+        self.f_left_H_ = np.array(value, dtype=np.intc)
 
     @property
     def h_right_F(self):
@@ -1235,7 +1256,7 @@ class HalfEdgeMesh:
 
     @h_right_F.setter
     def h_right_F(self, value):
-        self.h_right_F_ = np.array(value, dtype=int)
+        self.h_right_F_ = np.array(value, dtype=np.intc)
 
     @property
     def h_negative_B(self):
@@ -1243,7 +1264,7 @@ class HalfEdgeMesh:
 
     @h_negative_B.setter
     def h_negative_B(self, value):
-        self.h_negative_B_ = np.array(value, dtype=int)
+        self.h_negative_B_ = np.array(value, dtype=np.intc)
 
     @property
     def e_undirected_H(self):
@@ -1251,7 +1272,7 @@ class HalfEdgeMesh:
 
     @e_undirected_H.setter
     def e_undirected_H(self, value):
-        self.e_undirected_H_ = np.array(value, dtype=int)
+        self.e_undirected_H_ = np.array(value, dtype=np.intc)
 
     @property
     def h_directed_E(self):
@@ -1259,18 +1280,19 @@ class HalfEdgeMesh:
 
     @h_directed_E.setter
     def h_directed_E(self, value):
-        self.h_directed_E_ = np.array(value, dtype=int)
+        self.h_directed_E_ = np.array(value, dtype=np.intc)
 
     @property
     def V_cycle_E(self):
         if len(self.V_cycle_E_) > 0:
             return self.V_cycle_E_
-        self.V_cycle_E = jit_tri_vertex_cycles_to_edge_vertex_cycles(self.V_cycle_F)
+        # self.V_cycle_E = jit_tri_vertex_cycles_to_edge_vertex_cycles(self.V_cycle_F)
+        self.V_cycle_E = py_tri_vertex_cycles_to_edge_vertex_cycles(self.V_cycle_F)
         return self.V_cycle_E_
 
     @V_cycle_E.setter
     def V_cycle_E(self, value):
-        self.V_cycle_E_ = np.array(value, dtype=int)
+        self.V_cycle_E_ = np.array(value, dtype=np.intc)
 
     @property
     def V_cycle_F(self):
@@ -1287,7 +1309,7 @@ class HalfEdgeMesh:
 
     @V_cycle_F.setter
     def V_cycle_F(self, value):
-        self.V_cycle_F_ = np.array(value, dtype=int)
+        self.V_cycle_F_ = np.array(value, dtype=np.intc)
 
     @property
     def num_vertices(self):
@@ -1329,10 +1351,18 @@ class HalfEdgeMesh:
         #     "h_right_F": self.h_right_F,
         #     "h_negative_B": self.h_negative_B,
         # }
-        return {k: self.__getattribute__(k) for k in self.default_sample_keys}
+        return {
+            k: self.__getattribute__(k)
+            for k in self.default_sample_keys
+            if len(self.__getattribute__(k)) > 0
+        }
 
     def to_mesh_samples(self):
-        return {k: self.__getattribute__(k) for k in self.default_sample_keys}
+        return {
+            k: self.__getattribute__(k)
+            for k in self.default_sample_keys
+            if len(self.__getattribute__(k)) > 0
+        }
 
     #######################################################
     # Combinatorial maps #################################
@@ -1657,7 +1687,7 @@ class HalfEdgeMesh:
         # next cycle of each face gets
         #   *interior half-edges
         #   *positive boundary half-edges
-        arrF = np.array(list(F), dtype=int)
+        arrF = np.array(list(F), dtype=np.intc)
         h_right_F = self.h_right_f(arrF)
         next_h_right_F = self.h_next_h(h_right_F)
         next_next_h_right_F = self.h_next_h(next_h_right_F)
@@ -1667,12 +1697,12 @@ class HalfEdgeMesh:
         # twin of interior half-edges gets
         #   *negative boundary half-edges
         #   *any other twins missing from H0
-        arrH = np.array(list(H), dtype=int)
+        arrH = np.array(list(H), dtype=np.intc)
         h_twin_H = self.h_twin_h(arrH)
         H.update(h_twin_H)
         # origin of half-edges gets
         #  *vertices missing from V0
-        arrH = np.array(list(H), dtype=int)
+        arrH = np.array(list(H), dtype=np.intc)
         v_origin_H = self.v_origin_h(arrH)
         V.update(v_origin_H)
         return V, H, F
@@ -1777,7 +1807,7 @@ class HalfEdgeMesh:
         for h in self.generate_H_right_b(b):
             v = self.v_origin_h(h)
             F.update(set(self.generate_F_incident_v_clockwise(v, h_start=h)))
-        return np.array(list(F), dtype=int)
+        return np.array(list(F), dtype=np.intc)
 
     def get_unsigned_simplicial_sets(self):
         S0 = {frozenset(v) for v in range(self.num_vertices)}
@@ -2038,13 +2068,15 @@ class HalfEdgeMesh:
         dNf = 2
         # dNb = 0
         self.xyz_coord_V = np.concatenate([self.xyz_coord_V, np.zeros((dNv, 3))])
-        self.h_out_V = np.concatenate([self.h_out_V, np.zeros(dNv, dtype=int)])
-        self.v_origin_H = np.concatenate([self.v_origin_H, np.zeros(dNh, dtype=int)])
-        self.h_next_H = np.concatenate([self.h_next_H, np.zeros(dNh, dtype=int)])
-        self.h_twin_H = np.concatenate([self.h_twin_H, np.zeros(dNh, dtype=int)])
-        self.f_left_H = np.concatenate([self.f_left_H, np.zeros(dNh, dtype=int)])
-        self.h_right_F = np.concatenate([self.h_right_F, np.zeros(dNf, dtype=int)])
-        # self.h_negative_B = np.concatenate([self.h_negative_B, np.zeros(dNb, dtype=int)])
+        self.h_out_V = np.concatenate([self.h_out_V, np.zeros(dNv, dtype=np.intc)])
+        self.v_origin_H = np.concatenate(
+            [self.v_origin_H, np.zeros(dNh, dtype=np.intc)]
+        )
+        self.h_next_H = np.concatenate([self.h_next_H, np.zeros(dNh, dtype=np.intc)])
+        self.h_twin_H = np.concatenate([self.h_twin_H, np.zeros(dNh, dtype=np.intc)])
+        self.f_left_H = np.concatenate([self.f_left_H, np.zeros(dNh, dtype=np.intc)])
+        self.h_right_F = np.concatenate([self.h_right_F, np.zeros(dNf, dtype=np.intc)])
+        # self.h_negative_B = np.concatenate([self.h_negative_B, np.zeros(dNb, dtype=np.intc)])
 
         # Get/create exsisting/new vertices, half-edges, faces, boundaries involved in the operation
         f0 = f
@@ -2056,14 +2088,14 @@ class HalfEdgeMesh:
         v2 = self.v_origin_h(h2)
         V = np.concatenate(
             [[v0, v1, v2], list(range(self.num_vertices, self.num_vertices + dNv))],
-            dtype=int,
+            dtype=np.intc,
         )
         H = np.concatenate(
             [[h0, h1, h2], list(range(self.num_half_edges, self.num_half_edges + dNh))],
-            dtype=int,
+            dtype=np.intc,
         )
         F = np.concatenate(
-            [[f0], list(range(self.num_faces, self.num_faces + dNf))], dtype=int
+            [[f0], list(range(self.num_faces, self.num_faces + dNf))], dtype=np.intc
         )
 
         #####

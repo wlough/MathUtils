@@ -27,7 +27,7 @@ Convert triangle vertex cycles to half-edge samples.
 )doc");
 
   m.def("load_vf_samples_from_ply",
-        &mathutils::mesh_io::load_vf_samples_from_ply,
+        &mathutils::mesh::io::load_vf_samples_from_ply,
         "Load vertex and face samples from a PLY file", py::arg("filepath"),
         py::arg("preload_into_memory") = true, py::arg("verbose") = false,
         R"doc(
@@ -44,7 +44,8 @@ Returns:
     - faces is an Mx3 array of triangle vertex indices
 )doc");
 
-  m.def("write_vf_samples_to_ply", &mathutils::mesh_io::write_vf_samples_to_ply,
+  m.def("write_vf_samples_to_ply",
+        &mathutils::mesh::io::write_vf_samples_to_ply,
         "Write vertex and face samples to a PLY file", py::arg("xyz_coord_V"),
         py::arg("V_cycle_F"), py::arg("ply_path"), py::arg("use_binary") = true,
         R"doc(
@@ -58,7 +59,7 @@ Returns:
   )doc");
 
   m.def("load_mesh_samples_from_ply",
-        &mathutils::mesh_io::load_mesh_samples_from_ply,
+        &mathutils::mesh::io::load_mesh_samples_from_ply,
         "Load mesh samples from a PLY file", py::arg("filepath"),
         py::arg("preload_into_memory") = true, py::arg("verbose") = false,
         R"doc(
@@ -72,7 +73,7 @@ Returns:
 )doc");
 
   m.def("write_mesh_samples_to_ply",
-        &mathutils::mesh_io::write_mesh_samples_to_ply,
+        &mathutils::mesh::io::write_mesh_samples_to_ply,
         "Write mesh samples to a PLY file", py::arg("mesh_samples"),
         py::arg("ply_path"), py::arg("use_binary") = true,
         R"doc(

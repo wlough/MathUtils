@@ -1,8 +1,8 @@
 /**
  * @file mesh.cpp
  */
-
 #include "mathutils/mesh/mesh_convert_funs.hpp"
+#include "mathutils/mesh/mesh_common.hpp"
 #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
 #include <array>
 #include <cstddef>
@@ -14,12 +14,6 @@
 
 namespace mathutils {
 namespace mesh {
-
-using Samplesi = Eigen::VectorXi;
-using Samples2i = Eigen::Matrix<int, Eigen::Dynamic, 2>;
-using Samples3i = Eigen::Matrix<int, Eigen::Dynamic, 3>;
-using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3>;
-using Samples2d = Eigen::Matrix<double, Eigen::Dynamic, 2>;
 
 int find_halfedge_index_of_twin(const Samples2i &H, const int &h) {
   auto v0 = H(h, 0);

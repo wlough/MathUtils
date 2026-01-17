@@ -5,7 +5,7 @@
  * @brief Mesh input/output.
  */
 
-#include <Eigen/Core> // Eigen::Matrix, Eigen::VectorXi
+#include "mathutils/mesh/mesh_common.hpp"
 #include <chrono> // std::chrono::high_resolution_clock and std::chrono::duration
 #include <fstream>   // std::ifstream
 #include <istream>   // std::istream
@@ -24,41 +24,27 @@
  */
 
 namespace mathutils {
-namespace mesh_io {
+namespace mesh {
+namespace io {
 
-using Samplesi = Eigen::VectorXi;
-using Samples2i = Eigen::Matrix<int, Eigen::Dynamic, 2>;
-using Samples3i = Eigen::Matrix<int, Eigen::Dynamic, 3>;
-using Samples4i = Eigen::Matrix<int, Eigen::Dynamic, 4>;
-using Samplesd = Eigen::VectorXd;
-using Samples2d = Eigen::Matrix<double, Eigen::Dynamic, 2>;
-using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3>;
-using Samples4d = Eigen::Matrix<double, Eigen::Dynamic, 4>;
-using RaggedSamplesi = std::vector<Eigen::VectorXi>;
-
-using MeshSamples =
-    std::map<std::string,
-             std::variant<Samplesi, Samples2i, Samples3i, Samples4i, Samplesd,
-                          Samples2d, Samples3d, Samples4d, RaggedSamplesi>>;
-
-struct double2 {
-  double x, y;
-};
-struct double3 {
-  double x, y, z;
-};
-struct double4 {
-  double x, y, z, w;
-};
-struct int2 {
-  int x, y;
-};
-struct int3 {
-  int x, y, z;
-};
-struct int4 {
-  int x, y, z, w;
-};
+// struct double2 {
+//   double x, y;
+// };
+// struct double3 {
+//   double x, y, z;
+// };
+// struct double4 {
+//   double x, y, z, w;
+// };
+// struct int2 {
+//   int x, y;
+// };
+// struct int3 {
+//   int x, y, z;
+// };
+// struct int4 {
+//   int x, y, z, w;
+// };
 ////////////////////////////////////////////
 // misc tinyply helpers ////////////////////
 ////////////////////////////////////////////
@@ -214,9 +200,9 @@ void write_he_samples_to_ply(
  * @param verbose
  * @return std::map<std::string, std::variant<...>>;
  */
-MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
-                                       const bool preload_into_memory = true,
-                                       const bool verbose = false);
+MeshSamples32 load_mesh_samples_from_ply(const std::string &filepath,
+                                         const bool preload_into_memory = true,
+                                         const bool verbose = false);
 
 /**
  * @brief writes mesh samples to a ply file.
@@ -225,7 +211,7 @@ MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
  * @param ply_path
  * @param use_binary
  */
-void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
+void write_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
                                const std::string &ply_path,
                                const bool use_binary = true);
 // EdgeFaceCellTuple cmap_to_efc_tuple(const CombinatorialMapTuple &cm);
@@ -302,5 +288,6 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
 
 /** @}*/ // end of group MeshIO
 
-} // namespace mesh_io
+} // namespace io
+} // namespace mesh
 } // namespace mathutils

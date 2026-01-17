@@ -8,18 +8,21 @@
 
 #include "mathutils/mesh/mesh_plyio.hpp"
 #include "mathutils/io/tinyply.h" // tinyply::PlyFile, tinyply::PlyData
-#include <Eigen/Core>             // Eigen::MatrixXd, Eigen::VectorXd
-#include <algorithm>              // For std::min and std::max
+#include "mathutils/mesh/mesh_common.hpp"
+#include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
+#include <algorithm>  // For std::min and std::max
 #include <chrono> // std::chrono::high_resolution_clock and std::chrono::duration
 #include <cstdint>       // std::uint32_t
 #include <iostream>      // std::cout
 #include <set>           // std::set
 #include <tuple>         // std::tuple
+#include <typeinfo>      // for debugging typeid
 #include <unordered_set> // std::unordered_set
 #include <vector>        // std::vector
 
 namespace mathutils {
-namespace mesh_io {
+namespace mesh {
+namespace io {
 
 std::pair<Samples3d, Samples3i>
 load_vf_samples_from_ply(const std::string &filepath,
@@ -226,9 +229,14 @@ void write_vf_samples_to_ply(Samples3d &xyz_coord_V, Samples3i &V_cycle_F,
   mesh_file.write(outstream, use_binary);
 }
 
-MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
-                                       const bool preload_into_memory,
-                                       const bool verbose) {
+MeshSamples32 load_mesh_samples_from_ply(const std::string &filepath,
+                                         const bool preload_into_memory,
+                                         const bool verbose) {
+  using Samplesi = SamplesNiTemplate<std::int32_t, 1>;
+  using Samples2i = SamplesNiTemplate<std::int32_t, 2>;
+  using Samples3i = SamplesNiTemplate<std::int32_t, 3>;
+  using Samples4i = SamplesNiTemplate<std::int32_t, 4>;
+
   std::streambuf *oldCoutStreamBuf = nullptr;
   std::ofstream nullStream;
 
@@ -241,7 +249,7 @@ MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
     std::cout.rdbuf(nullStream.rdbuf());
   }
 
-  MeshSamples mesh_samples;
+  MeshSamples32 mesh_samples;
 
   std::unique_ptr<std::istream> file_stream;
   std::vector<uint8_t> byte_buffer;
@@ -886,8 +894,8 @@ MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
     if (load_d_through_E) {
       const size_t count = d_through_E_data->count;
       Samplesi d_through_E(count, 1);
-      const double *data_ptr =
-          reinterpret_cast<const double *>(d_through_E_data->buffer.get());
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_through_E_data->buffer.get());
       for (size_t i = 0; i < count; ++i) {
         d_through_E(i, 0) = data_ptr[i];
       }
@@ -964,6 +972,30 @@ MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
         d_through_C(i, 0) = data_ptr[i];
       }
       mesh_samples["d_through_C"] = d_through_C;
+    }
+
+    ///////////////////////////////////////////
+    // Boundaries
+    ///////////////////////////////////////////
+    if (load_h_negative_B) {
+      const size_t count = h_negative_B_data->count;
+      Samplesi h_negative_B(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(h_negative_B_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        h_negative_B(i, 0) = data_ptr[i];
+      }
+      mesh_samples["h_negative_B"] = h_negative_B;
+    }
+    if (load_d_through_B) {
+      const size_t count = d_through_B_data->count;
+      Samplesi d_through_B(count, 1);
+      const int *data_ptr =
+          reinterpret_cast<const int *>(d_through_B_data->buffer.get());
+      for (size_t i = 0; i < count; ++i) {
+        d_through_B(i, 0) = data_ptr[i];
+      }
+      mesh_samples["d_through_B"] = d_through_B;
     }
 
     ///////////////////////////////////////////
@@ -1130,9 +1162,15 @@ MeshSamples load_mesh_samples_from_ply(const std::string &filepath,
   return mesh_samples;
 }
 
-void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
+void write_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
                                const std::string &ply_path,
                                const bool use_binary) {
+
+  using Samplesi = SamplesNiTemplate<std::int32_t, 1>;
+  using Samples2i = SamplesNiTemplate<std::int32_t, 2>;
+  using Samples3i = SamplesNiTemplate<std::int32_t, 3>;
+  using Samples4i = SamplesNiTemplate<std::int32_t, 4>;
+  std::vector<std::uint8_t> rgba_u8;
 
   std::filebuf fb;
   fb.open(ply_path,
@@ -1148,32 +1186,41 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
   const Samplesi *d_through_V = nullptr;
   const Samples4i *rgba_V = nullptr;
 
-  // Samples2i V_cycle_E;
-  // Samplesi h_directed_E;
-  // Samplesi d_through_E;
+  const Samples2i *V_cycle_E = nullptr;   // **
+  const Samplesi *h_directed_E = nullptr; // **
+  const Samplesi *d_through_E = nullptr;  // **
 
-  // Samples3i V_cycle_F;
+  const Samples3i *V_cycle_F = nullptr; // **
   const Samplesi *h_right_F = nullptr;
-  // Samplesi d_through_F;
+  const Samplesi *d_through_F = nullptr; // **
+
+  const Samples4i *V_cycle_C = nullptr;  // **
+  const Samplesi *h_above_C = nullptr;   // **
+  const Samplesi *d_through_C = nullptr; // **
+
+  const Samplesi *h_negative_B = nullptr;
+  const Samplesi *d_through_B = nullptr; // **
 
   const Samplesi *v_origin_H = nullptr;
-  // Samplesi e_undirected_H;
+  const Samplesi *e_undirected_H = nullptr; // **
   const Samplesi *f_left_H = nullptr;
-  // Samplesi c_below_H;
+  const Samplesi *c_below_H = nullptr; // ***
   const Samplesi *h_next_H = nullptr;
   const Samplesi *h_twin_H = nullptr;
-  // Samplesi h_flip_H;
+  const Samplesi *h_flip_H = nullptr; // ***
 
-  // Samplesi v_in_D;
-  // Samplesi e_in_D;
-  // Samplesi f_in_D;
-  // Samplesi c_in_D;
-  // Samplesi d_diff0_D;
-  // Samplesi d_diff1_D;
-  // Samplesi d_diff2_D;
-  // Samplesi d_diff3_D;
+  const Samplesi *v_in_D = nullptr;    //**
+  const Samplesi *e_in_D = nullptr;    //**
+  const Samplesi *f_in_D = nullptr;    //**
+  const Samplesi *c_in_D = nullptr;    //**
+  const Samplesi *d_diff0_D = nullptr; //**
+  const Samplesi *d_diff1_D = nullptr; //**
+  const Samplesi *d_diff2_D = nullptr; //**
+  const Samplesi *d_diff3_D = nullptr; //**
 
   // Retrieve samples from the map if they exist
+  ////////////////////////////////////////////
+  // Vertices
   if (auto it = mesh_samples.find("xyz_coord_V"); it != mesh_samples.end()) {
     xyz_coord_V = std::get_if<Samples3d>(&it->second);
     if (!xyz_coord_V) {
@@ -1183,26 +1230,10 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
     if (xyz_coord_V->cols() != 3) {
       throw std::runtime_error("xyz_coord_V must be (#V x 3)");
     }
-
     mesh_file.add_properties_to_element(
-        "vertex", {"x"}, tinyply::Type::FLOAT64,
+        "vertex", {"x", "y", "z"}, tinyply::Type::FLOAT64,
         static_cast<uint32_t>(xyz_coord_V->rows()),
-        reinterpret_cast<uint8_t *>(
-            const_cast<double *>(xyz_coord_V->col(0).data())),
-        tinyply::Type::INVALID, 0);
-
-    mesh_file.add_properties_to_element(
-        "vertex", {"y"}, tinyply::Type::FLOAT64,
-        static_cast<uint32_t>(xyz_coord_V->rows()),
-        reinterpret_cast<uint8_t *>(
-            const_cast<double *>(xyz_coord_V->col(1).data())),
-        tinyply::Type::INVALID, 0);
-
-    mesh_file.add_properties_to_element(
-        "vertex", {"z"}, tinyply::Type::FLOAT64,
-        static_cast<uint32_t>(xyz_coord_V->rows()),
-        reinterpret_cast<uint8_t *>(
-            const_cast<double *>(xyz_coord_V->col(2).data())),
+        reinterpret_cast<uint8_t *>(const_cast<double *>(xyz_coord_V->data())),
         tinyply::Type::INVALID, 0);
   }
   if (auto it = mesh_samples.find("h_out_V"); it != mesh_samples.end()) {
@@ -1229,35 +1260,107 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
         reinterpret_cast<uint8_t *>(const_cast<int *>(d_through_V->data())),
         tinyply::Type::INVALID, 0);
   }
+  // if (auto it = mesh_samples.find("rgba_V"); it != mesh_samples.end()) {
+  //   rgba_V = std::get_if<Samples4i>(&it->second);
+  //   if (!rgba_V) {
+  //     throw std::runtime_error(
+  //         R"(mesh_samples["rgba_V"] exists but is not Samples4i)");
+  //   }
+  //   if (rgba_V->cols() != 4) {
+  //     throw std::runtime_error("rgba_V must be (#V x 4)");
+  //   }
+  //   mesh_file.add_properties_to_element(
+  //       "vertex", {"red", "green", "blue", "alpha"}, tinyply::Type::INT32,
+  //       static_cast<uint32_t>(rgba_V->rows()),
+  //       reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->data())),
+  //       tinyply::Type::INVALID, 0);
+  // }
   if (auto it = mesh_samples.find("rgba_V"); it != mesh_samples.end()) {
     rgba_V = std::get_if<Samples4i>(&it->second);
-    if (!rgba_V) {
+    if (!rgba_V)
       throw std::runtime_error(
           R"(mesh_samples["rgba_V"] exists but is not Samples4i)");
-    }
-    if (rgba_V->cols() != 4) {
+    if (rgba_V->cols() != 4)
       throw std::runtime_error("rgba_V must be (#V x 4)");
+
+    rgba_u8.resize(static_cast<size_t>(rgba_V->rows()) * 4);
+    for (Eigen::Index i = 0; i < rgba_V->rows(); ++i) {
+      for (int j = 0; j < 4; ++j) {
+        int x = (*rgba_V)(i, j);
+        if (x < 0)
+          x = 0;
+        if (x > 255)
+          x = 255;
+        rgba_u8[static_cast<size_t>(i) * 4 + j] = static_cast<std::uint8_t>(x);
+      }
+    }
+
+    mesh_file.add_properties_to_element(
+        "vertex", {"red", "green", "blue", "alpha"}, tinyply::Type::UINT8,
+        static_cast<uint32_t>(rgba_V->rows()),
+        reinterpret_cast<uint8_t *>(rgba_u8.data()), tinyply::Type::INVALID, 0);
+  }
+  ////////////////////////////////////////////
+  // Edges
+  if (auto it = mesh_samples.find("V_cycle_E"); it != mesh_samples.end()) {
+    V_cycle_E = std::get_if<Samples2i>(&it->second);
+    if (!V_cycle_E) {
+      throw std::runtime_error(
+          R"(mesh_samples["V_cycle_E"] exists but is not Samples2i)");
+    }
+    if (V_cycle_E->cols() != 2) {
+      throw std::runtime_error("V_cycle_E must be (#E x 2)");
     }
     mesh_file.add_properties_to_element(
-        "vertex", {"red"}, tinyply::Type::UINT8,
-        static_cast<uint32_t>(rgba_V->rows()),
-        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(0).data())),
-        tinyply::Type::INVALID, 0);
+        "edge", {"vertex_indices"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(V_cycle_E->rows()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(V_cycle_E->data())),
+        tinyply::Type::UINT8, // list-count type in the file
+        2                     // number of ints per edge
+    );
+  }
+  if (auto it = mesh_samples.find("h_directed_E"); it != mesh_samples.end()) {
+    h_directed_E = std::get_if<Samplesi>(&it->second);
+    if (!h_directed_E) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_directed_E"] exists but is not Samplesi)");
+    }
     mesh_file.add_properties_to_element(
-        "vertex", {"green"}, tinyply::Type::UINT8,
-        static_cast<uint32_t>(rgba_V->rows()),
-        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(1).data())),
+        "edge", {"h_directed"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_directed_E->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_directed_E->data())),
         tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_through_E"); it != mesh_samples.end()) {
+    d_through_E = std::get_if<Samplesi>(&it->second);
+    if (!d_through_E) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_through_E"] exists but is not Samplesi)");
+    }
     mesh_file.add_properties_to_element(
-        "vertex", {"blue"}, tinyply::Type::UINT8,
-        static_cast<uint32_t>(rgba_V->rows()),
-        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(2).data())),
+        "edge", {"d_through"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_through_E->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_through_E->data())),
         tinyply::Type::INVALID, 0);
+  }
+  ////////////////////////////////////////////
+  // Faces
+  if (auto it = mesh_samples.find("V_cycle_F"); it != mesh_samples.end()) {
+    V_cycle_F = std::get_if<Samples3i>(&it->second);
+    if (!V_cycle_F) {
+      throw std::runtime_error(
+          R"(mesh_samples["V_cycle_F"] exists but is not Samples3i)");
+    }
+    if (V_cycle_F->cols() != 3) {
+      throw std::runtime_error("V_cycle_F must be (#F x 3)");
+    }
     mesh_file.add_properties_to_element(
-        "vertex", {"alpha"}, tinyply::Type::UINT8,
-        static_cast<uint32_t>(rgba_V->rows()),
-        reinterpret_cast<uint8_t *>(const_cast<int *>(rgba_V->col(3).data())),
-        tinyply::Type::INVALID, 0);
+        "face", {"vertex_indices"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(V_cycle_F->rows()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(V_cycle_F->data())),
+        tinyply::Type::UINT8, // list-count type in the file
+        3                     // number of ints per face
+    );
   }
   if (auto it = mesh_samples.find("h_right_F"); it != mesh_samples.end()) {
     h_right_F = std::get_if<Samplesi>(&it->second);
@@ -1271,6 +1374,90 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
         reinterpret_cast<uint8_t *>(const_cast<int *>(h_right_F->data())),
         tinyply::Type::INVALID, 0);
   }
+  if (auto it = mesh_samples.find("d_through_F"); it != mesh_samples.end()) {
+    d_through_F = std::get_if<Samplesi>(&it->second);
+    if (!d_through_F) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_through_F"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "face", {"d_through"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_through_F->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_through_F->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  ////////////////////////////////////////////
+  // Cells
+  if (auto it = mesh_samples.find("V_cycle_C"); it != mesh_samples.end()) {
+    V_cycle_C = std::get_if<Samples4i>(&it->second);
+    if (!V_cycle_C) {
+      throw std::runtime_error(
+          R"(mesh_samples["V_cycle_C"] exists but is not Samples4i)");
+    }
+    if (V_cycle_C->cols() != 4) {
+      throw std::runtime_error("V_cycle_C must be (#C x 4)");
+    }
+    mesh_file.add_properties_to_element(
+        "cell", {"vertex_indices"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(V_cycle_C->rows()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(V_cycle_C->data())),
+        tinyply::Type::UINT8, // list-count type in the file
+        4                     // number of ints per cell
+    );
+  }
+  if (auto it = mesh_samples.find("h_above_C"); it != mesh_samples.end()) {
+    h_above_C = std::get_if<Samplesi>(&it->second);
+    if (!h_above_C) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_above_C"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "cell", {"h_above"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_above_C->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_above_C->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_through_C"); it != mesh_samples.end()) {
+    d_through_C = std::get_if<Samplesi>(&it->second);
+    if (!d_through_C) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_through_C"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "cell", {"d_through"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_through_C->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_through_C->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  ////////////////////////////////////////////
+  // Boundaries
+  if (auto it = mesh_samples.find("h_negative_B"); it != mesh_samples.end()) {
+
+    h_negative_B = std::get_if<Samplesi>(&it->second);
+    if (!h_negative_B) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_negative_B"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "boundary", {"h_negative"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_negative_B->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_negative_B->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_through_B"); it != mesh_samples.end()) {
+    d_through_B = std::get_if<Samplesi>(&it->second);
+    if (!d_through_B) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_through_B"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "boundary", {"d_through"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_through_B->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_through_B->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  ////////////////////////////////////////////
+  // Half-edges
   if (auto it = mesh_samples.find("v_origin_H"); it != mesh_samples.end()) {
     v_origin_H = std::get_if<Samplesi>(&it->second);
     if (!v_origin_H) {
@@ -1283,6 +1470,18 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
         reinterpret_cast<uint8_t *>(const_cast<int *>(v_origin_H->data())),
         tinyply::Type::INVALID, 0);
   }
+  if (auto it = mesh_samples.find("e_undirected_H"); it != mesh_samples.end()) {
+    e_undirected_H = std::get_if<Samplesi>(&it->second);
+    if (!e_undirected_H) {
+      throw std::runtime_error(
+          R"(mesh_samples["e_undirected_H"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "half_edge", {"e_undirected"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(e_undirected_H->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(e_undirected_H->data())),
+        tinyply::Type::INVALID, 0);
+  }
   if (auto it = mesh_samples.find("f_left_H"); it != mesh_samples.end()) {
     f_left_H = std::get_if<Samplesi>(&it->second);
     if (!f_left_H) {
@@ -1293,6 +1492,18 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
         "half_edge", {"f_left"}, tinyply::Type::INT32,
         static_cast<uint32_t>(f_left_H->size()),
         reinterpret_cast<uint8_t *>(const_cast<int *>(f_left_H->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("c_below_H"); it != mesh_samples.end()) {
+    c_below_H = std::get_if<Samplesi>(&it->second);
+    if (!c_below_H) {
+      throw std::runtime_error(
+          R"(mesh_samples["c_below_H"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "half_edge", {"c_below"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(c_below_H->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(c_below_H->data())),
         tinyply::Type::INVALID, 0);
   }
   if (auto it = mesh_samples.find("h_next_H"); it != mesh_samples.end()) {
@@ -1319,11 +1530,121 @@ void write_mesh_samples_to_ply(const MeshSamples &mesh_samples,
         reinterpret_cast<uint8_t *>(const_cast<int *>(h_twin_H->data())),
         tinyply::Type::INVALID, 0);
   }
-
+  if (auto it = mesh_samples.find("h_flip_H"); it != mesh_samples.end()) {
+    h_flip_H = std::get_if<Samplesi>(&it->second);
+    if (!h_flip_H) {
+      throw std::runtime_error(
+          R"(mesh_samples["h_flip_H"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "half_edge", {"h_flip"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(h_flip_H->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(h_flip_H->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  ////////////////////////////////////////////
+  // Darts
+  if (auto it = mesh_samples.find("v_in_D"); it != mesh_samples.end()) {
+    v_in_D = std::get_if<Samplesi>(&it->second);
+    if (!v_in_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["v_in_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"v_in"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(v_in_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(v_in_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("e_in_D"); it != mesh_samples.end()) {
+    e_in_D = std::get_if<Samplesi>(&it->second);
+    if (!e_in_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["e_in_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"e_in"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(e_in_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(e_in_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("f_in_D"); it != mesh_samples.end()) {
+    f_in_D = std::get_if<Samplesi>(&it->second);
+    if (!f_in_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["f_in_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"f_in"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(f_in_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(f_in_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("c_in_D"); it != mesh_samples.end()) {
+    c_in_D = std::get_if<Samplesi>(&it->second);
+    if (!c_in_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["c_in_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"c_in"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(c_in_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(c_in_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_diff0_D"); it != mesh_samples.end()) {
+    d_diff0_D = std::get_if<Samplesi>(&it->second);
+    if (!d_diff0_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_diff0_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"d_diff0"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_diff0_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_diff0_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_diff1_D"); it != mesh_samples.end()) {
+    d_diff1_D = std::get_if<Samplesi>(&it->second);
+    if (!d_diff1_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_diff1_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"d_diff1"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_diff1_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_diff1_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_diff2_D"); it != mesh_samples.end()) {
+    d_diff2_D = std::get_if<Samplesi>(&it->second);
+    if (!d_diff2_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_diff2_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"d_diff2"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_diff2_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_diff2_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
+  if (auto it = mesh_samples.find("d_diff3_D"); it != mesh_samples.end()) {
+    d_diff3_D = std::get_if<Samplesi>(&it->second);
+    if (!d_diff3_D) {
+      throw std::runtime_error(
+          R"(mesh_samples["d_diff3_D"] exists but is not Samplesi)");
+    }
+    mesh_file.add_properties_to_element(
+        "dart", {"d_diff3"}, tinyply::Type::INT32,
+        static_cast<uint32_t>(d_diff3_D->size()),
+        reinterpret_cast<uint8_t *>(const_cast<int *>(d_diff3_D->data())),
+        tinyply::Type::INVALID, 0);
+  }
   mesh_file.get_comments().push_back("MathUtils ply");
 
   // Write an ply file
   mesh_file.write(outstream, use_binary);
 }
-} // namespace mesh_io
+} // namespace io
+} // namespace mesh
 } // namespace mathutils

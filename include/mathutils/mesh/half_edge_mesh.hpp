@@ -6,6 +6,7 @@
  */
 
 #include "mathutils/hash.hpp"
+#include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/simple_generator.hpp"
 #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
 #include <array>
@@ -23,15 +24,8 @@
 namespace mathutils {
 namespace mesh {
 
-using Samplesi = Eigen::VectorXi;
-using Samples2i = Eigen::Matrix<int, Eigen::Dynamic, 2>;
-using Samples3i = Eigen::Matrix<int, Eigen::Dynamic, 3>;
-using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3>;
-using Samples2d = Eigen::Matrix<double, Eigen::Dynamic, 2>;
-using Generatori = mathutils::SimpleGenerator<int>;
-
 class HalfEdgeMesh {
-  // using mathutils::SimpleGenerator
+  using Generatori = mathutils::SimpleGenerator<int>;
 
 public:
   Generatori generate_V_cycle_f(int f) const;

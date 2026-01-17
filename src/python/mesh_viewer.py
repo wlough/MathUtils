@@ -944,10 +944,17 @@ class MeshViewer:
 
         # plotter.reset_camera_clipping_range()
         # plotter.render()
-        plotter.camera_position = "yz"
+        x0 = np.array(focalpoint, dtype=float)
+        ex = np.array([1.0, 0.0, 0.0], dtype=float)
+        ez = np.array([0.0, 0.0, 1.0], dtype=float)
+        p0 = x0 + distance * ex
+
+        plotter.camera.position = p0.tolist()
+        plotter.camera.up = ez.tolist()
+        plotter.camera.focal_point = x0.tolist()
+        plotter.camera.distance = distance
         plotter.camera.azimuth = azimuth
         plotter.camera.elevation = elevation
-        plotter.camera.distance = distance
 
     def pv_options_plot(
         self,
