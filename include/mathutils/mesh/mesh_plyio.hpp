@@ -214,6 +214,11 @@ MeshSamples32 load_mesh_samples_from_ply(const std::string &filepath,
 void write_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
                                const std::string &ply_path,
                                const bool use_binary = true);
+
+void save_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
+                              const std::string &ply_path,
+                              const bool use_binary = true);
+
 // EdgeFaceCellTuple cmap_to_efc_tuple(const CombinatorialMapTuple &cm);
 
 // /**

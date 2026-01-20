@@ -24,6 +24,253 @@ namespace mathutils {
 namespace mesh {
 namespace io {
 
+enum class PlyElementType : uint8_t {
+  VERTEX,
+  EDGE,
+  FACE,
+  CELL,
+  BOUNDARY,
+  HALF_EDGE,
+  DART
+};
+
+// INVALID,
+// INT8,
+// UINT8,
+// INT16,
+// UINT16,
+// INT32,
+// UINT32,
+// FLOAT32,
+// FLOAT64
+using InputTypeVariant_int8 = std::variant<int8_t>;
+
+using InputTypeVariant_int32 = std::variant<int, std::int32_t, std::int64_t>;
+using InputTypeVariant_double = std::variant<double, float>;
+
+using PlyInputTypeVariant =
+    std::variant<InputTypeVariant_int32, InputTypeVariant_double>;
+std::map<std::string,
+         std::variant<InputTypeVariant_int32, InputTypeVariant_double>>
+    ply_property_type_string_to_variant_type = {
+        {"int8", int(0)},       {"uint8", int(0)},     {"int16", int(0)},
+        {"uint16", int(0)},     {"int32", int(0)},     {"uint32", int(0)},
+        {"float32", double(0)}, {"float64", double(0)}};
+
+// template class for ply element names and keys
+template <typename InputDataType, typename StorageDataType,
+          tinyply::Type TinyplyDataType, int dim, bool is_list>
+struct PlyPropertySamplesTemplate {
+
+  static_assert(!is_list || (dim >= 1 && dim <= 255),
+                "list_count must fit in uint8_t and be >= 1.");
+  static_assert(dim != Eigen::Dynamic, "This template requires fixed dim.");
+
+  using InputSamples =
+      Eigen::Matrix<InputDataType, Eigen::Dynamic, dim,
+                    (dim == 1 ? Eigen::ColMajor : Eigen::RowMajor)>;
+  using StorageSamples =
+      Eigen::Matrix<StorageDataType, Eigen::Dynamic, dim,
+                    (dim == 1 ? Eigen::ColMajor : Eigen::RowMajor)>;
+
+  std::string mesh_samples_key = "";
+  // std::string property_name = "";
+  std::string element_name = "";
+  std::vector<std::string> property_names;
+  bool skip = false;
+  static constexpr bool need_to_convert_dtype =
+      !std::is_same_v<InputDataType, StorageDataType>;
+
+  // instances of PlyPropertySamplesTemplate
+  // will live in a vector inside the write_mesh_samples_to_ply
+  // function scope pointers to samples_storage will remain valid
+  // until mesh_file.write(...) is called inside that function
+  StorageSamples samples_storage;
+
+  // Constructor for single-name property (scalar or list)
+  PlyPropertySamplesTemplate(std::string mesh_samples_key_,
+                             std::string property_name_,
+                             std::string element_name_)
+      : mesh_samples_key(std::move(mesh_samples_key_)),
+        element_name(std::move(element_name_)),
+        property_names{std::move(property_name_)} {}
+
+  // Constructor for multiple scalar properties (e.g., "x", "y", "z" stored as
+  // columns of a single SamplesType)
+  PlyPropertySamplesTemplate(std::string mesh_samples_key_,
+                             std::vector<std::string> property_names_,
+                             std::string element_name_)
+      : mesh_samples_key(std::move(mesh_samples_key_)),
+        element_name(std::move(element_name_)),
+        property_names(std::move(property_names_)) {}
+
+  void add_property_to_mesh_file(const MeshSamplesMixed &mesh_samples,
+                                 tinyply::PlyFile &mesh_file) {
+    skip = false;
+
+    // Validate naming scheme up-front (compile-time branches)
+    if constexpr (is_list) {
+      if (property_names.size() != 1) {
+        skip = true;
+        std::cerr << "Warning: only one property_name is supported for "
+                     "lists but key "
+                  << mesh_samples_key << " has " << property_names.size()
+                  << "\n";
+        return;
+      }
+    } else {
+      if (property_names.size() != static_cast<size_t>(dim)) {
+        skip = true;
+        std::cerr << "Warning: property_names size mismatch for key "
+                  << mesh_samples_key << ": expected " << dim
+                  << " names but got " << property_names.size() << "\n";
+        return;
+      }
+    }
+
+    auto it = mesh_samples.find(mesh_samples_key);
+    if (it == mesh_samples.end()) {
+      skip = true;
+      std::cerr << "Warning: could not find data for key " << mesh_samples_key
+                << std::endl;
+      return;
+    }
+    const InputSamples *samples_ptr = std::get_if<InputSamples>(&it->second);
+    if (!samples_ptr) {
+      skip = true;
+      std::cerr << "Warning: could not find data for key " << mesh_samples_key
+                << " with expected type " << typeid(InputSamples).name()
+                << std::endl;
+      return;
+    }
+    if (samples_ptr->cols() != dim) {
+      skip = true;
+      std::cerr << "Warning: dimension mismatch for key " << mesh_samples_key
+                << ": expected " << dim << " but got " << samples_ptr->cols()
+                << std::endl;
+      return;
+    }
+    if (samples_ptr->size() == 0) {
+      skip = true;
+      std::cerr << "Warning: zero size for key " << mesh_samples_key
+                << std::endl;
+      return;
+    }
+
+    const auto rows = static_cast<uint32_t>(samples_ptr->rows());
+
+    auto add_from_ptr = [&](void *data_ptr) {
+      if constexpr (dim == 1 && !is_list) {
+        mesh_file.add_properties_to_element(
+            element_name, property_names, TinyplyDataType, rows,
+            reinterpret_cast<uint8_t *>(data_ptr), tinyply::Type::INVALID, 0);
+      } else if constexpr (is_list) {
+        mesh_file.add_properties_to_element(
+            element_name, property_names, TinyplyDataType, rows,
+            reinterpret_cast<uint8_t *>(data_ptr), tinyply::Type::UINT8,
+            static_cast<uint32_t>(dim));
+      } else {
+        mesh_file.add_properties_to_element(
+            element_name, property_names, TinyplyDataType, rows,
+            reinterpret_cast<uint8_t *>(data_ptr), tinyply::Type::INVALID, 0);
+      }
+    };
+
+    if constexpr (need_to_convert_dtype) {
+      samples_storage = samples_ptr->template cast<StorageDataType>();
+      add_from_ptr(static_cast<void *>(samples_storage.data()));
+    } else {
+      add_from_ptr(static_cast<void *>(
+          const_cast<InputDataType *>(samples_ptr->data())));
+    }
+  }
+};
+
+using PlyPropertySamplesi =
+    PlyPropertySamplesTemplate<int, std::int32_t, tinyply::Type::INT32, 1,
+                               false>;
+
+using PlyPropertySamples2i =
+    PlyPropertySamplesTemplate<int, std::int32_t, tinyply::Type::INT32, 2,
+                               false>;
+
+using PlyPropertySamples3i =
+    PlyPropertySamplesTemplate<int, std::int32_t, tinyply::Type::INT32, 3,
+                               false>;
+
+template <typename SamplesType> struct PlyPropertyMultiScalar {
+  std::string mesh_samples_key;
+  const SamplesType *samples_ptr;
+  std::string property_names;
+  tinyply::Type property_type;
+  int dim;
+};
+
+template <typename SamplesType> struct PlyPropertyList {
+  std::string mesh_samples_key;
+  const SamplesType *samples_ptr;
+  tinyply::Type property_type;
+  std::string property_name;
+  int dim;
+};
+
+struct PlyElement {
+  std::string name;
+  size_t count;
+  std::vector<std::shared_ptr<void>> properties;
+};
+
+struct PlyPropertySpec {
+  std::string mesh_samples_key;
+  std::string element_name;
+  std::vector<std::string> property_names;
+  std::vector<std::string> input_data_types;
+  std::string storage_data_type;
+  tinyply::Type tinyply_data_type = tinyply::Type::INVALID;
+  int dim;
+  bool is_list;
+};
+
+using xyz_coord_V_PlySpec =
+    PlyPropertySamplesTemplate<double, double, tinyply::Type::FLOAT32, 3,
+                               false>;
+
+struct PlyPropertySpec_int32 {
+  std::string mesh_samples_key;
+  std::string element_name;
+  std::vector<std::string> property_names;
+  std::vector<std::string> input_data_types{"int", "std::int32_t",
+                                            "std::int64_t"};
+  std::string storage_data_type = "std::int32_t";
+  tinyply::Type tinyply_data_type = tinyply::Type::INT32;
+  int dim = 1;
+  bool is_list = false;
+};
+
+struct PlyPropertySpec_double {
+  std::string mesh_samples_key;
+  std::string element_name;
+  std::vector<std::string> property_names;
+  std::vector<std::string> input_data_types{"double", "float"};
+  std::string storage_data_type = "std::int32_t";
+  tinyply::Type tinyply_data_type = tinyply::Type::INT32;
+  int dim = 1;
+  bool is_list = false;
+};
+
+struct VertexPlyElement {
+  std::string name = "vertex";
+  PlyElementType type = PlyElementType::VERTEX;
+  std::vector<std::shared_ptr<void>> properties;
+};
+
+struct VertexPlySpec {
+  std::string mesh_samples_key = "vertices";
+  std::string element_name = "vertex";
+
+  std::vector<std::string> property_names = {"x", "y", "z"};
+};
+
 std::pair<Samples3d, Samples3i>
 load_vf_samples_from_ply(const std::string &filepath,
                          const bool preload_into_memory, const bool verbose) {
@@ -232,10 +479,10 @@ void write_vf_samples_to_ply(Samples3d &xyz_coord_V, Samples3i &V_cycle_F,
 MeshSamples32 load_mesh_samples_from_ply(const std::string &filepath,
                                          const bool preload_into_memory,
                                          const bool verbose) {
-  using Samplesi = SamplesNiTemplate<std::int32_t, 1>;
-  using Samples2i = SamplesNiTemplate<std::int32_t, 2>;
-  using Samples3i = SamplesNiTemplate<std::int32_t, 3>;
-  using Samples4i = SamplesNiTemplate<std::int32_t, 4>;
+  using Samplesi = SamplesTypeDimTemplate<std::int32_t, 1>;
+  using Samples2i = SamplesTypeDimTemplate<std::int32_t, 2>;
+  using Samples3i = SamplesTypeDimTemplate<std::int32_t, 3>;
+  using Samples4i = SamplesTypeDimTemplate<std::int32_t, 4>;
 
   std::streambuf *oldCoutStreamBuf = nullptr;
   std::ofstream nullStream;
@@ -1166,10 +1413,11 @@ void write_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
                                const std::string &ply_path,
                                const bool use_binary) {
 
-  using Samplesi = SamplesNiTemplate<std::int32_t, 1>;
-  using Samples2i = SamplesNiTemplate<std::int32_t, 2>;
-  using Samples3i = SamplesNiTemplate<std::int32_t, 3>;
-  using Samples4i = SamplesNiTemplate<std::int32_t, 4>;
+  using Samplesi = SamplesTypeDimTemplate<std::int32_t, 1>;
+  using Samples2i = SamplesTypeDimTemplate<std::int32_t, 2>;
+  using Samples3i = SamplesTypeDimTemplate<std::int32_t, 3>;
+  using Samples4i = SamplesTypeDimTemplate<std::int32_t, 4>;
+
   std::vector<std::uint8_t> rgba_u8;
 
   std::filebuf fb;
@@ -1430,9 +1678,12 @@ void write_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
         tinyply::Type::INVALID, 0);
   }
   ////////////////////////////////////////////
+  // try { tripstrip = file.request_properties_from_element("tristrips", {
+  // "vertex_indices" }, 0); } catch (const std::exception & e) { std::cerr <<
+  // "tinyply exception: " << e.what() << std::endl; }
+
   // Boundaries
   if (auto it = mesh_samples.find("h_negative_B"); it != mesh_samples.end()) {
-
     h_negative_B = std::get_if<Samplesi>(&it->second);
     if (!h_negative_B) {
       throw std::runtime_error(
