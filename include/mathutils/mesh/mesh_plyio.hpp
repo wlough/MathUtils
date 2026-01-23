@@ -162,6 +162,56 @@ static std::map<std::string, MeshPlyPropertySpec> FacePropertyTable{
      MeshPlyPropertySpec("face", "rgba_F", {"red", "green", "blue", "alpha"},
                          SampleType::COLOR, false)}};
 
+static std::map<std::string, MeshPlyPropertySpec> BoundaryPropertyTable{
+    {"h_negative_B",
+     MeshPlyPropertySpec("boundary", "h_negative_B", {"h_negative"},
+                         SampleType::INDEX, false)},
+    {"d_through_B",
+     MeshPlyPropertySpec("boundary", "d_through_B", {"d_through"},
+                         SampleType::INDEX, false)},
+    {"rgba_B", MeshPlyPropertySpec("boundary", "rgba_B",
+                                   {"red", "green", "blue", "alpha"},
+                                   SampleType::COLOR, false)}};
+
+static std::map<std::string, MeshPlyPropertySpec> PlyPropertyTable{
+    {"xyz_coord_V",
+     MeshPlyPropertySpec("vertex", "xyz_coord_V", {"x", "y", "z"},
+                         SampleType::FIELD, false)},
+    {"h_out_V", MeshPlyPropertySpec("vertex", "h_out_V", {"h_out"},
+                                    SampleType::INDEX, false)},
+    {"d_through_V", MeshPlyPropertySpec("vertex", "d_through_V", {"d_through"},
+                                        SampleType::INDEX, false)},
+    {"rgba_V",
+     MeshPlyPropertySpec("vertex", "rgba_V", {"red", "green", "blue", "alpha"},
+                         SampleType::COLOR, false)},
+    {"V_cycle_E", MeshPlyPropertySpec("edge", "V_cycle_E", {"vertex_indices"},
+                                      SampleType::INDEX, true)},
+    {"h_directed_E", MeshPlyPropertySpec("edge", "h_directed_E", {"h_directed"},
+                                         SampleType::INDEX, false)},
+    {"d_through_E", MeshPlyPropertySpec("edge", "d_through_E", {"d_through"},
+                                        SampleType::INDEX, false)},
+    {"rgba_E",
+     MeshPlyPropertySpec("edge", "rgba_E", {"red", "green", "blue", "alpha"},
+                         SampleType::COLOR, false)},
+    {"V_cycle_F", MeshPlyPropertySpec("face", "V_cycle_F", {"vertex_indices"},
+                                      SampleType::INDEX, true)},
+    {"h_right_F", MeshPlyPropertySpec("face", "h_right_F", {"h_right"},
+                                      SampleType::INDEX, false)},
+    {"d_through_F", MeshPlyPropertySpec("face", "d_through_F", {"d_through"},
+                                        SampleType::INDEX, false)},
+    {"rgba_F",
+     MeshPlyPropertySpec("face", "rgba_F", {"red", "green", "blue", "alpha"},
+                         SampleType::COLOR, false)} {
+        "h_negative_B",
+        MeshPlyPropertySpec("boundary", "h_negative_B", {"h_negative"},
+                            SampleType::INDEX, false)},
+    {"d_through_B",
+     MeshPlyPropertySpec("boundary", "d_through_B", {"d_through"},
+                         SampleType::INDEX, false)},
+    {"rgba_B", MeshPlyPropertySpec("boundary", "rgba_B",
+                                   {"red", "green", "blue", "alpha"},
+                                   SampleType::COLOR, false)}};
+
 PlyMeshSamples to_ply_mesh_samples(const MeshSamples &mesh_samples);
 MeshSamples from_ply_mesh_samples(const PlyMeshSamples &ply_mesh_samples);
 
