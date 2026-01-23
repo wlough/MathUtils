@@ -1,5 +1,6 @@
 // matrix_type_caster.hpp
 #pragma once
+
 #include "mathutils/matrix.hpp"
 #include <cstring>
 #include <pybind11/numpy.h>
@@ -35,9 +36,7 @@ public:
   // C++ -> Python (zero-copy by moving into heap-owned capsule)
   static handle cast(mathutils::Matrix<T> src, return_value_policy, handle) {
     auto *heap = new mathutils::Matrix<T>(std::move(src));
-    py::capsule base(heap, [](void *p) {
-      delete reinterpret_cast<mathutils::Matrix<T> *>(p);
-    });
+    py::capsule base(heap, [](void *p) { delete reinterpret_cast<mathutils::Matrix<T> *>(p); });
 
     const ssize_t r = static_cast<ssize_t>(heap->rows());
     const ssize_t c = static_cast<ssize_t>(heap->cols());

@@ -8,7 +8,6 @@
 #include "mathutils/mesh/half_edge_mesh.hpp"
 #include "mathutils/mesh/mesh_convert_funs.hpp"
 #include "mathutils/mesh/mesh_plyio.hpp"
-// #include <unordered_map>
 
 /////////////////////////////////////
 /////////////////////////////////////

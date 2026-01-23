@@ -6,12 +6,6 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-// // Example usage:
-// #include "matrix_type_caster.hpp"
-// mathutils::Matrix<double> foo();
-// // Python sees numpy.ndarray
-// PYBIND11_MODULE(mathutils_backend, m) { m.def("foo", &foo); }
-
 namespace py = pybind11;
 
 void bind_mesh(py::module_ &m) {
@@ -91,11 +85,11 @@ Args:
     use_binary: Whether to write binary format (default: True)
 )doc");
 
-  //   m.def("save_ply_samples", &mathutils::mesh::io::save_ply_samples,
-  //         "Write mesh samples to a PLY file", py::arg("mesh_samples"),
-  //         py::arg("ply_path"), py::arg("use_binary") = true);
+  m.def("save_mesh_samples", &mathutils::mesh::io::save_mesh_samples,
+        "Write mesh samples to a PLY file", py::arg("mesh_samples"),
+        py::arg("ply_path"), py::arg("use_binary") = true);
 
-  //   m.def("load_ply_samples", &mathutils::mesh::io::load_ply_samples,
-  //         "Load mesh samples from a PLY file", py::arg("filepath"),
-  //         py::arg("preload_into_memory") = true, py::arg("verbose") = false)
+  m.def("load_mesh_samples", &mathutils::mesh::io::load_mesh_samples,
+        "Load mesh samples from a PLY file", py::arg("filepath"),
+        py::arg("preload_into_memory") = true, py::arg("verbose") = false);
 }
