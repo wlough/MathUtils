@@ -2,12 +2,7 @@
  * @file mesh_plyio.cpp
  */
 
-#ifndef TINYPLY_IMPLEMENTATION
-#define TINYPLY_IMPLEMENTATION
-#endif
-
 #include "mathutils/mesh/mesh_plyio.hpp"
-#include "mathutils/io/tinyply.h" // tinyply::PlyFile, tinyply::PlyData
 #include "mathutils/mesh/mesh_common.hpp"
 #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
 #include <algorithm>  // For std::min and std::max
@@ -20,6 +15,72 @@
 #include <unordered_set> // std::unordered_set
 #include <vector>        // std::vector
 
+// #ifndef TINYPLY_IMPLEMENTATION
+// #define TINYPLY_IMPLEMENTATION
+// #endif
+#include "mathutils/io/tinyply.h" // tinyply::PlyFile, tinyply::PlyData
+
+namespace mathutils {
+namespace mesh {
+namespace io {
+
+PlyMeshSamples to_ply_mesh_samples(const MeshSamples &mesh_samples) {
+
+  PlyMeshSamples ply_samples;
+
+  for (const auto &[key, value] : mesh_samples) {
+    std::visit(
+        [&](const auto &s) {
+          using T = std::decay_t<decltype(s)>;
+          if constexpr (std::is_same_v<T, SamplesIndex>) {
+            ply_samples.insert_or_assign(key, s.template to_dtype<PlyIndex>());
+          } else if constexpr (std::is_same_v<T, SamplesField>) {
+            ply_samples.insert_or_assign(key, s.template to_dtype<PlyReal>());
+          } else if constexpr (std::is_same_v<T, SamplesRGBA>) {
+            ply_samples.insert_or_assign(key, s.template to_dtype<PlyColor>());
+          } else {
+            throw std::runtime_error(
+                "to_ply_mesh_samples: unsupported sample variant type " +
+                std::string(typeid(T).name()) + " for key " + key);
+          }
+        },
+        value);
+  }
+  return ply_samples;
+}
+
+MeshSamples from_ply_mesh_samples(const PlyMeshSamples &ply_mesh_samples) {
+
+  MeshSamples mesh_samples;
+
+  for (const auto &[key, value] : ply_mesh_samples) {
+    std::visit(
+        [&](const auto &s) {
+          using T = std::decay_t<decltype(s)>;
+          if constexpr (std::is_same_v<T, PlySamplesIndex>) {
+            mesh_samples.insert_or_assign(key, s.template to_dtype<Index>());
+          } else if constexpr (std::is_same_v<T, PlySamplesField>) {
+            mesh_samples.insert_or_assign(key, s.template to_dtype<Real>());
+          } else if constexpr (std::is_same_v<T, PlySamplesRGBA>) {
+            mesh_samples.insert_or_assign(key, s.template to_dtype<Color>());
+          } else {
+            throw std::runtime_error(
+                "from_ply_mesh_samples: unsupported sample variant type " +
+                std::string(typeid(T).name()) + " for key " + key);
+          }
+        },
+        value);
+  }
+  return mesh_samples;
+}
+
+void save_ply_samples(const PlyMeshSamples &mesh_samples,
+                      const std::string &ply_path, const bool use_binary) {}
+
+} // namespace io
+} // namespace mesh
+} // namespace mathutils
+
 namespace mathutils {
 namespace mesh {
 namespace io {
@@ -29,33 +90,11 @@ enum class PlyElementType : uint8_t {
   EDGE,
   FACE,
   CELL,
+  SIMPLEX,
   BOUNDARY,
   HALF_EDGE,
-  DART
+  DART,
 };
-
-// INVALID,
-// INT8,
-// UINT8,
-// INT16,
-// UINT16,
-// INT32,
-// UINT32,
-// FLOAT32,
-// FLOAT64
-using InputTypeVariant_int8 = std::variant<int8_t>;
-
-using InputTypeVariant_int32 = std::variant<int, std::int32_t, std::int64_t>;
-using InputTypeVariant_double = std::variant<double, float>;
-
-using PlyInputTypeVariant =
-    std::variant<InputTypeVariant_int32, InputTypeVariant_double>;
-std::map<std::string,
-         std::variant<InputTypeVariant_int32, InputTypeVariant_double>>
-    ply_property_type_string_to_variant_type = {
-        {"int8", int(0)},       {"uint8", int(0)},     {"int16", int(0)},
-        {"uint16", int(0)},     {"int32", int(0)},     {"uint32", int(0)},
-        {"float32", double(0)}, {"float64", double(0)}};
 
 // template class for ply element names and keys
 template <typename InputDataType, typename StorageDataType,
@@ -95,7 +134,8 @@ struct PlyPropertySamplesTemplate {
         element_name(std::move(element_name_)),
         property_names{std::move(property_name_)} {}
 
-  // Constructor for multiple scalar properties (e.g., "x", "y", "z" stored as
+  // Constructor for multiple scalar properties (e.g., "x", "y", "z" stored
+  // as
   // columns of a single SamplesType)
   PlyPropertySamplesTemplate(std::string mesh_samples_key_,
                              std::vector<std::string> property_names_,
@@ -104,7 +144,7 @@ struct PlyPropertySamplesTemplate {
         element_name(std::move(element_name_)),
         property_names(std::move(property_names_)) {}
 
-  void add_property_to_mesh_file(const MeshSamplesMixed &mesh_samples,
+  void add_property_to_mesh_file(const MeshSamples &mesh_samples,
                                  tinyply::PlyFile &mesh_file) {
     skip = false;
 
@@ -270,6 +310,14 @@ struct VertexPlySpec {
 
   std::vector<std::string> property_names = {"x", "y", "z"};
 };
+
+} // namespace io
+} // namespace mesh
+} // namespace mathutils
+
+namespace mathutils {
+namespace mesh {
+namespace io {
 
 std::pair<Samples3d, Samples3i>
 load_vf_samples_from_ply(const std::string &filepath,
@@ -868,9 +916,21 @@ MeshSamples32 load_mesh_samples_from_ply(const std::string &filepath,
           h_negative_B_data =
               file.request_properties_from_element("boundary", {"h_negative"});
         } catch (const std::exception &e) {
-          // backward compatibility: try to load "h" property
-          h_negative_B_data =
-              file.request_properties_from_element("boundary", {"h"});
+          std::cerr << "tinyply exception: " << e.what()
+                    << ". Trying to load 'h' property for boundary instead. "
+                    << std::endl;
+          try {
+            // backward compatibility: try to load "h" property
+            std::cout
+                << "\t[ply_header] trying to load 'h' property for boundary"
+                << std::endl;
+            printf(
+                "\tf[ply_header] trying to load 'h' property for boundary\n");
+            h_negative_B_data =
+                file.request_properties_from_element("boundary", {"h"});
+          } catch (const std::exception &e) {
+            std::cerr << "tinyply exception: " << e.what() << std::endl;
+          }
         }
       }
       if (load_d_through_B) {

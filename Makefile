@@ -18,9 +18,6 @@ ifdef PYVER
 UVPY := python$(PYVER)
 endif
 
-# IMPORTANT:
-# Do NOT use ".venv" as a *container directory* that holds multiple venvs (e.g. .venv/build),
-# because uv may treat ".venv" itself as a venv. Use ".venvs" (or similar) as the container.
 VENV ?= .venvs/build
 BIN  := $(VENV)/bin
 
@@ -30,7 +27,7 @@ PKGNAME := pymathutils
 REPO_ROOT := $(abspath .)
 ABSBIN    := $(abspath $(BIN))
 
-# Absolute paths and uv helpers (no activation required)
+# Absolute paths and uv helpers 
 VENV_ABS := $(abspath $(VENV))
 UVPIP    := VIRTUAL_ENV=$(VENV_ABS) uv pip
 UVRUN    := VIRTUAL_ENV=$(VENV_ABS) uv run
@@ -76,7 +73,10 @@ dev-editable: $(VENV)
 	# Toolchain deps for scikit-build-core/pybind11 builds
 	$(UVPIP) install -U scikit-build-core pybind11 cmake ninja
 	# Editable install of this project (+ dev extras, if defined)
-	$(UVPIP) install -e ".[dev]" --no-build-isolation
+	$(UVPIP) install -U ".[dev]"
+	$(UVPIP) install -e . --no-build-isolation --force-reinstall --no-deps -v
+# 	$(UVPIP) install -e ".[dev]" --no-build-isolation --upgrade --force-reinstall --no-deps -v
+# 	$(UVPIP) install -e ".[dev]" --no-build-isolation
 
 build: venv
 	rm -rf $(DISTDIR) build *.egg-info

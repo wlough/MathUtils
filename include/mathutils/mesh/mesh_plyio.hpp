@@ -26,25 +26,168 @@
 namespace mathutils {
 namespace mesh {
 namespace io {
+using PlyIndex = std::uint32_t;
+using PlyReal = double;
+using PlyColor = std::uint8_t;
+using PlySamplesIndex = Matrix<PlyIndex>;
+using PlySamplesField = Matrix<PlyReal>;
+using PlySamplesRGBA = Matrix<PlyColor>;
+using PlySamplesVariant =
+    std::variant<PlySamplesIndex, PlySamplesField, PlySamplesRGBA>;
+using PlyMeshSamples = std::map<std::string, PlySamplesVariant>;
 
-// struct double2 {
-//   double x, y;
-// };
-// struct double3 {
-//   double x, y, z;
-// };
-// struct double4 {
-//   double x, y, z, w;
-// };
-// struct int2 {
-//   int x, y;
-// };
-// struct int3 {
-//   int x, y, z;
-// };
-// struct int4 {
-//   int x, y, z, w;
-// };
+enum class SampleType : uint8_t { INDEX, FIELD, COLOR, INVALID };
+
+static std::map<SampleType, tinyply::Type> PlyTypeFromSampleType{
+    {SampleType::INDEX, tinyply::Type::UINT32},
+    {SampleType::FIELD, tinyply::Type::UINT32},
+    {SampleType::COLOR, tinyply::Type::UINT8},
+    {SampleType::INVALID, tinyply::Type::INVALID}};
+
+enum class IDType : uint8_t {
+  VERTEX,
+  EDGE,
+  FACE,
+  CELL,
+  SIMPLEX0,
+  SIMPLEX1,
+  SIMPLEX2,
+  SIMPLEX3,
+  BOUNDARY,
+  HALF_EDGE,
+  HALF_FACE,
+  DART,
+  INVALID
+};
+
+struct MeshPlyPropertySpec {
+  MeshPlyPropertySpec() = default;
+  MeshPlyPropertySpec(const std::string element_key_,
+                      const std::string samples_key_,
+                      const std::vector<std::string> property_keys_,
+                      const SampleType sample_type_, bool is_list_)
+      : element_key(element_key_), samples_key(samples_key_),
+        property_keys(property_keys_), sample_type(sample_type_),
+        is_list(is_list_) {}
+  std::string element_key;
+  std::string samples_key;
+  std::vector<std::string> property_keys;
+  SampleType sample_type{SampleType::INVALID};
+  bool is_list{false};
+  void add_property_to_mesh_file(const PlyMeshSamples &mesh_samples,
+                                 tinyply::PlyFile &mesh_file) {
+    auto it = mesh_samples.find(samples_key);
+    if (it == mesh_samples.end()) {
+      std::cerr << "Warning: could not find data for key " << samples_key
+                << std::endl;
+      return;
+    }
+    const auto &samples_variant = it->second;
+    const tinyply::Type tinyply_type = PlyTypeFromSampleType.at(sample_type);
+
+    std::visit(
+        [&](auto &&samples) {
+          using SamplesT = std::decay_t<decltype(samples)>;
+
+          SampleType actual{};
+          if constexpr (std::is_same_v<SamplesT, SamplesIndex>)
+            actual = SampleType::INDEX;
+          else if constexpr (std::is_same_v<SamplesT, SamplesField>)
+            actual = SampleType::FIELD;
+          else if constexpr (std::is_same_v<SamplesT, SamplesRGBA>)
+            actual = SampleType::COLOR;
+          else
+            throw std::runtime_error("Unsupported sample type for key " +
+                                     samples_key);
+
+          if (actual != sample_type) {
+            throw std::runtime_error("Sample type mismatch for key " +
+                                     samples_key);
+          }
+          const std::uint32_t Nrows =
+              static_cast<std::uint32_t>(samples.rows());
+          auto *data_ptr = reinterpret_cast<std::uint8_t *>(
+              const_cast<std::remove_const_t<
+                  std::remove_pointer_t<decltype(samples.data())>> *>(
+                  samples.data()));
+
+          if (!is_list) {
+            mesh_file.add_properties_to_element(element_key, property_keys,
+                                                tinyply_type, Nrows, data_ptr,
+                                                tinyply::Type::INVALID, 0);
+            return;
+          }
+          const std::uint32_t list_count = static_cast<std::uint32_t>(
+              samples.cols()); // fixed length per element
+          mesh_file.add_properties_to_element(element_key, property_keys,
+                                              tinyply_type, Nrows, data_ptr,
+                                              tinyply::Type::UINT8, list_count);
+        },
+        samples_variant);
+  }
+};
+
+static std::map<std::string, MeshPlyPropertySpec> VertexPropertyTable{
+    {"xyz_coord_V",
+     MeshPlyPropertySpec("vertex", "xyz_coord_V", {"x", "y", "z"},
+                         SampleType::FIELD, false)},
+    {"h_out_V", MeshPlyPropertySpec("vertex", "h_out_V", {"h_out"},
+                                    SampleType::INDEX, false)},
+    {"d_through_V", MeshPlyPropertySpec("vertex", "d_through_V", {"d_through"},
+                                        SampleType::INDEX, false)},
+    {"rgba_V",
+     MeshPlyPropertySpec("vertex", "rgba_V", {"red", "green", "blue", "alpha"},
+                         SampleType::COLOR, false)}};
+
+// (element_key_, samples_key_, property_keys_, sample_type_, is_list_)
+static std::map<std::string, MeshPlyPropertySpec> EdgePropertyTable{
+    {"V_cycle_E", MeshPlyPropertySpec("edge", "V_cycle_E", {"vertex_indices"},
+                                      SampleType::INDEX, true)},
+    {"h_directed_E", MeshPlyPropertySpec("edge", "h_directed_E", {"h_directed"},
+                                         SampleType::INDEX, false)},
+    {"d_through_E", MeshPlyPropertySpec("edge", "d_through_E", {"d_through"},
+                                        SampleType::INDEX, false)},
+    {"rgba_E",
+     MeshPlyPropertySpec("edge", "rgba_E", {"red", "green", "blue", "alpha"},
+                         SampleType::COLOR, false)}};
+
+static std::map<std::string, MeshPlyPropertySpec> FacePropertyTable{
+    {"V_cycle_F", MeshPlyPropertySpec("face", "V_cycle_F", {"vertex_indices"},
+                                      SampleType::INDEX, true)},
+    {"h_right_F", MeshPlyPropertySpec("face", "h_right_F", {"h_right"},
+                                      SampleType::INDEX, false)},
+    {"d_through_F", MeshPlyPropertySpec("face", "d_through_F", {"d_through"},
+                                        SampleType::INDEX, false)},
+    {"rgba_F",
+     MeshPlyPropertySpec("face", "rgba_F", {"red", "green", "blue", "alpha"},
+                         SampleType::COLOR, false)}};
+
+PlyMeshSamples to_ply_mesh_samples(const MeshSamples &mesh_samples);
+MeshSamples from_ply_mesh_samples(const PlyMeshSamples &ply_mesh_samples);
+
+void save_ply_samples(const PlyMeshSamples &mesh_samples,
+                      const std::string &ply_path,
+                      const bool use_binary = true);
+
+void save_ply_samples(const MeshSamples &mesh_samples,
+                      const std::string &ply_path,
+                      const bool use_binary = true) {
+  PlyMeshSamples ply_samples = to_ply_mesh_samples(mesh_samples);
+  save_ply_samples(ply_samples, ply_path, use_binary);
+}
+
+MeshSamples load_ply_samples(const std::string &filepath,
+                             const bool preload_into_memory = true,
+                             const bool verbose = false);
+
+} // namespace io
+} // namespace mesh
+} // namespace mathutils
+
+namespace mathutils {
+namespace mesh {
+namespace io {
+
 ////////////////////////////////////////////
 // misc tinyply helpers ////////////////////
 ////////////////////////////////////////////
@@ -214,82 +357,6 @@ MeshSamples32 load_mesh_samples_from_ply(const std::string &filepath,
 void write_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
                                const std::string &ply_path,
                                const bool use_binary = true);
-
-void save_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
-                              const std::string &ply_path,
-                              const bool use_binary = true);
-
-// EdgeFaceCellTuple cmap_to_efc_tuple(const CombinatorialMapTuple &cm);
-
-// /**
-//  * @brief writes `SimplicialComplexData` to a .ply file.
-//  *
-//  * @param sc_data SimplicialComplexData
-//  * @param ply_path std::string
-//  * @param use_binary bool
-//  */
-// void write_simplicial_complex_data_to_ply(const SimplicialComplexData
-// &sc_data,
-//                                           const std::string &ply_path,
-//                                           const bool use_binary = true);
-// // void write_simplicial_complex_data_to_ply(const SimplicialComplexData
-// // &sc_data,
-// //                                           const std::string &ply_path,
-// //                                           bool use_binary);
-// SimplicialComplexData
-// load_simplicial_complex_data_from_ply(const std::string &filepath,
-//                                       const bool preload_into_memory = true,
-//                                       const bool verbose = false);
-
-// ////////////////////////////////////////////
-// // mesh converter //////////////////////////
-// ////////////////////////////////////////////
-// class MeshBuilder {
-// public:
-//   /////////////////
-//   // Constructors /
-//   /////////////////
-//   MeshBuilder();
-
-//   static MeshBuilder from_vf_ply(const std::string &ply_path,
-//                                  bool compute_he_stuff = true);
-//   static MeshBuilder from_vf_samples(const meshbrane::Samples3d &xyz_coord_V,
-//                                      const meshbrane::Samples3i &V_cycle_F,
-//                                      bool compute_he_stuff = true);
-//   static MeshBuilder from_he_ply(const std::string &ply_path,
-//                                  bool compute_vf_stuff = true);
-//   static MeshBuilder from_he_samples(
-//       const meshbrane::Samples3d &xyz_coord_V,
-//       const meshbrane::Samplesi &h_out_V, const meshbrane::Samplesi
-//       &v_origin_H, const meshbrane::Samplesi &h_next_H, const
-//       meshbrane::Samplesi &h_twin_H, const meshbrane::Samplesi &f_left_H,
-//       const meshbrane::Samplesi &h_right_F, const meshbrane::Samplesi
-//       &h_negative_B, bool compute_vf_stuff = true);
-
-//   ///////////////
-//   // Attributes /
-//   ///////////////
-//   std::string vf_ply_path;
-//   meshbrane::VertexFaceTuple vf_samples;
-//   std::string he_ply_path;
-//   meshbrane::HalfEdgeTuple he_samples;
-
-//   ////////////
-//   // Methods /
-//   ////////////
-//   meshbrane::VertexEdgeFaceTuple get_vef_samples();
-
-//   void write_vf_ply(const std::string &ply_path, const bool use_binary =
-//   true); void write_he_ply(const std::string &ply_path, const bool use_binary
-//   = true);
-
-// private:
-//   //   std::string vf_ply_path;
-//   //   tinyply::PlyData vf_ply_data;
-//   //   meshbrane::VertexFaceTuple vf_samples;
-//   //   tinyply::PlyData he_ply_data;
-//   //   meshbrane::HalfEdgeTuple he_samples;
-// };
 
 /** @}*/ // end of group MeshIO
 

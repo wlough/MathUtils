@@ -5,6 +5,11 @@
  */
 
 #include "mathutils/mesh/mesh_common.hpp"
+
+namespace mathutils {
+namespace mesh {} // namespace mesh
+} // namespace mathutils
+
 namespace mathutils {
 namespace mesh {
 
@@ -36,39 +41,39 @@ namespace mesh {
 //   return out;
 // }
 
-MeshSamples32
-convert_mesh_samples_mixed_to_32(const MeshSamples &mesh_samples) {
-  MeshSamples32 mesh_samples_32;
+// MeshSamples32
+// convert_mesh_samples_mixed_to_32(const MeshSamples &mesh_samples) {
+//   MeshSamples32 mesh_samples_32;
 
-  for (const auto &[key, value] : mesh_samples) {
-    std::visit(
-        [&](const auto &v) {
-          using T = std::decay_t<decltype(v)>;
+//   for (const auto &[key, value] : mesh_samples) {
+//     std::visit(
+//         [&](const auto &v) {
+//           using T = std::decay_t<decltype(v)>;
 
-          if constexpr (std::is_same_v<T, Samplesi64> ||
-                        std::is_same_v<T, Samples2i64> ||
-                        std::is_same_v<T, Samples3i64> ||
-                        std::is_same_v<T, Samples4i64>) {
-            mesh_samples_32[key] = checked_cast_eigen_i64_to_i32(v);
+//           if constexpr (std::is_same_v<T, Samplesi64> ||
+//                         std::is_same_v<T, Samples2i64> ||
+//                         std::is_same_v<T, Samples3i64> ||
+//                         std::is_same_v<T, Samples4i64>) {
+//             mesh_samples_32[key] = checked_cast_eigen_i64_to_i32(v);
 
-          } else if constexpr (std::is_same_v<T, RaggedSamplesi64>) {
-            RaggedSamplesi32 ragged_32;
-            ragged_32.reserve(v.size());
-            for (const auto &vec64 : v) {
-              ragged_32.emplace_back(checked_cast_vec_i64_to_i32(vec64));
-            }
-            mesh_samples_32[key] = std::move(ragged_32);
+//           } else if constexpr (std::is_same_v<T, RaggedSamplesi64>) {
+//             RaggedSamplesi32 ragged_32;
+//             ragged_32.reserve(v.size());
+//             for (const auto &vec64 : v) {
+//               ragged_32.emplace_back(checked_cast_vec_i64_to_i32(vec64));
+//             }
+//             mesh_samples_32[key] = std::move(ragged_32);
 
-          } else {
-            // Samples*i32, Samples*d, etc.
-            mesh_samples_32[key] = v;
-          }
-        },
-        value);
-  }
+//           } else {
+//             // Samples*i32, Samples*d, etc.
+//             mesh_samples_32[key] = v;
+//           }
+//         },
+//         value);
+//   }
 
-  return mesh_samples_32;
-}
+//   return mesh_samples_32;
+// }
 
 } // namespace mesh
 } // namespace mathutils

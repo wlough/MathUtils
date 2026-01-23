@@ -29,7 +29,6 @@ Repository = "https://github.com/wlough/MathUtils"
 Issues = "https://github.com/wlough/MathUtils/issues"
 
 [project.optional-dependencies]
-# dev = ["pytest", "build", "twine", "scipy", "sympy", "matplotlib"]
 dev = [
     "black",
     "build",
@@ -43,17 +42,15 @@ dev = [
     "pytest",
     "python-lsp-server",
     "pyvista[all]",
-    # "mayavi==4.8.1",
-    # "PyQt5==5.15.10",
-    # "vtk==9.2.6",
-    # "mayavi",
     "PyQt5",
     "vtk",
     "scipy",
     "sympy",
     "twine",
 ]
-# graphics = ["pyvista[trame]", "trame", "trame-vuetify", "trame-vtk"]
+# dev = ["pytest", "build", "twine", "scipy", "sympy", "matplotlib"]
+# pyvista = ["pyvista[all]", "PyQt5", "vtk"]
+# mayavi = ["mayavi==4.8.1", "PyQt5==5.15.10", "vtk==9.2.6"]
 
 [tool.scikit-build]
 wheel.packages = ["src/pymathutils"]
