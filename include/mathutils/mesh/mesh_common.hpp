@@ -114,12 +114,12 @@ using MeshSamples32 = MeshSamplesTemplate<std::int32_t>;
 namespace mathutils {
 namespace mesh {
 
-using Index = std::uint64_t;
+using Index = std::int64_t;
 using Real = double;
 using Color = std::uint8_t;
 
-static_assert(std::is_unsigned<Index>::value,
-              "Index must be an unsigned integral type");
+// static_assert(std::is_unsigned<Index>::value,
+//               "Index must be an unsigned integral type");
 static_assert(std::is_floating_point<Real>::value,
               "Real must be a floating point type");
 static_assert(std::is_unsigned<Color>::value,

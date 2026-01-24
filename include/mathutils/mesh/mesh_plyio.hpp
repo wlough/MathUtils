@@ -26,7 +26,7 @@
 namespace mathutils {
 namespace mesh {
 namespace io {
-using PlyIndex = std::uint32_t;
+using PlyIndex = std::int32_t;
 using PlyReal = double;
 using PlyColor = std::uint8_t;
 static tinyply::Type tinyplyIndex = tinyply::Type::UINT32;

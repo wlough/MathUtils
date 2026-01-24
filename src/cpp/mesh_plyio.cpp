@@ -286,14 +286,21 @@ PlyMeshSamples load_ply_samples(const std::string &filepath,
 
     file.read(*file_stream);
 
+    std::map<std::string, MeshPlyPropertySpec *> PlyPropertyTable_ptr;
+
+    for (auto &property_spec : PlyPropertySpecs) {
+      PlyPropertyTable_ptr[property_spec.samples_key] = &property_spec;
+    }
+
     for (const auto &[key, samples_ptr] : requested_data) {
 
-      // try {
-      MeshPlyPropertySpec property_spec = PlyPropertyTable.at(key);
-      // } catch (const std::out_of_range &e) {
-      //   throw std::runtime_error(
-      //       "Unsupported PlyPropertyTable.at(key) for key " + key);
-      // }
+      MeshPlyPropertySpec property_spec;
+      try {
+        property_spec = *PlyPropertyTable_ptr.at(key);
+      } catch (const std::out_of_range &e) {
+        throw std::runtime_error(
+            "Unsupported PlyPropertyTable.at(key) for key " + key);
+      }
 
       const size_t rows = samples_ptr->count;
       std::size_t cols = property_spec.is_list
