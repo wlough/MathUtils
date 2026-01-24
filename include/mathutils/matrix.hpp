@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <limits>
 #include <span>
@@ -10,6 +11,8 @@
 #include <vector>
 
 namespace mathutils {
+
+enum class NumpyView : uint8_t { Ndarray2D, Ndarray1D };
 
 /**
  * @brief A simple 2D matrix class with row-major contiguous storage.
@@ -40,41 +43,50 @@ private:
   std::size_t rows_{0};
   std::size_t cols_{0};
   std::vector<DataType> data_;
+  NumpyView numpy_view_{NumpyView::Ndarray2D};
 
 public:
   using value_type = DataType;
 
   Matrix() = default;
-
   Matrix(std::size_t rows, std::size_t cols)
       : rows_(rows), cols_(cols), data_(checked_size(rows, cols)) {}
+  Matrix(std::size_t rows, std::size_t cols, NumpyView view)
+      : rows_(rows), cols_(cols), data_(checked_size(rows, cols)),
+        numpy_view_(view) {}
 
-  Matrix(std::size_t rows, std::size_t cols, const DataType &fill)
-      : rows_(rows), cols_(cols), data_(checked_size(rows, cols), fill) {}
+  // Matrix(std::size_t rows, std::size_t cols, const DataType &fill)
+  //     : rows_(rows), cols_(cols), data_(checked_size(rows, cols), fill) {}
 
   // Construct with explicit storage (must match rows*cols).
-  Matrix(std::size_t rows, std::size_t cols, std::vector<DataType> data)
-      : rows_(rows), cols_(cols), data_(std::move(data)) {
-    if (data_.size() != checked_size(rows_, cols_)) {
-      throw std::invalid_argument("Matrix: data size != rows*cols");
-    }
-  }
+  // Matrix(std::size_t rows, std::size_t cols, std::vector<DataType> data)
+  //     : rows_(rows), cols_(cols), data_(std::move(data)) {
+  //   if (data_.size() != checked_size(rows_, cols_)) {
+  //     throw std::invalid_argument("Matrix: data size != rows*cols");
+  //   }
+  // }
 
   // 2D initializer: Matrix<double> A{{1,2,3},{4,5,6}};
-  Matrix(std::initializer_list<std::initializer_list<DataType>> init) {
-    rows_ = init.size();
-    cols_ = rows_ ? init.begin()->size() : 0;
+  // Matrix(std::initializer_list<std::initializer_list<DataType>> init) {
+  //   rows_ = init.size();
+  //   cols_ = rows_ ? init.begin()->size() : 0;
 
-    for (const auto &row : init) {
-      if (row.size() != cols_) {
-        throw std::invalid_argument("Matrix: ragged initializer_list");
-      }
-    }
+  //   for (const auto &row : init) {
+  //     if (row.size() != cols_) {
+  //       throw std::invalid_argument("Matrix: ragged initializer_list");
+  //     }
+  //   }
 
-    data_.reserve(checked_size(rows_, cols_));
-    for (const auto &row : init) {
-      data_.insert(data_.end(), row.begin(), row.end());
-    }
+  //   data_.reserve(checked_size(rows_, cols_));
+  //   for (const auto &row : init) {
+  //     data_.insert(data_.end(), row.begin(), row.end());
+  //   }
+  // }
+
+  void set_numpy_view(NumpyView v) { numpy_view_ = v; }
+  NumpyView numpy_view() const { return numpy_view_; }
+  bool want_numpy_vector() const {
+    return (rows_ == 1 || cols_ == 1) && (numpy_view_ == NumpyView::Ndarray1D);
   }
 
   // Dimensions
@@ -148,18 +160,6 @@ public:
     data_.clear();
   }
 
-  // template <typename NewDataType> Matrix<NewDataType> to_dtype() const {
-  //   static_assert(std::is_constructible_v<NewDataType, DataType>,
-  //                 "NewDataType must be constructible from DataType");
-
-  //   Matrix<NewDataType> out(rows_, cols_);
-  //   auto *dst = out.data();
-  //   for (std::size_t i = 0; i < data_.size(); ++i) {
-  //     dst[i] = NewDataType(data_[i]);
-  //   }
-  //   return out;
-  // }
-
   DataType max_coeff() const {
     if (data_.empty()) {
       throw std::runtime_error("Matrix: max_coeff() called on empty matrix");
@@ -199,7 +199,7 @@ public:
       if (old_min < new_low || old_max > new_hi) {
         throw std::runtime_error("Matrix: to_dtype would overflow");
       }
-      Matrix<NewDataType> out(rows_, cols_);
+      Matrix<NewDataType> out(rows_, cols_, numpy_view_);
       auto *dst = out.data();
       for (std::size_t i = 0; i < data_.size(); ++i) {
         dst[i] = static_cast<NewDataType>(data_[i]);

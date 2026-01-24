@@ -118,32 +118,48 @@ void MeshPlyPropertySpec::add_property_to_mesh_file(
       samples_variant);
 }
 
-void MeshPlyPropertySpec::add_property_to_mesh_samples(
-    PlyMeshSamples &mesh_samples, tinyply::PlyFile &mesh_file) const {
-  std::shared_ptr<tinyply::PlyData> samples_ptr =
-      mesh_file.request_properties_from_element(element_key, property_keys,
-                                                is_list ? list_count : 0);
-  const size_t rows = samples_ptr->count;
-  std::size_t cols = is_list ? list_count : property_keys.size();
-  const size_t numSamplesBytes = samples_ptr->buffer.size_bytes();
+// void MeshPlyPropertySpec::add_property_to_mesh_samples(
+//     PlyMeshSamples &mesh_samples, tinyply::PlyFile &mesh_file) const {
+//   std::shared_ptr<tinyply::PlyData> samples_ptr =
+//       mesh_file.request_properties_from_element(element_key, property_keys,
+//                                                 is_list ? list_count : 0);
+//   size_t rows = samples_ptr->count;
+//   std::size_t cols = is_list ? list_count : property_keys.size();
+//   const size_t numSamplesBytes = samples_ptr->buffer.size_bytes();
 
-  PlySamplesVariant samples_variant;
-  if (sample_type == SampleType::INDEX) {
-    mesh_samples[samples_key] = Matrix<PlyIndex>(rows, cols);
-  } else if (sample_type == SampleType::FIELD) {
-    mesh_samples[samples_key] = Matrix<PlyReal>(rows, cols);
-  } else if (sample_type == SampleType::COLOR) {
-    mesh_samples[samples_key] = Matrix<PlyColor>(rows, cols);
-  } else {
-    throw std::runtime_error("Unsupported sample type for key " + samples_key);
-  }
+//   // if (is_list) {
+//   //   // N-by-(#list_count) samples
+//   //   rows = samples_ptr->count;
+//   //   cols = list_count;
+//   // } else if (property_keys.size() == 1) {
+//   //   // row vector when only one property key
+//   //   rows = 1;
+//   //   cols = samples_ptr->count;
+//   // } else {
+//   //   // N-by-(#properties) samples
+//   //   rows = samples_ptr->count;
+//   //   cols = property_keys.size();
+//   // }
 
-  std::visit(
-      [&](auto &&samples) {
-        std::memcpy(samples.data(), samples_ptr->buffer.get(), numSamplesBytes);
-      },
-      mesh_samples[samples_key]);
-}
+//   PlySamplesVariant samples_variant;
+//   if (sample_type == SampleType::INDEX) {
+//     mesh_samples[samples_key] = Matrix<PlyIndex>(rows, cols);
+//   } else if (sample_type == SampleType::FIELD) {
+//     mesh_samples[samples_key] = Matrix<PlyReal>(rows, cols);
+//   } else if (sample_type == SampleType::COLOR) {
+//     mesh_samples[samples_key] = Matrix<PlyColor>(rows, cols);
+//   } else {
+//     throw std::runtime_error("Unsupported sample type for key " +
+//     samples_key);
+//   }
+
+//   std::visit(
+//       [&](auto &&samples) {
+//         std::memcpy(samples.data(), samples_ptr->buffer.get(),
+//         numSamplesBytes);
+//       },
+//       mesh_samples[samples_key]);
+// }
 
 std::shared_ptr<tinyply::PlyData>
 MeshPlyPropertySpec::request_property_from_mesh_file(
@@ -308,13 +324,36 @@ PlyMeshSamples load_ply_samples(const std::string &filepath,
                              : property_spec.property_keys.size();
       const size_t numSamplesBytes = samples_ptr->buffer.size_bytes();
 
+      // if (is_list) {
+      //   // N-by-(#list_count) samples
+      //   rows = samples_ptr->count;
+      //   cols = list_count;
+      // } else if (property_keys.size() == 1) {
+      //   // row vector when only one property key
+      //   rows = 1;
+      //   cols = samples_ptr->count;
+      // } else {
+      //   // N-by-(#properties) samples
+      //   rows = samples_ptr->count;
+      //   cols = property_keys.size();
+      // }
+      mathutils::NumpyView numpy_view;
+      if (rows == 1 || cols == 1) {
+        numpy_view = mathutils::NumpyView::Ndarray1D;
+      } else {
+        numpy_view = mathutils::NumpyView::Ndarray2D;
+      }
+
       PlySamplesVariant samples_variant;
       if (property_spec.sample_type == SampleType::INDEX) {
-        mesh_samples[property_spec.samples_key] = Matrix<PlyIndex>(rows, cols);
+        mesh_samples[property_spec.samples_key] =
+            Matrix<PlyIndex>(rows, cols, numpy_view);
       } else if (property_spec.sample_type == SampleType::FIELD) {
-        mesh_samples[property_spec.samples_key] = Matrix<PlyReal>(rows, cols);
+        mesh_samples[property_spec.samples_key] =
+            Matrix<PlyReal>(rows, cols, numpy_view);
       } else if (property_spec.sample_type == SampleType::COLOR) {
-        mesh_samples[property_spec.samples_key] = Matrix<PlyColor>(rows, cols);
+        mesh_samples[property_spec.samples_key] =
+            Matrix<PlyColor>(rows, cols, numpy_view);
       } else {
         throw std::runtime_error("Unsupported sample type for key " +
                                  property_spec.samples_key);
@@ -331,6 +370,35 @@ PlyMeshSamples load_ply_samples(const std::string &filepath,
   } catch (const std::exception &e) {
     std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
   }
+
+  // // DEBUG
+  // for (const auto &[key, samples_variant] : mesh_samples) {
+  //   std::visit(
+  //       [&](auto &&samples) {
+  //         // now print key, type, rows, cols, numpy_view
+  //         using T = std::decay_t<decltype(samples)>;
+  //         std::string type_name;
+  //         if constexpr (std::is_same_v<T, PlySamplesIndex>) {
+  //           type_name = "PlySamplesIndex";
+  //           ;
+  //         } else if constexpr (std::is_same_v<T, PlySamplesField>) {
+  //           type_name = "PlySamplesField";
+  //           ;
+  //         } else if constexpr (std::is_same_v<T, PlySamplesRGBA>) {
+  //           type_name = "PlySamplesRGBA";
+  //           ;
+  //         } else {
+  //           type_name = "UnknownType";
+  //         }
+  //         std::cout << "[ply_load] loaded key: " << key
+  //                   << ", type: " << type_name << ", rows: " <<
+  //                   samples.rows()
+  //                   << ", cols: " << samples.cols() << ", numpy_view: "
+  //                   << static_cast<int>(samples.numpy_view()) << std::endl;
+  //       },
+  //       samples_variant);
+  // }
+  // // DEBUG
   return mesh_samples;
 }
 

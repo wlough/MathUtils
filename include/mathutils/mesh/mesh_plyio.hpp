@@ -26,26 +26,26 @@
 namespace mathutils {
 namespace mesh {
 namespace io {
-using PlyIndex = std::int32_t;
-using PlyReal = double;
-using PlyColor = std::uint8_t;
-static tinyply::Type tinyplyIndex = tinyply::Type::UINT32;
-static tinyply::Type tinyplyReal = tinyply::Type::FLOAT64;
-static tinyply::Type tinyplyColor = tinyply::Type::UINT8;
-using PlySamplesIndex = Matrix<PlyIndex>;
-using PlySamplesField = Matrix<PlyReal>;
-using PlySamplesRGBA = Matrix<PlyColor>;
-using PlySamplesVariant =
-    std::variant<PlySamplesIndex, PlySamplesField, PlySamplesRGBA>;
-using PlyMeshSamples = std::map<std::string, PlySamplesVariant>;
+// using PlyIndex = std::int32_t;
+// using PlyReal = double;
+// using PlyColor = std::uint8_t;
+// static tinyply::Type tinyplyIndex = tinyply::Type::INT32;
+// static tinyply::Type tinyplyReal = tinyply::Type::FLOAT64;
+// static tinyply::Type tinyplyColor = tinyply::Type::UINT8;
+// using PlySamplesIndex = Matrix<PlyIndex>;
+// using PlySamplesField = Matrix<PlyReal>;
+// using PlySamplesRGBA = Matrix<PlyColor>;
+// using PlySamplesVariant =
+//     std::variant<PlySamplesIndex, PlySamplesField, PlySamplesRGBA>;
+// using PlyMeshSamples = std::map<std::string, PlySamplesVariant>;
 
-enum class SampleType : uint8_t { INDEX, FIELD, COLOR, INVALID };
+// enum class SampleType : uint8_t { INDEX, FIELD, COLOR, INVALID };
 
-static std::map<SampleType, tinyply::Type> PlyTypeFromSampleType{
-    {SampleType::INDEX, tinyply::Type::UINT32},
-    {SampleType::FIELD, tinyply::Type::UINT32},
-    {SampleType::COLOR, tinyply::Type::UINT8},
-    {SampleType::INVALID, tinyply::Type::INVALID}};
+// static std::map<SampleType, tinyply::Type> PlyTypeFromSampleType{
+//     {SampleType::INDEX, tinyply::Type::UINT32},
+//     {SampleType::FIELD, tinyply::Type::FLOAT64},
+//     {SampleType::COLOR, tinyply::Type::UINT8},
+//     {SampleType::INVALID, tinyply::Type::INVALID}};
 
 enum class IDType : uint8_t {
   VERTEX,
@@ -102,8 +102,8 @@ struct MeshPlyPropertySpec {
   void add_property_to_mesh_file(const PlyMeshSamples &mesh_samples,
                                  tinyply::PlyFile &mesh_file) const;
 
-  void add_property_to_mesh_samples(PlyMeshSamples &mesh_samples,
-                                    tinyply::PlyFile &mesh_file) const;
+  // void add_property_to_mesh_samples(PlyMeshSamples &mesh_samples,
+  //                                   tinyply::PlyFile &mesh_file) const;
 
   std::shared_ptr<tinyply::PlyData>
   request_property_from_mesh_file(tinyply::PlyFile &mesh_file) const;

@@ -117,22 +117,38 @@ namespace mesh {
 using Index = std::int64_t;
 using Real = double;
 using Color = std::uint8_t;
-
 // static_assert(std::is_unsigned<Index>::value,
 //               "Index must be an unsigned integral type");
 static_assert(std::is_floating_point<Real>::value,
               "Real must be a floating point type");
 static_assert(std::is_unsigned<Color>::value,
               "Color must be an unsigned integral type");
-
 using SamplesIndex = Matrix<Index>;
 using SamplesField = Matrix<Real>;
 using SamplesRGBA = Matrix<Color>;
-
 using SamplesVariant = std::variant<SamplesIndex, SamplesField, SamplesRGBA>;
-
 using MeshSamples = std::map<std::string, SamplesVariant>;
 
+using PlyIndex = std::int32_t;
+using PlyReal = double;
+using PlyColor = std::uint8_t;
+static tinyply::Type tinyplyIndex = tinyply::Type::INT32;
+static tinyply::Type tinyplyReal = tinyply::Type::FLOAT64;
+static tinyply::Type tinyplyColor = tinyply::Type::UINT8;
+using PlySamplesIndex = Matrix<PlyIndex>;
+using PlySamplesField = Matrix<PlyReal>;
+using PlySamplesRGBA = Matrix<PlyColor>;
+using PlySamplesVariant =
+    std::variant<PlySamplesIndex, PlySamplesField, PlySamplesRGBA>;
+using PlyMeshSamples = std::map<std::string, PlySamplesVariant>;
+
+enum class SampleType : uint8_t { INDEX, FIELD, COLOR, INVALID };
+
+static std::map<SampleType, tinyply::Type> PlyTypeFromSampleType{
+    {SampleType::INDEX, tinyply::Type::UINT32},
+    {SampleType::FIELD, tinyply::Type::FLOAT64},
+    {SampleType::COLOR, tinyply::Type::UINT8},
+    {SampleType::INVALID, tinyply::Type::INVALID}};
 //
 //
 //
