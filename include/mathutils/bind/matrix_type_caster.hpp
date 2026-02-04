@@ -62,7 +62,7 @@ public:
 
       const std::size_t n = static_cast<std::size_t>(at.shape(0));
 
-      // Requirement: (N,) -> Matrix(N,1)
+      //  (N,) -> Matrix(N,1)
       value = mathutils::Matrix<T>(n, 1, mathutils::NumpyView::Ndarray1D);
       if (value.size() != 0)
         std::memcpy(value.data(), at.data(), sizeof(T) * value.size());

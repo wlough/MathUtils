@@ -87,9 +87,11 @@ Args:
 
   m.def("save_mesh_samples", &mathutils::mesh::io::save_mesh_samples,
         "Write mesh samples to a PLY file", py::arg("mesh_samples"),
-        py::arg("ply_path"), py::arg("use_binary") = true);
+        py::arg("ply_path"), py::arg("use_binary") = true,
+        py::arg("ply_property_convention") = "MathUtils");
 
   m.def("load_mesh_samples", &mathutils::mesh::io::load_mesh_samples,
         "Load mesh samples from a PLY file", py::arg("filepath"),
-        py::arg("preload_into_memory") = true, py::arg("verbose") = false);
+        py::arg("preload_into_memory") = true, py::arg("verbose") = false,
+        py::arg("ply_property_convention") = "MathUtils");
 }

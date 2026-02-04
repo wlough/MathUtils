@@ -24,80 +24,120 @@ namespace mathutils {
 namespace mesh {
 namespace io {
 
-// const size_t count = xyz_coord_V_data->count;
-// Samples3d xyz_coord_V(count, 3);
-// const double *data_ptr = reinterpret_cast<const double
-// *>(xyz_coord_V_data->buffer.get()); for (size_t i = 0; i < count; ++i) {
-//   for (size_t j = 0; j < 3; ++j) {
-//     xyz_coord_V(i, j) = data_ptr[i * 3 + j];
-//   }
-// }
-// mesh_samples["xyz_coord_V"] = xyz_coord_V;
+std::set<std::shared_ptr<MeshPlyPropertySpec>>
+get_all_ply_property_specs(std::string ply_property_convention) {
 
-// const size_t count = V_cycle_F_data->count;
-// Samples3i V_cycle_F(count, 3);
-// const int *data_ptr = reinterpret_cast<const int
-// *>(V_cycle_F_data->buffer.get()); for (size_t i = 0; i < count; ++i) {
-//   for (size_t j = 0; j < 3; ++j) {
-//     V_cycle_F(i, j) = data_ptr[i * 3 + j];
-//   }
-// }
-// mesh_samples["V_cycle_F"] = V_cycle_F;
+  if (ply_property_convention == "MathUtils") {
+    std::set<std::shared_ptr<MeshPlyPropertySpec>> specs_set;
+    for (const auto &spec : PlyPropertySpecs) {
+      specs_set.insert(std::make_shared<MeshPlyPropertySpec>(spec));
+    }
+    return specs_set;
+  } else if (ply_property_convention == "MeshBrane") {
+    std::set<std::shared_ptr<MeshPlyPropertySpec>> specs_set;
+    for (const auto &spec : MeshBranePlyPropertySpecs) {
+      specs_set.insert(std::make_shared<MeshPlyPropertySpec>(spec));
+    }
+    return specs_set;
+  } else {
+    throw std::runtime_error("get_all_ply_property_specs: unsupported "
+                             "ply_property_convention " +
+                             ply_property_convention);
+  }
+}
 
-// Example One: converting to your own application types
-// {
-//   const size_t numVerticesBytes = vertices->buffer.size_bytes();
-//   std::vector<float3> verts(vertices->count);
-//   std::memcpy(verts.data(), vertices->buffer.get(), numVerticesBytes);
-// }
+PlyMeshSamples mesh_to_ply_samples(const MeshSamples &mesh_samples) {
 
-// // Example Two: converting to your own application type
-// {
-//   std::vector<float3> verts_floats;
-//   std::vector<double3> verts_doubles;
-//   if (vertices->t == tinyply::Type::FLOAT32) { /* as floats ... */
-//   }
-//   if (vertices->t == tinyply::Type::FLOAT64) { /* as doubles ... */
-//   }
-// }
+  PlyMeshSamples ply_samples;
+
+  for (const auto &[key, value] : mesh_samples) {
+    std::visit(
+        [&](const auto &s) {
+          using T = std::decay_t<decltype(s)>;
+          if constexpr (std::is_same_v<T, SamplesIndex>) {
+            ply_samples.insert_or_assign(key, s.template to_dtype<PlyIndex>());
+          } else if constexpr (std::is_same_v<T, SamplesField>) {
+            ply_samples.insert_or_assign(key, s.template to_dtype<PlyReal>());
+          } else if constexpr (std::is_same_v<T, SamplesRGBA>) {
+            ply_samples.insert_or_assign(key, s.template to_dtype<PlyColor>());
+          } else {
+            throw std::runtime_error(
+                "to_ply_mesh_samples: unsupported sample variant type " +
+                std::string(typeid(T).name()) + " for key " + key);
+          }
+        },
+        value);
+  }
+  return ply_samples;
+}
+
+MeshSamples ply_to_mesh_samples(const PlyMeshSamples &ply_mesh_samples) {
+
+  MeshSamples mesh_samples;
+
+  for (const auto &[key, value] : ply_mesh_samples) {
+    std::visit(
+        [&](const auto &samples) {
+          using T = std::decay_t<decltype(samples)>;
+          if constexpr (std::is_same_v<T, PlySamplesIndex>) {
+            mesh_samples.insert_or_assign(key,
+                                          samples.template to_dtype<Index>());
+          } else if constexpr (std::is_same_v<T, PlySamplesField>) {
+            mesh_samples.insert_or_assign(key,
+                                          samples.template to_dtype<Real>());
+          } else if constexpr (std::is_same_v<T, PlySamplesRGBA>) {
+            mesh_samples.insert_or_assign(key,
+                                          samples.template to_dtype<Color>());
+          } else {
+            throw std::runtime_error(
+                "from_ply_mesh_samples: unsupported sample variant type " +
+                std::string(typeid(T).name()) + " for key " + key);
+          }
+        },
+        value);
+  }
+  return mesh_samples;
+}
 
 void MeshPlyPropertySpec::add_property_to_mesh_file(
     const PlyMeshSamples &mesh_samples, tinyply::PlyFile &mesh_file) const {
+  // Look for this->samples_key in mesh_samples
+  // If found, make samples_variant a reference to the Matrix in mesh_samples
+  // If not found, return
   auto it = mesh_samples.find(samples_key);
   if (it == mesh_samples.end()) {
-    std::cerr << "Warning: could not find data for key " << samples_key
-              << std::endl;
+    // std::cerr << "Warning: could not find data for key " << samples_key
+    //           << std::endl;
     return;
   }
   const auto &samples_variant = it->second;
 
-  // try {
-  //   const tinyply::Type tinyply_type = PlyTypeFromSampleType.at(sample_type);
-  // } catch (const std::out_of_range &e) {
-  //   throw std::runtime_error(
-  //       "Unsupported PlyTypeFromSampleType.at(sample_type) for key " +
-  //       samples_key);
-  // }
+  // Check that the type of samples_variant data type matches this->sample_type
+  // if not, throw runtime_error
+  // otherwise add property to mesh_file
   const tinyply::Type tinyply_type = PlyTypeFromSampleType.at(sample_type);
-
   std::visit(
       [&](auto &&samples) {
         using SamplesT = std::decay_t<decltype(samples)>;
 
-        SampleType actual{};
-        if constexpr (std::is_same_v<SamplesT, SamplesIndex>)
-          actual = SampleType::INDEX;
-        else if constexpr (std::is_same_v<SamplesT, SamplesField>)
+        SampleType actual = SampleType::INVALID;
+        if constexpr (std::is_same_v<SamplesT, PlySamplesField>)
           actual = SampleType::FIELD;
-        else if constexpr (std::is_same_v<SamplesT, SamplesRGBA>)
+        else if constexpr (std::is_same_v<SamplesT, PlySamplesIndex>)
+          actual = SampleType::INDEX;
+        else if constexpr (std::is_same_v<SamplesT, PlySamplesRGBA>)
           actual = SampleType::COLOR;
         else
-          throw std::runtime_error("Unsupported sample type for key " +
-                                   samples_key);
+          throw std::runtime_error(
+              "[add_property_to_mesh_file] Unsupported sample type for key " +
+              samples_key);
 
         if (actual != sample_type) {
-          throw std::runtime_error("Sample type mismatch for key " +
-                                   samples_key);
+          throw std::runtime_error(
+              "[add_property_to_mesh_file] Sample type mismatch for key " +
+              samples_key + ": expected " +
+              std::to_string(static_cast<uint8_t>(sample_type)) + ", got " +
+              std::to_string(static_cast<uint8_t>(actual)));
         }
         const std::uint32_t Nrows = static_cast<std::uint32_t>(samples.rows());
         auto *data_ptr = reinterpret_cast<std::uint8_t *>(
@@ -168,58 +208,9 @@ MeshPlyPropertySpec::request_property_from_mesh_file(
                                                    is_list ? list_count : 0);
 }
 
-PlyMeshSamples mesh_to_ply_samples(const MeshSamples &mesh_samples) {
-
-  PlyMeshSamples ply_samples;
-
-  for (const auto &[key, value] : mesh_samples) {
-    std::visit(
-        [&](const auto &s) {
-          using T = std::decay_t<decltype(s)>;
-          if constexpr (std::is_same_v<T, SamplesIndex>) {
-            ply_samples.insert_or_assign(key, s.template to_dtype<PlyIndex>());
-          } else if constexpr (std::is_same_v<T, SamplesField>) {
-            ply_samples.insert_or_assign(key, s.template to_dtype<PlyReal>());
-          } else if constexpr (std::is_same_v<T, SamplesRGBA>) {
-            ply_samples.insert_or_assign(key, s.template to_dtype<PlyColor>());
-          } else {
-            throw std::runtime_error(
-                "to_ply_mesh_samples: unsupported sample variant type " +
-                std::string(typeid(T).name()) + " for key " + key);
-          }
-        },
-        value);
-  }
-  return ply_samples;
-}
-
-MeshSamples ply_to_mesh_samples(const PlyMeshSamples &ply_mesh_samples) {
-
-  MeshSamples mesh_samples;
-
-  for (const auto &[key, value] : ply_mesh_samples) {
-    std::visit(
-        [&](const auto &s) {
-          using T = std::decay_t<decltype(s)>;
-          if constexpr (std::is_same_v<T, PlySamplesIndex>) {
-            mesh_samples.insert_or_assign(key, s.template to_dtype<Index>());
-          } else if constexpr (std::is_same_v<T, PlySamplesField>) {
-            mesh_samples.insert_or_assign(key, s.template to_dtype<Real>());
-          } else if constexpr (std::is_same_v<T, PlySamplesRGBA>) {
-            mesh_samples.insert_or_assign(key, s.template to_dtype<Color>());
-          } else {
-            throw std::runtime_error(
-                "from_ply_mesh_samples: unsupported sample variant type " +
-                std::string(typeid(T).name()) + " for key " + key);
-          }
-        },
-        value);
-  }
-  return mesh_samples;
-}
-
 void save_ply_samples(const PlyMeshSamples &mesh_samples,
-                      const std::string &ply_path, const bool use_binary) {
+                      const std::string &ply_path, const bool use_binary,
+                      const std::string &ply_property_convention) {
   std::filebuf fb;
   fb.open(ply_path,
           use_binary ? std::ios::out | std::ios::binary : std::ios::out);
@@ -227,20 +218,24 @@ void save_ply_samples(const PlyMeshSamples &mesh_samples,
   if (outstream.fail())
     throw std::runtime_error("failed to open " + ply_path);
   tinyply::PlyFile mesh_file;
-  for (const auto &property_spec : PlyPropertySpecs) {
+  std::set<std::shared_ptr<MeshPlyPropertySpec>> all_property_spec_ptrs =
+      get_all_ply_property_specs(ply_property_convention);
+  for (const auto &property_spec_ptr : all_property_spec_ptrs) {
     try {
-      property_spec.add_property_to_mesh_file(mesh_samples, mesh_file);
+      property_spec_ptr->add_property_to_mesh_file(mesh_samples, mesh_file);
     } catch (const std::exception &e) {
-      std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
+      std::cerr << "Caught tinyply exception: " << e.what() << " in "
+                << ply_path << std::endl;
     }
   }
-  mesh_file.get_comments().push_back("MathUtils ply");
+  mesh_file.get_comments().push_back(ply_property_convention + " ply");
   mesh_file.write(outstream, use_binary);
 }
 
 PlyMeshSamples load_ply_samples(const std::string &filepath,
                                 const bool preload_into_memory,
-                                const bool verbose) {
+                                const bool verbose,
+                                const std::string &ply_property_convention) {
 
   PlyMeshSamples mesh_samples;
 
@@ -272,288 +267,139 @@ PlyMeshSamples load_ply_samples(const std::string &filepath,
       }
     }
 
+    // Find names of all elements and their properties in the file
     std::set<std::string> element_names;
+    std::map<std::string, std::set<std::string>> element_property_names;
     for (const auto &e : file.get_elements()) {
-      std::cout << "\t[ply_header] element: " << e.name << " (" << e.size << ")"
-                << std::endl;
+      if (verbose) {
+        std::cout << "\t[ply_header] element: " << e.name << " (" << e.size
+                  << ")" << std::endl;
+      }
       element_names.insert(e.name);
+      for (const auto &p : e.properties) {
+        if (verbose) {
+          std::cout << "\t\t[ply_header] property: " << p.name << std::endl;
+        }
+        element_property_names[e.name].insert(p.name);
+      }
     }
 
-    std::map<std::string, std::shared_ptr<tinyply::PlyData>> requested_data;
-    for (const auto &property_spec : PlyPropertySpecs) {
-      if (element_names.find(property_spec.element_key) ==
+    // For each known property_spec
+    // Check if its element exists in the file
+    // If property_spec's element does not exist in the file, skip it
+    // if any of property_spec's property keys do not exist in the file, skip it
+    std::set<std::shared_ptr<MeshPlyPropertySpec>> all_property_spec_ptrs =
+        get_all_ply_property_specs(ply_property_convention);
+    std::vector<std::shared_ptr<tinyply::PlyData>> requested_data_ptrs;
+    std::vector<std::shared_ptr<MeshPlyPropertySpec>> property_spec_ptrs;
+    for (const auto &property_spec : all_property_spec_ptrs) {
+      bool request_property_spec = true;
+      if (element_names.find(property_spec->element_key) ==
           element_names.end()) {
         if (verbose) {
-          std::cout << "\t[ply_load] skipping property key "
-                    << property_spec.samples_key << " because element "
-                    << property_spec.element_key << " not found in file."
+          std::cout << "\t[ply_load] skipping property spec "
+                    << property_spec->samples_key << " because element "
+                    << property_spec->element_key << " not found in file."
                     << std::endl;
+        }
+        request_property_spec = false;
+      }
+      // For each property key in property_spec, check if it exists in the file
+      // If any property key does not exist, skip this property_spec
+      for (const auto &prop_key : property_spec->property_keys) {
+        if (element_property_names[property_spec->element_key].find(prop_key) ==
+            element_property_names[property_spec->element_key].end()) {
+          if (verbose) {
+            std::cout << "\t[ply_load] skipping property spec "
+                      << property_spec->samples_key << " because property "
+                      << prop_key << " not found in file "
+                      << property_spec->element_key << "." << std::endl;
+          }
+          request_property_spec = false;
+          break;
+        }
+      }
+
+      if (!request_property_spec)
+        continue;
+      property_spec_ptrs.push_back(property_spec);
+      requested_data_ptrs.push_back(
+          property_spec->request_property_from_mesh_file(file));
+      // requested_data[property_spec.samples_key] =
+      //     property_spec.request_property_from_mesh_file(file);
+    }
+
+    // Read the data for all requested properties
+    file.read(*file_stream);
+
+    // For each requested property, construct the appropriate Matrix variant
+    // and fill it with data from tinyply::PlyData
+    size_t num_requested = requested_data_ptrs.size();
+    for (size_t i{0}; i < num_requested; ++i) {
+      const auto &property_spec_ptr = property_spec_ptrs[i];
+      const auto &requested_data_ptr = requested_data_ptrs[i];
+      size_t rows = requested_data_ptr->count;
+      size_t cols = property_spec_ptr->is_list
+                        ? property_spec_ptr->list_count
+                        : property_spec_ptr->property_keys.size();
+      size_t requested_data_bytes = requested_data_ptr->buffer.size_bytes();
+
+      if (rows == 0 || cols == 0) {
+        if (verbose) {
+          std::cout << "\t[ply_load] skipping property spec "
+                    << property_spec_ptr->samples_key
+                    << " because it has zero rows or columns." << std::endl;
         }
         continue;
       }
-      try {
-        // property_spec.add_property_to_mesh_samples(mesh_samples, file);
-        requested_data[property_spec.samples_key] =
-            property_spec.request_property_from_mesh_file(file);
-      } catch (const std::exception &e) {
-        std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
-      }
-    }
-
-    file.read(*file_stream);
-
-    std::map<std::string, MeshPlyPropertySpec *> PlyPropertyTable_ptr;
-
-    for (auto &property_spec : PlyPropertySpecs) {
-      PlyPropertyTable_ptr[property_spec.samples_key] = &property_spec;
-    }
-
-    for (const auto &[key, samples_ptr] : requested_data) {
-
-      MeshPlyPropertySpec property_spec;
-      try {
-        property_spec = *PlyPropertyTable_ptr.at(key);
-      } catch (const std::out_of_range &e) {
-        throw std::runtime_error(
-            "Unsupported PlyPropertyTable.at(key) for key " + key);
-      }
-
-      const size_t rows = samples_ptr->count;
-      std::size_t cols = property_spec.is_list
-                             ? property_spec.list_count
-                             : property_spec.property_keys.size();
-      const size_t numSamplesBytes = samples_ptr->buffer.size_bytes();
-
-      // if (is_list) {
-      //   // N-by-(#list_count) samples
-      //   rows = samples_ptr->count;
-      //   cols = list_count;
-      // } else if (property_keys.size() == 1) {
-      //   // row vector when only one property key
-      //   rows = 1;
-      //   cols = samples_ptr->count;
-      // } else {
-      //   // N-by-(#properties) samples
-      //   rows = samples_ptr->count;
-      //   cols = property_keys.size();
-      // }
-      mathutils::NumpyView numpy_view;
-      if (rows == 1 || cols == 1) {
-        numpy_view = mathutils::NumpyView::Ndarray1D;
-      } else {
-        numpy_view = mathutils::NumpyView::Ndarray2D;
-      }
-
+      mathutils::NumpyView numpy_view = rows == 1 || cols == 1
+                                            ? mathutils::NumpyView::Ndarray1D
+                                            : mathutils::NumpyView::Ndarray2D;
       PlySamplesVariant samples_variant;
-      if (property_spec.sample_type == SampleType::INDEX) {
-        mesh_samples[property_spec.samples_key] =
+      if (property_spec_ptr->sample_type == SampleType::INDEX) {
+        mesh_samples[property_spec_ptr->samples_key] =
             Matrix<PlyIndex>(rows, cols, numpy_view);
-      } else if (property_spec.sample_type == SampleType::FIELD) {
-        mesh_samples[property_spec.samples_key] =
+      } else if (property_spec_ptr->sample_type == SampleType::FIELD) {
+        mesh_samples[property_spec_ptr->samples_key] =
             Matrix<PlyReal>(rows, cols, numpy_view);
-      } else if (property_spec.sample_type == SampleType::COLOR) {
-        mesh_samples[property_spec.samples_key] =
+      } else if (property_spec_ptr->sample_type == SampleType::COLOR) {
+        mesh_samples[property_spec_ptr->samples_key] =
             Matrix<PlyColor>(rows, cols, numpy_view);
       } else {
-        throw std::runtime_error("Unsupported sample type for key " +
-                                 property_spec.samples_key);
+        throw std::runtime_error("[ply_load] Unsupported sample type for key " +
+                                 property_spec_ptr->samples_key);
       }
 
       std::visit(
           [&](auto &&samples) {
-            std::memcpy(samples.data(), samples_ptr->buffer.get(),
-                        numSamplesBytes);
+            std::memcpy(samples.data(), requested_data_ptr->buffer.get(),
+                        requested_data_bytes);
           },
-          mesh_samples[property_spec.samples_key]);
-    }
+          mesh_samples[property_spec_ptr->samples_key]);
+    };
 
   } catch (const std::exception &e) {
     std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
   }
-
-  // // DEBUG
-  // for (const auto &[key, samples_variant] : mesh_samples) {
-  //   std::visit(
-  //       [&](auto &&samples) {
-  //         // now print key, type, rows, cols, numpy_view
-  //         using T = std::decay_t<decltype(samples)>;
-  //         std::string type_name;
-  //         if constexpr (std::is_same_v<T, PlySamplesIndex>) {
-  //           type_name = "PlySamplesIndex";
-  //           ;
-  //         } else if constexpr (std::is_same_v<T, PlySamplesField>) {
-  //           type_name = "PlySamplesField";
-  //           ;
-  //         } else if constexpr (std::is_same_v<T, PlySamplesRGBA>) {
-  //           type_name = "PlySamplesRGBA";
-  //           ;
-  //         } else {
-  //           type_name = "UnknownType";
-  //         }
-  //         std::cout << "[ply_load] loaded key: " << key
-  //                   << ", type: " << type_name << ", rows: " <<
-  //                   samples.rows()
-  //                   << ", cols: " << samples.cols() << ", numpy_view: "
-  //                   << static_cast<int>(samples.numpy_view()) << std::endl;
-  //       },
-  //       samples_variant);
-  // }
-  // // DEBUG
   return mesh_samples;
 }
 
 void save_mesh_samples(const MeshSamples &mesh_samples,
-                       const std::string &ply_path, const bool use_binary) {
+                       const std::string &ply_path, const bool use_binary,
+                       const std::string &ply_property_convention) {
   PlyMeshSamples ply_samples = mesh_to_ply_samples(mesh_samples);
-  save_ply_samples(ply_samples, ply_path, use_binary);
+  save_ply_samples(ply_samples, ply_path, use_binary, ply_property_convention);
 }
 
 MeshSamples load_mesh_samples(const std::string &filepath,
                               const bool preload_into_memory,
-                              const bool verbose) {
-  PlyMeshSamples ply_samples =
-      load_ply_samples(filepath, preload_into_memory, verbose);
+                              const bool verbose,
+                              const std::string &ply_property_convention) {
+  PlyMeshSamples ply_samples = load_ply_samples(
+      filepath, preload_into_memory, verbose, ply_property_convention);
 
   return ply_to_mesh_samples(ply_samples);
 }
-} // namespace io
-} // namespace mesh
-} // namespace mathutils
-
-namespace mathutils {
-namespace mesh {
-namespace io {
-
-// template class for ply element names and keys
-template <typename InputDataType, typename StorageDataType,
-          tinyply::Type TinyplyDataType, int dim, bool is_list>
-struct PlyPropertySamplesTemplate {
-
-  static_assert(!is_list || (dim >= 1 && dim <= 255),
-                "list_count must fit in uint8_t and be >= 1.");
-  static_assert(dim != Eigen::Dynamic, "This template requires fixed dim.");
-
-  using InputSamples =
-      Eigen::Matrix<InputDataType, Eigen::Dynamic, dim,
-                    (dim == 1 ? Eigen::ColMajor : Eigen::RowMajor)>;
-  using StorageSamples =
-      Eigen::Matrix<StorageDataType, Eigen::Dynamic, dim,
-                    (dim == 1 ? Eigen::ColMajor : Eigen::RowMajor)>;
-
-  std::string mesh_samples_key = "";
-  // std::string property_name = "";
-  std::string element_name = "";
-  std::vector<std::string> property_names;
-  bool skip = false;
-  static constexpr bool need_to_convert_dtype =
-      !std::is_same_v<InputDataType, StorageDataType>;
-
-  // instances of PlyPropertySamplesTemplate
-  // will live in a vector inside the write_mesh_samples_to_ply
-  // function scope pointers to samples_storage will remain valid
-  // until mesh_file.write(...) is called inside that function
-  StorageSamples samples_storage;
-
-  // Constructor for single-name property (scalar or list)
-  PlyPropertySamplesTemplate(std::string mesh_samples_key_,
-                             std::string property_name_,
-                             std::string element_name_)
-      : mesh_samples_key(std::move(mesh_samples_key_)),
-        element_name(std::move(element_name_)),
-        property_names{std::move(property_name_)} {}
-
-  // Constructor for multiple scalar properties (e.g., "x", "y", "z" stored
-  // as
-  // columns of a single SamplesType)
-  PlyPropertySamplesTemplate(std::string mesh_samples_key_,
-                             std::vector<std::string> property_names_,
-                             std::string element_name_)
-      : mesh_samples_key(std::move(mesh_samples_key_)),
-        element_name(std::move(element_name_)),
-        property_names(std::move(property_names_)) {}
-
-  void add_property_to_mesh_file(const MeshSamples &mesh_samples,
-                                 tinyply::PlyFile &mesh_file) {
-    skip = false;
-
-    // Validate naming scheme up-front (compile-time branches)
-    if constexpr (is_list) {
-      if (property_names.size() != 1) {
-        skip = true;
-        std::cerr << "Warning: only one property_name is supported for "
-                     "lists but key "
-                  << mesh_samples_key << " has " << property_names.size()
-                  << "\n";
-        return;
-      }
-    } else {
-      if (property_names.size() != static_cast<size_t>(dim)) {
-        skip = true;
-        std::cerr << "Warning: property_names size mismatch for key "
-                  << mesh_samples_key << ": expected " << dim
-                  << " names but got " << property_names.size() << "\n";
-        return;
-      }
-    }
-
-    auto it = mesh_samples.find(mesh_samples_key);
-    if (it == mesh_samples.end()) {
-      skip = true;
-      std::cerr << "Warning: could not find data for key " << mesh_samples_key
-                << std::endl;
-      return;
-    }
-    const InputSamples *samples_ptr = std::get_if<InputSamples>(&it->second);
-    if (!samples_ptr) {
-      skip = true;
-      std::cerr << "Warning: could not find data for key " << mesh_samples_key
-                << " with expected type " << typeid(InputSamples).name()
-                << std::endl;
-      return;
-    }
-    if (samples_ptr->cols() != dim) {
-      skip = true;
-      std::cerr << "Warning: dimension mismatch for key " << mesh_samples_key
-                << ": expected " << dim << " but got " << samples_ptr->cols()
-                << std::endl;
-      return;
-    }
-    if (samples_ptr->size() == 0) {
-      skip = true;
-      std::cerr << "Warning: zero size for key " << mesh_samples_key
-                << std::endl;
-      return;
-    }
-
-    const auto rows = static_cast<uint32_t>(samples_ptr->rows());
-
-    auto add_from_ptr = [&](void *data_ptr) {
-      if constexpr (dim == 1 && !is_list) {
-        mesh_file.add_properties_to_element(
-            element_name, property_names, TinyplyDataType, rows,
-            reinterpret_cast<uint8_t *>(data_ptr), tinyply::Type::INVALID, 0);
-      } else if constexpr (is_list) {
-        mesh_file.add_properties_to_element(
-            element_name, property_names, TinyplyDataType, rows,
-            reinterpret_cast<uint8_t *>(data_ptr), tinyply::Type::UINT8,
-            static_cast<uint32_t>(dim));
-      } else {
-        mesh_file.add_properties_to_element(
-            element_name, property_names, TinyplyDataType, rows,
-            reinterpret_cast<uint8_t *>(data_ptr), tinyply::Type::INVALID, 0);
-      }
-    };
-
-    if constexpr (need_to_convert_dtype) {
-      samples_storage = samples_ptr->template cast<StorageDataType>();
-      add_from_ptr(static_cast<void *>(samples_storage.data()));
-    } else {
-      add_from_ptr(static_cast<void *>(
-          const_cast<InputDataType *>(samples_ptr->data())));
-    }
-  }
-};
-
 } // namespace io
 } // namespace mesh
 } // namespace mathutils
