@@ -115,7 +115,7 @@ void MeshPlyPropertySpec::add_property_to_mesh_file(
   // Check that the type of samples_variant data type matches this->sample_type
   // if not, throw runtime_error
   // otherwise add property to mesh_file
-  const tinyply::Type tinyply_type = PlyTypeFromSampleType.at(sample_type);
+  const tinyply::Type tinyply_type = TinyplyTypeFromSampleType.at(sample_type);
   std::visit(
       [&](auto &&samples) {
         using SamplesT = std::decay_t<decltype(samples)>;

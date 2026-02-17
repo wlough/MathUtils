@@ -20,6 +20,33 @@
 #include <variant>
 #include <vector>
 
+/////////////////////////////////////
+/////////////////////////////////////
+// Mesh data types //////
+/////////////////////////////////////
+/////////////////////////////////////
+namespace mathutils {
+namespace mesh {
+
+using Index = std::int64_t;
+using Real = double;
+using Color = std::uint8_t;
+// static_assert(std::is_unsigned<Index>::value,
+//               "Index must be an unsigned integral type");
+static_assert(std::is_integral<Index>::value, "Index must be an integral type");
+static_assert(std::is_floating_point<Real>::value,
+              "Real must be a floating point type");
+static_assert(std::is_unsigned<Color>::value,
+              "Color must be an unsigned integral type");
+using SamplesIndex = Matrix<Index>;
+using SamplesField = Matrix<Real>;
+using SamplesRGBA = Matrix<Color>;
+using SamplesVariant = std::variant<SamplesField, SamplesIndex, SamplesRGBA>;
+using MeshSamples = std::map<std::string, SamplesVariant>;
+
+} // namespace mesh
+} // namespace mathutils
+
 namespace mathutils {
 namespace mesh {
 ////////////////////////////////
@@ -102,33 +129,6 @@ using MeshSamples32 = MeshSamplesTemplate<std::int32_t>;
 //     Samples4d, RaggedSamplesi32, RaggedSamplesi64>;
 
 // using MeshSamplesMixed = std::map<std::string, MeshSamplesMixedVariant>;
-
-} // namespace mesh
-} // namespace mathutils
-
-/////////////////////////////////////
-/////////////////////////////////////
-// Mesh data types //////
-/////////////////////////////////////
-/////////////////////////////////////
-namespace mathutils {
-namespace mesh {
-
-using Index = std::int64_t;
-using Real = double;
-using Color = std::uint8_t;
-// static_assert(std::is_unsigned<Index>::value,
-//               "Index must be an unsigned integral type");
-static_assert(std::is_integral<Index>::value, "Index must be an integral type");
-static_assert(std::is_floating_point<Real>::value,
-              "Real must be a floating point type");
-static_assert(std::is_unsigned<Color>::value,
-              "Color must be an unsigned integral type");
-using SamplesIndex = Matrix<Index>;
-using SamplesField = Matrix<Real>;
-using SamplesRGBA = Matrix<Color>;
-using SamplesVariant = std::variant<SamplesField, SamplesIndex, SamplesRGBA>;
-using MeshSamples = std::map<std::string, SamplesVariant>;
 
 } // namespace mesh
 } // namespace mathutils

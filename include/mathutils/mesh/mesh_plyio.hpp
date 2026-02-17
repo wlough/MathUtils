@@ -27,12 +27,10 @@
 namespace mathutils {
 namespace mesh {
 namespace io {
+// Data types for PLY I/O. Must be compatible with tinyply types.
 using PlyIndex = std::int32_t;
 using PlyReal = double;
 using PlyColor = std::uint8_t;
-static tinyply::Type tinyplyIndex = tinyply::Type::INT32;
-static tinyply::Type tinyplyReal = tinyply::Type::FLOAT64;
-static tinyply::Type tinyplyColor = tinyply::Type::UINT8;
 using PlySamplesIndex = Matrix<PlyIndex>;
 using PlySamplesField = Matrix<PlyReal>;
 using PlySamplesRGBA = Matrix<PlyColor>;
@@ -42,7 +40,7 @@ using PlyMeshSamples = std::map<std::string, PlySamplesVariant>;
 
 enum class SampleType : uint8_t { INDEX, FIELD, COLOR, INVALID };
 
-static std::map<SampleType, tinyply::Type> PlyTypeFromSampleType{
+static std::map<SampleType, tinyply::Type> TinyplyTypeFromSampleType{
     {SampleType::INDEX, tinyply::Type::UINT32},
     {SampleType::FIELD, tinyply::Type::FLOAT64},
     {SampleType::COLOR, tinyply::Type::UINT8},
@@ -286,6 +284,7 @@ MeshSamples ply_to_mesh_samples(const PlyMeshSamples &ply_mesh_samples);
  * @param mesh_samples
  * @param ply_path
  * @param use_binary
+ * @param ply_property_convention
  */
 void save_ply_samples(const PlyMeshSamples &mesh_samples,
                       const std::string &ply_path, const bool use_binary = true,
@@ -297,6 +296,7 @@ void save_ply_samples(const PlyMeshSamples &mesh_samples,
  * @param filepath
  * @param preload_into_memory
  * @param verbose
+ * @param ply_property_convention
  * @return PlyMeshSamples
  */
 PlyMeshSamples

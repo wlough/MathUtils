@@ -1,6 +1,10 @@
 // matrix_type_caster.hpp
 #pragma once
 
+/**
+ * @file Defines pybind11 caster for Matrix<T> variants and numpy ndarray
+ */
+
 #include "mathutils/matrix.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/mesh/mesh_plyio.hpp"
@@ -127,7 +131,8 @@ public:
     auto ndim = arr_in.ndim();
     if (ndim != 1 && ndim != 2)
       return false;
-    // Require exact dtype so std::variant can try other T's
+    // Require exact dtype so std::variant can try other T's.
+    // Stuff gets cast to wrong data types without this.
     if (!py::dtype::of<T>().is(arr_in.dtype()))
       return false;
 
