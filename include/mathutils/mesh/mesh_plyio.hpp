@@ -5,6 +5,7 @@
  * @brief Mesh input/output.
  */
 
+#include "mathutils/io/tinyply.h"
 #include "mathutils/mesh/mesh_common.hpp"
 #include <chrono> // std::chrono::high_resolution_clock and std::chrono::duration
 #include <fstream>   // std::ifstream
@@ -440,7 +441,7 @@ public:
  * @param verbose
  * @return mathutils::VertexFaceTuple
  */
-std::pair<Samples3d, Samples3i>
+std::pair<Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor>, SamplesTypeDimTemplate<int, 3>>
 load_vf_samples_from_ply(const std::string &filepath,
                          const bool preload_into_memory = true,
                          const bool verbose = false);
@@ -453,7 +454,7 @@ load_vf_samples_from_ply(const std::string &filepath,
  * @param ply_path
  * @param use_binary
  */
-void write_vf_samples_to_ply(Samples3d &xyz_coord_V, Samples3i &V_cycle_F,
+void write_vf_samples_to_ply(Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor> &xyz_coord_V, SamplesTypeDimTemplate<int, 3> &V_cycle_F,
                              const std::string &ply_path,
                              const bool use_binary = true);
 

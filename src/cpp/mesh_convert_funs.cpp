@@ -3,14 +3,14 @@
  */
 #include "mathutils/mesh/mesh_convert_funs.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
-#include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
-#include <array>
-#include <cstddef>
 #include <map>
-#include <tuple>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
+// #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
+// #include <array>
+// #include <cstddef>
+// #include <tuple>
+// #include <unordered_map>
 
 namespace mathutils {
 namespace mesh {

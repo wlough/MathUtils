@@ -1,5 +1,5 @@
 
-# Development & Release notes
+# Dev notes
 
 This repo ships a `Makefile` to automate dev installs, builds, wheel repair, and uploads. You **don’t need to activate a venv**—targets use an internal build venv at `.venv/build`.
 
@@ -10,6 +10,16 @@ This repo ships a `Makefile` to automate dev installs, builds, wheel repair, and
 * Python ≥ 3.8, `g++`, `make`
 * Optional (Linux wheel repair): `auditwheel` (installed automatically by `make repair`)
 * Optional: `~/.pypirc` configured for `pypi` and `testpypi`
+
+---
+
+## Generate `build/compile_commands.json`.
+
+Tells clangd about include dir
+
+```bash
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
 
 ---
 
@@ -84,7 +94,7 @@ make upload
 
 
 
-<!-- 
+<!--
 
 # Create build venv
 python -m venv .venv/mathutils_build

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 

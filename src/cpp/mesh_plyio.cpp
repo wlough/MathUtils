@@ -408,7 +408,8 @@ namespace mathutils {
 namespace mesh {
 namespace io {
 
-std::pair<Samples3d, Samples3i>
+std::pair<Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor>,
+          SamplesTypeDimTemplate<int, 3>>
 load_vf_samples_from_ply(const std::string &filepath,
                          const bool preload_into_memory, const bool verbose) {
   std::streambuf *oldCoutStreamBuf = nullptr;
@@ -422,8 +423,8 @@ load_vf_samples_from_ply(const std::string &filepath,
     nullStream.open("/dev/null");
     std::cout.rdbuf(nullStream.rdbuf());
   }
-  Samples3d xyz_coord_V;
-  Samples3i V_cycle_F;
+  Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor> xyz_coord_V;
+  SamplesTypeDimTemplate<int, 3> V_cycle_F;
   std::cout << "..............................................................."
                ".........\n";
   std::cout << "Now Reading: " << filepath << std::endl;
@@ -565,9 +566,10 @@ load_vf_samples_from_ply(const std::string &filepath,
   return std::make_pair(xyz_coord_V, V_cycle_F);
 }
 
-void write_vf_samples_to_ply(Samples3d &xyz_coord_V, Samples3i &V_cycle_F,
-                             const std::string &ply_path,
-                             const bool use_binary) {
+void write_vf_samples_to_ply(
+    Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor> &xyz_coord_V,
+    SamplesTypeDimTemplate<int, 3> &V_cycle_F, const std::string &ply_path,
+    const bool use_binary) {
 
   // std::string ply_path = output_directory + "/" + filename;
 
@@ -620,6 +622,8 @@ MeshSamples32 load_mesh_samples_from_ply(const std::string &filepath,
   using Samples2i = SamplesTypeDimTemplate<std::int32_t, 2>;
   using Samples3i = SamplesTypeDimTemplate<std::int32_t, 3>;
   using Samples4i = SamplesTypeDimTemplate<std::int32_t, 4>;
+  using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor>;
+  using Samples4d = Eigen::Matrix<double, Eigen::Dynamic, 4, Eigen::RowMajor>;
 
   std::streambuf *oldCoutStreamBuf = nullptr;
   std::ofstream nullStream;
@@ -1566,6 +1570,8 @@ void write_mesh_samples_to_ply(const MeshSamples32 &mesh_samples,
   using Samples2i = SamplesTypeDimTemplate<std::int32_t, 2>;
   using Samples3i = SamplesTypeDimTemplate<std::int32_t, 3>;
   using Samples4i = SamplesTypeDimTemplate<std::int32_t, 4>;
+  using Samples3d = Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor>;
+  using Samples4d = Eigen::Matrix<double, Eigen::Dynamic, 4, Eigen::RowMajor>;
 
   std::vector<std::uint8_t> rgba_u8;
 
