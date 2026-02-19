@@ -210,6 +210,5 @@ public:
   }
 };
 
-
 } // namespace mesh
 } // namespace mathutils

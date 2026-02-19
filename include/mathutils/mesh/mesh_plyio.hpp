@@ -441,7 +441,8 @@ public:
  * @param verbose
  * @return mathutils::VertexFaceTuple
  */
-std::pair<Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor>, SamplesTypeDimTemplate<int, 3>>
+std::pair<Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor>,
+          SamplesTypeDimTemplate<int, 3>>
 load_vf_samples_from_ply(const std::string &filepath,
                          const bool preload_into_memory = true,
                          const bool verbose = false);
@@ -454,9 +455,10 @@ load_vf_samples_from_ply(const std::string &filepath,
  * @param ply_path
  * @param use_binary
  */
-void write_vf_samples_to_ply(Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor> &xyz_coord_V, SamplesTypeDimTemplate<int, 3> &V_cycle_F,
-                             const std::string &ply_path,
-                             const bool use_binary = true);
+void write_vf_samples_to_ply(
+    Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor> &xyz_coord_V,
+    SamplesTypeDimTemplate<int, 3> &V_cycle_F, const std::string &ply_path,
+    const bool use_binary = true);
 
 /**
  * @brief loads ply file of half-edge samples.
