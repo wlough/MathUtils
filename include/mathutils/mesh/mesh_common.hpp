@@ -27,7 +27,9 @@
 /////////////////////////////////////
 namespace mathutils {
 namespace mesh {
-
+/** @addtogroup Mesh
+ *  @{
+ */
 using Index = std::int64_t;
 using Real = double;
 using Color = std::uint8_t;
@@ -40,10 +42,35 @@ static_assert(std::is_unsigned<Color>::value,
               "Color must be an unsigned integral type");
 using Vec3d = Matrix<Real>;
 using SamplesIndex = Matrix<Index>;
-using SamplesField = Matrix<Real>;
-using SamplesRGBA = Matrix<Color>;
-using SamplesVariant = std::variant<SamplesField, SamplesIndex, SamplesRGBA>;
+using SamplesReal = Matrix<Real>;
+using SamplesColor = Matrix<Color>;
+using SamplesVariant = std::variant<SamplesReal, SamplesIndex, SamplesColor>;
 using MeshSamples = std::map<std::string, SamplesVariant>;
+
+template <class OutMat>
+static void assign_matrix_from_variant(const SamplesVariant &v,
+                                       const std::string &key, OutMat &out) {
+  using OutScalar = typename OutMat::value_type;
+
+  std::visit(
+      [&](auto const &in_mat) {
+        using InMat = std::decay_t<decltype(in_mat)>;
+        using InScalar = typename InMat::value_type;
+
+        if constexpr (std::is_same_v<InMat, OutMat>) {
+          out = in_mat; // exact type
+        } else if constexpr (std::is_constructible_v<OutScalar, InScalar>) {
+          // numeric conversion with overflow checks in to_dtype()
+          out = in_mat.template to_dtype<OutScalar>();
+        } else {
+          throw std::runtime_error(key + ": incompatible matrix dtype");
+        }
+      },
+      v);
+}
+/**
+@} // addtogroup Mesh
+*/
 } // namespace mesh
 } // namespace mathutils
 

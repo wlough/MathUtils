@@ -15,7 +15,7 @@ This repo ships a `Makefile` to automate dev installs, builds, wheel repair, and
 
 ## Generate `build/compile_commands.json`.
 
-Tells clangd about include dir
+Tells clangd about include dir so linter works properly.
 
 ```bash
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON

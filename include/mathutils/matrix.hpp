@@ -42,7 +42,7 @@ private:
 
   std::size_t rows_{0};
   std::size_t cols_{0};
-  std::vector<DataType> data_;
+  std::vector<DataType> elements_;
   NumpyView numpy_view_{NumpyView::Ndarray2D};
 
 public:
@@ -50,18 +50,19 @@ public:
 
   Matrix() = default;
   Matrix(std::size_t rows, std::size_t cols)
-      : rows_(rows), cols_(cols), data_(checked_size(rows, cols)) {}
+      : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)) {}
   Matrix(std::size_t rows, std::size_t cols, NumpyView view)
-      : rows_(rows), cols_(cols), data_(checked_size(rows, cols)),
+      : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)),
         numpy_view_(view) {}
 
   // Matrix(std::size_t rows, std::size_t cols, const DataType &fill)
-  //     : rows_(rows), cols_(cols), data_(checked_size(rows, cols), fill) {}
+  //     : rows_(rows), cols_(cols), elements_(checked_size(rows, cols), fill)
+  //     {}
 
   // Construct with explicit storage (must match rows*cols).
   // Matrix(std::size_t rows, std::size_t cols, std::vector<DataType> data)
-  //     : rows_(rows), cols_(cols), data_(std::move(data)) {
-  //   if (data_.size() != checked_size(rows_, cols_)) {
+  //     : rows_(rows), cols_(cols), elements_(std::move(data)) {
+  //   if (elements_.size() != checked_size(rows_, cols_)) {
   //     throw std::invalid_argument("Matrix: data size != rows*cols");
   //   }
   // }
@@ -77,9 +78,9 @@ public:
   //     }
   //   }
 
-  //   data_.reserve(checked_size(rows_, cols_));
+  //   elements_.reserve(checked_size(rows_, cols_));
   //   for (const auto &row : init) {
-  //     data_.insert(data_.end(), row.begin(), row.end());
+  //     elements_.insert(elements_.end(), row.begin(), row.end());
   //   }
   // }
 
@@ -92,32 +93,36 @@ public:
   // Dimensions
   std::size_t rows() const noexcept { return rows_; }
   std::size_t cols() const noexcept { return cols_; }
-  std::size_t size() const noexcept { return data_.size(); }
-  bool empty() const noexcept { return data_.empty(); }
+  std::size_t size() const noexcept { return elements_.size(); }
+  bool empty() const noexcept { return elements_.empty(); }
 
   // Storage access
-  DataType *data() noexcept { return data_.data(); }
-  const DataType *data() const noexcept { return data_.data(); }
+  DataType *data() noexcept { return elements_.data(); }
+  const DataType *data() const noexcept { return elements_.data(); }
 
-  std::vector<DataType> &vec() noexcept { return data_; }
-  const std::vector<DataType> &vec() const noexcept { return data_; }
+  std::vector<DataType> &vec() noexcept { return elements_; }
+  const std::vector<DataType> &vec() const noexcept { return elements_; }
 
   // Views
-  std::span<DataType> span() noexcept { return {data_.data(), data_.size()}; }
+  std::span<DataType> span() noexcept {
+    return {elements_.data(), elements_.size()};
+  }
   std::span<const DataType> span() const noexcept {
-    return {data_.data(), data_.size()};
+    return {elements_.data(), elements_.size()};
   }
 
   // 2D indexing (unchecked)
   DataType &operator()(std::size_t r, std::size_t c) noexcept {
-    return data_[r * cols_ + c];
+    return elements_[r * cols_ + c];
   }
   const DataType &operator()(std::size_t r, std::size_t c) const noexcept {
-    return data_[r * cols_ + c];
+    return elements_[r * cols_ + c];
   }
   // 1D indexing (unchecked)
-  DataType &operator[](std::size_t i) noexcept { return data_[i]; }
-  const DataType &operator[](std::size_t i) const noexcept { return data_[i]; }
+  DataType &operator[](std::size_t i) noexcept { return elements_[i]; }
+  const DataType &operator[](std::size_t i) const noexcept {
+    return elements_[i];
+  }
 
   // 2D indexing (checked)
   DataType &at(std::size_t r, std::size_t c) {
@@ -132,54 +137,63 @@ public:
   // Row view (contiguous)
   std::span<DataType> row(std::size_t r) {
     row_bounds_check(r);
-    return {data_.data() + r * cols_, cols_};
+    return {elements_.data() + r * cols_, cols_};
   }
   std::span<const DataType> row(std::size_t r) const {
     row_bounds_check(r);
-    return {data_.data() + r * cols_, cols_};
+    return {elements_.data() + r * cols_, cols_};
   }
 
   void resize(std::size_t rows, std::size_t cols) {
     rows_ = rows;
     cols_ = cols;
-    data_.assign(checked_size(rows, cols), DataType{});
+    elements_.assign(checked_size(rows, cols), DataType{});
   }
 
   void resize(std::size_t rows, std::size_t cols, const DataType &fill) {
     rows_ = rows;
     cols_ = cols;
-    data_.assign(checked_size(rows, cols), fill);
+    elements_.assign(checked_size(rows, cols), fill);
   }
 
   void fill(const DataType &value) {
-    std::fill(data_.begin(), data_.end(), value);
+    std::fill(elements_.begin(), elements_.end(), value);
   }
 
   void clear() noexcept {
     rows_ = cols_ = 0;
-    data_.clear();
+    elements_.clear();
   }
 
-  DataType max_coeff() const {
-    if (data_.empty()) {
-      throw std::runtime_error("Matrix: max_coeff() called on empty matrix");
+  DataType maxCoeff() const {
+    if (elements_.empty()) {
+      throw std::runtime_error("Matrix: maxCoeff() called on empty matrix");
     }
-    return *std::max_element(data_.begin(), data_.end());
+    return *std::max_element(elements_.begin(), elements_.end());
   }
 
-  DataType min_coeff() const {
-    if (data_.empty()) {
-      throw std::runtime_error("Matrix: min_coeff() called on empty matrix");
+  DataType minCoeff() const {
+    if (elements_.empty()) {
+      throw std::runtime_error("Matrix: minCoeff() called on empty matrix");
     }
-    return *std::min_element(data_.begin(), data_.end());
+    return *std::min_element(elements_.begin(), elements_.end());
   }
 
-  std::pair<DataType, DataType> minmax_coeff() const {
-    if (data_.empty()) {
-      throw std::runtime_error("Matrix: minmax_coeff() called on empty matrix");
+  std::pair<DataType, DataType> minmaxCoeff() const {
+    if (elements_.empty()) {
+      throw std::runtime_error("Matrix: minmaxCoeff() called on empty matrix");
     }
-    auto [min_it, max_it] = std::minmax_element(data_.begin(), data_.end());
+    auto [min_it, max_it] =
+        std::minmax_element(elements_.begin(), elements_.end());
     return {*min_it, *max_it};
+  }
+
+  DataType squaredNorm() const {
+    DataType norm2{0};
+    for (const DataType &x : elements_) {
+      norm2 += x * x;
+    }
+    return norm2;
   }
 
   template <typename NewDataType>
@@ -189,7 +203,7 @@ public:
     if constexpr (std::is_same_v<NewDataType, DataType>) {
       return *this;
     } else { // check for overflow/underflow
-      const auto [min_val, max_val] = minmax_coeff();
+      const auto [min_val, max_val] = minmaxCoeff();
       const long double new_low =
           static_cast<long double>(std::numeric_limits<NewDataType>::lowest());
       const long double new_hi =
@@ -201,8 +215,8 @@ public:
       }
       Matrix<NewDataType> out(rows_, cols_, numpy_view_);
       auto *dst = out.data();
-      for (std::size_t i = 0; i < data_.size(); ++i) {
-        dst[i] = static_cast<NewDataType>(data_[i]);
+      for (std::size_t i = 0; i < elements_.size(); ++i) {
+        dst[i] = static_cast<NewDataType>(elements_[i]);
       }
       return out;
     }

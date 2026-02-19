@@ -28,6 +28,9 @@
 namespace mathutils {
 namespace mesh {
 namespace io {
+/** @addtogroup Mesh
+ *  @{
+ */
 // Data types for PLY I/O. Must be compatible with tinyply types.
 using PlyIndex = std::int32_t;
 using PlyReal = double;
@@ -39,11 +42,11 @@ using PlySamplesVariant =
     std::variant<PlySamplesField, PlySamplesIndex, PlySamplesRGBA>;
 using PlyMeshSamples = std::map<std::string, PlySamplesVariant>;
 
-enum class SampleType : uint8_t { INDEX, FIELD, COLOR, INVALID };
+enum class SampleType : uint8_t { INDEX, REAL, COLOR, INVALID };
 
 static std::map<SampleType, tinyply::Type> TinyplyTypeFromSampleType{
     {SampleType::INDEX, tinyply::Type::UINT32},
-    {SampleType::FIELD, tinyply::Type::FLOAT64},
+    {SampleType::REAL, tinyply::Type::FLOAT64},
     {SampleType::COLOR, tinyply::Type::UINT8},
     {SampleType::INVALID, tinyply::Type::INVALID}};
 
@@ -112,7 +115,7 @@ static std::vector<MeshPlyPropertySpec> PlyPropertySpecs{
     // Vertex //
     ////////////
     MeshPlyPropertySpec("vertex", "xyz_coord_V", {"x", "y", "z"},
-                        SampleType::FIELD, false),
+                        SampleType::REAL, false),
     MeshPlyPropertySpec("vertex", "h_out_V", {"h_out"}, SampleType::INDEX,
                         false),
     MeshPlyPropertySpec("vertex", "d_through_V", {"d_through"},
@@ -195,12 +198,8 @@ static std::vector<MeshPlyPropertySpec> MeshBranePlyPropertySpecs{
     // Vertex //
     ////////////
     MeshPlyPropertySpec("vertex", "xyz_coord_V", {"x", "y", "z"},
-                        SampleType::FIELD, false),
+                        SampleType::REAL, false),
     MeshPlyPropertySpec("vertex", "h_out_V", {"h"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("vertex", "d_through_V", {"d"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("vertex", "rgba_V", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
     //////////
     // Edge //
     //////////
@@ -208,36 +207,17 @@ static std::vector<MeshPlyPropertySpec> MeshBranePlyPropertySpecs{
                         SampleType::INDEX, true),
     MeshPlyPropertySpec("edge", "h_directed_E", {"h"}, SampleType::INDEX,
                         false),
-    MeshPlyPropertySpec("edge", "d_through_E", {"d"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("edge", "rgba_E", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
     //////////
     // Face //
     //////////
     MeshPlyPropertySpec("face", "V_cycle_F", {"vertex_indices"},
                         SampleType::INDEX, true),
     MeshPlyPropertySpec("face", "h_right_F", {"h"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("face", "d_through_F", {"d"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("face", "rgba_F", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
-    //////////
-    // Cell //
-    //////////
-    MeshPlyPropertySpec("cell", "V_cycle_C", {"vertex_indices"},
-                        SampleType::INDEX, true),
-    MeshPlyPropertySpec("cell", "h_above_C", {"h"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("cell", "d_through_C", {"d"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("cell", "rgba_C", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
     //////////////
     // Boundary //
     //////////////
     MeshPlyPropertySpec("boundary", "h_negative_B", {"h"}, SampleType::INDEX,
                         false),
-    MeshPlyPropertySpec("boundary", "d_through_B", {"d"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("boundary", "rgba_B", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
     //////////////
     // HalfEdge //
     //////////////
@@ -247,13 +227,9 @@ static std::vector<MeshPlyPropertySpec> MeshBranePlyPropertySpecs{
                         false),
     MeshPlyPropertySpec("half_edge", "f_left_H", {"f"}, SampleType::INDEX,
                         false),
-    MeshPlyPropertySpec("half_edge", "c_below_H", {"c"}, SampleType::INDEX,
-                        false),
     MeshPlyPropertySpec("half_edge", "h_next_H", {"n"}, SampleType::INDEX,
                         false),
     MeshPlyPropertySpec("half_edge", "h_twin_H", {"t"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "h_flip_H", {"h_flip"}, SampleType::INDEX,
                         false)};
 
 /**
@@ -265,14 +241,14 @@ std::set<std::shared_ptr<MeshPlyPropertySpec>>
 get_all_ply_property_specs(std::string ply_property_convention = "MathUtils");
 
 /**
- * @brief Convert mesh samples to PLY mesh samples.
+ * @brief Convert mesh samples to tinyply-compatible types.
  *
  * @param mesh_samples
  * @return PlyMeshSamples
  */
 PlyMeshSamples mesh_to_ply_samples(const MeshSamples &mesh_samples);
 /**
- * @brief Convert PLY mesh samples to mesh samples.
+ * @brief Convert tinyply-compatible samples to mesh samples.
  *
  * @param ply_mesh_samples
  * @return MeshSamples
@@ -280,7 +256,7 @@ PlyMeshSamples mesh_to_ply_samples(const MeshSamples &mesh_samples);
 MeshSamples ply_to_mesh_samples(const PlyMeshSamples &ply_mesh_samples);
 
 /**
- * @brief Save PLY mesh samples to a file.
+ * @brief Save tinyply-compatible mesh samples to a file.
  *
  * @param mesh_samples
  * @param ply_path
@@ -292,7 +268,7 @@ void save_ply_samples(const PlyMeshSamples &mesh_samples,
                       const std::string &ply_property_convention = "MathUtils");
 
 /**
- * @brief Load PLY mesh samples from a file.
+ * @brief Load tinyply-compatible mesh samples from a file.
  *
  * @param filepath
  * @param preload_into_memory
@@ -330,7 +306,9 @@ load_mesh_samples(const std::string &filepath,
                   const bool preload_into_memory = true,
                   const bool verbose = false,
                   const std::string &ply_property_convention = "MathUtils");
-
+/**
+@} // addtogroup Mesh
+*/
 } // namespace io
 } // namespace mesh
 } // namespace mathutils

@@ -56,9 +56,9 @@ PlyMeshSamples mesh_to_ply_samples(const MeshSamples &mesh_samples) {
           using T = std::decay_t<decltype(s)>;
           if constexpr (std::is_same_v<T, SamplesIndex>) {
             ply_samples.insert_or_assign(key, s.template to_dtype<PlyIndex>());
-          } else if constexpr (std::is_same_v<T, SamplesField>) {
+          } else if constexpr (std::is_same_v<T, SamplesReal>) {
             ply_samples.insert_or_assign(key, s.template to_dtype<PlyReal>());
-          } else if constexpr (std::is_same_v<T, SamplesRGBA>) {
+          } else if constexpr (std::is_same_v<T, SamplesColor>) {
             ply_samples.insert_or_assign(key, s.template to_dtype<PlyColor>());
           } else {
             throw std::runtime_error(
@@ -122,7 +122,7 @@ void MeshPlyPropertySpec::add_property_to_mesh_file(
 
         SampleType actual = SampleType::INVALID;
         if constexpr (std::is_same_v<SamplesT, PlySamplesField>)
-          actual = SampleType::FIELD;
+          actual = SampleType::REAL;
         else if constexpr (std::is_same_v<SamplesT, PlySamplesIndex>)
           actual = SampleType::INDEX;
         else if constexpr (std::is_same_v<SamplesT, PlySamplesRGBA>)
@@ -184,7 +184,7 @@ void MeshPlyPropertySpec::add_property_to_mesh_file(
 //   PlySamplesVariant samples_variant;
 //   if (sample_type == SampleType::INDEX) {
 //     mesh_samples[samples_key] = Matrix<PlyIndex>(rows, cols);
-//   } else if (sample_type == SampleType::FIELD) {
+//   } else if (sample_type == SampleType::REAL) {
 //     mesh_samples[samples_key] = Matrix<PlyReal>(rows, cols);
 //   } else if (sample_type == SampleType::COLOR) {
 //     mesh_samples[samples_key] = Matrix<PlyColor>(rows, cols);
@@ -359,7 +359,7 @@ PlyMeshSamples load_ply_samples(const std::string &filepath,
       if (property_spec_ptr->sample_type == SampleType::INDEX) {
         mesh_samples[property_spec_ptr->samples_key] =
             Matrix<PlyIndex>(rows, cols, numpy_view);
-      } else if (property_spec_ptr->sample_type == SampleType::FIELD) {
+      } else if (property_spec_ptr->sample_type == SampleType::REAL) {
         mesh_samples[property_spec_ptr->samples_key] =
             Matrix<PlyReal>(rows, cols, numpy_view);
       } else if (property_spec_ptr->sample_type == SampleType::COLOR) {

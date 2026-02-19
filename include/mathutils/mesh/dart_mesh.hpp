@@ -24,15 +24,15 @@ namespace mesh {
 
 struct Simplex {
   Index id_;
-  SamplesField pts_;
+  SamplesReal pts_;
   Simplex() = default;
-  Simplex(const Index id, const SamplesField pts) : id_(id), pts_(pts) {}
+  Simplex(const Index id, const SamplesReal pts) : id_(id), pts_(pts) {}
 };
 
 class DartMesh {
 public:
   size_t dimension_{2};
-  SamplesField S0_;
+  SamplesReal S0_;
   SamplesIndex S1_;
   SamplesIndex S2_;
   SamplesIndex S3_;

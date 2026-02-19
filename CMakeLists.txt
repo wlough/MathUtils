@@ -16,7 +16,7 @@ pybind11_add_module(pymathutils_backend
     src/cpp/bind_shared_utils.cpp
     src/cpp/findiff.cpp
     src/cpp/bind_findiff.cpp
-    # src/cpp/half_edge_mesh.cpp
+    src/cpp/half_edge_mesh.cpp
     src/cpp/mesh_convert_funs.cpp
     src/cpp/mesh_plyio.cpp
     src/cpp/bind_mesh.cpp

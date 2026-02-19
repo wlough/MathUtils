@@ -21,17 +21,19 @@
 /////////////////////////////////////
 namespace mathutils {
 namespace mesh {
-
+/** @addtogroup Mesh
+ *  @{
+ */
 class SimplicialComplexBase {
 public:
-  SamplesField X_ambient_V_; // coords in ambient space
+  SamplesReal X_ambient_V_; // coords in ambient space
   SamplesIndex V_cycle_E_;
   SamplesIndex V_cycle_F_;
   SamplesIndex V_cycle_C_;
 
   SimplicialComplexBase() = default;
 
-  SamplesField &X_ambient_V() { return X_ambient_V_; }
+  SamplesReal &X_ambient_V() { return X_ambient_V_; }
   SamplesIndex &V_cycle_E() { return V_cycle_E_; }
   SamplesIndex &V_cycle_F() { return V_cycle_F_; }
   SamplesIndex &V_cycle_C() { return V_cycle_C_; }
@@ -60,10 +62,25 @@ public:
   SamplesIndex f_left_H_;
   SamplesIndex c_below_H_;
 
-  SamplesIndex h_next_H_;
-  SamplesIndex h_twin_H_;
-  SamplesIndex h_flip_H_;
+  SamplesIndex h_next_H_; // (v, e, f, c) --> (v', e', f, c)
+  SamplesIndex h_twin_H_; // (v, e, f, c) --> (v', e, f', c)
+  SamplesIndex h_flip_H_; // (v, e, f, c) --> (v', e, f, c')
   ////////////////////////////
+
+  SamplesIndex &h_out_V() { return h_out_V_; }
+  SamplesIndex &h_directed_E() { return h_directed_E_; }
+  SamplesIndex &h_right_F() { return h_right_F_; }
+  SamplesIndex &h_above_C() { return h_above_C_; }
+  SamplesIndex &h_negative_B() { return h_negative_B_; }
+
+  SamplesIndex &v_origin_H() { return v_origin_H_; }
+  SamplesIndex &e_undirected_H() { return e_undirected_H_; }
+  SamplesIndex &f_left_H() { return f_left_H_; }
+  SamplesIndex &c_below_H() { return c_below_H_; }
+
+  SamplesIndex &h_next_H() { return h_next_H_; }
+  SamplesIndex &h_twin_H() { return h_twin_H_; }
+  SamplesIndex &h_flip_H() { return h_flip_H_; }
 
   ///////////////////////////////////////////////////////
   // Combinatorial maps /////////////////////////////////
@@ -83,17 +100,12 @@ public:
   Index h_twin_h(Index h) const { return h_twin_H_[h]; } // (v', e, f', c)
   Index h_flip_h(Index h) const { return h_flip_H_[h]; } // (v', e, f, c')
 
-  // Derived combinatorial maps
-  // Index h_beta0_h(Index h) const;            // (v', e, f, c)
-  // Index h_beta1_h(Index h) const { return; } // (v, e', f, c)
-  // Index h_beta2_h(Index h) const;            // (v, e, f', c)
-  // Index h_beta3_h(Index h) const;            // (v, e, f, c')
-
   Index b_ghost_f(Index f) const { return -f - 1; }
+  Index b_ghost_c(Index c) const { return -c - 1; }
 
-  Index h_in_v(Index v) const { return h_out_V_[v]; }
-  Index v_head_h(Index h) const;
-  Index h_prev_h(Index h) const;
+  Index h_in_v(Index v) const { return h_twin_H_[h_out_V_[v]]; }
+  Index v_head_h(Index h) const { return v_origin_H_[h_twin_H_[h]]; }
+  Index h_prev_h(Index h) const { return h_next_H_[h_next_H_[h]]; }
   Index h_rotcw_h(Index h) const;
   Index h_rotccw_h(Index h) const;
   Index h_prev_h_by_rot(Index h) const;
@@ -119,8 +131,6 @@ public:
   ///////////////////////////////////////////////////////
   // Generators /////////////////////////////////////////
   ///////////////////////////////////////////////////////
-  Generatori generate_V_cycle_f(Index f) const;
-  Generatori generate_V_of_f(Index f) const;
   Generatori generate_H_out_v_clockwise(Index v, Index h_start = -1) const;
   Generatori generate_H_right_f(Index f) const;
   Generatori generate_H_rotcw_h(Index h) const {
@@ -137,7 +147,14 @@ public:
       h = h_next_h(h);
     } while (h != h_start);
   }
-  Generatori generate_H_right_b(Index b) const;
+  Generatori generate_H_right_b(Index b) const {
+    Index h_start = h_negative_b(b);
+    Index h = h_start;
+    do {
+      co_yield h;
+      h = h_next_h(h);
+    } while (h != h_start);
+  }
   Generatori generate_F_incident_v(Index v) const;
 
   ///////////////////////////////////////////
@@ -148,67 +165,111 @@ public:
    *
    * @return Index
    */
-  Index num_vertices() const;
+  Index num_vertices() const { return h_out_V_.size(); }
   /**
    * @brief Get the number edges in the mesh
    *
    * @return Index
    */
-  Index num_edges() const;
+  Index num_edges() const { return v_origin_H_.size() / 2; }
   /**
    * @brief Get the number of faces in the mesh
    *
    * @return Index
    */
-  Index num_faces() const;
+  Index num_faces() const { return h_right_F_.size(); }
   /**
    * @brief Get the number of cells in the mesh
    *
    * @return Index
    */
-  Index num_cells() const;
+  Index num_cells() const { return h_above_C_.size(); }
   /**
    * @brief Get the numberhalf edges in the mesh
    *
    * @return Index
    */
-  Index num_half_edges() const;
+  Index num_half_edges() const { return v_origin_H_.size(); }
   /**
    * @brief Get the Euler characteristic of the mesh
    *
    * @return Index
    */
-  int euler_characteristic() const;
+  int euler_characteristic() const {
+    return num_vertices() - num_edges() + num_faces();
+  }
   /**
    * @brief Get the number of dicconnected boundary components
    *
    * @return Index
    */
-  Index num_boundaries() const;
+  Index num_boundaries() const { return h_negative_B_.size(); }
   /**
    * @brief Get the genus of the mesh
    *
    * @return Index
    */
-  Index genus() const;
+  Index genus() const {
+    return (2 - euler_characteristic() - num_boundaries()) / 2;
+  }
 
   MeshSamples to_mesh_samples() const {
     MeshSamples ms;
-    ms["h_out_V"] = h_out_V_;
-    ms["h_directed_E"] = h_directed_E_;
-    ms["h_right_F"] = h_right_F_;
-    ms["h_above_C"] = h_above_C_;
-    ms["h_negative_B"] = h_negative_B_;
-    ms["v_origin_H"] = v_origin_H_;
-    ms["e_undirected_H"] = e_undirected_H_;
-    ms["f_left_H"] = f_left_H_;
-    ms["c_below_H"] = c_below_H_;
-    ms["h_next_H"] = h_next_H_;
-    ms["h_twin_H"] = h_twin_H_;
-    ms["h_flip_H"] = h_flip_H_;
+    if (!h_out_V_.empty()) {
+      ms["h_out_V"] = h_out_V_;
+    }
+    if (!h_directed_E_.empty()) {
+      ms["h_directed_E"] = h_directed_E_;
+    }
+    if (!h_right_F_.empty()) {
+      ms["h_right_F"] = h_right_F_;
+    }
+    if (!h_above_C_.empty()) {
+      ms["h_above_C"] = h_above_C_;
+    }
+    if (!h_negative_B_.empty()) {
+      ms["h_negative_B"] = h_negative_B_;
+    }
+    if (!v_origin_H_.empty()) {
+      ms["v_origin_H"] = v_origin_H_;
+    }
+    if (!e_undirected_H_.empty()) {
+      ms["e_undirected_H"] = e_undirected_H_;
+    }
+    if (!f_left_H_.empty()) {
+      ms["f_left_H"] = f_left_H_;
+    }
+    if (!c_below_H_.empty()) {
+      ms["c_below_H"] = c_below_H_;
+    }
+    if (!h_next_H_.empty()) {
+      ms["h_next_H"] = h_next_H_;
+    }
+    if (!h_twin_H_.empty()) {
+      ms["h_twin_H"] = h_twin_H_;
+    }
+    if (!h_flip_H_.empty()) {
+      ms["h_flip_H"] = h_flip_H_;
+    }
+    if (!X_ambient_V_.empty()) {
+      ms["X_ambient_V"] = X_ambient_V_;
+    }
+    if (!V_cycle_E_.empty()) {
+      ms["V_cycle_E"] = V_cycle_E_;
+    }
+    if (!V_cycle_F_.empty()) {
+      ms["V_cycle_F"] = V_cycle_F_;
+    }
+    if (!V_cycle_C_.empty()) {
+      ms["V_cycle_C"] = V_cycle_C_;
+    }
     return ms;
   }
-};
 
+  void from_mesh_samples(const MeshSamples &ms);
+};
+/**
+@} // addtogroup Mesh
+*/
 } // namespace mesh
 } // namespace mathutils
