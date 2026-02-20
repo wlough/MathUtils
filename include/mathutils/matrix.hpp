@@ -8,6 +8,7 @@
 #include <span>
 #include <stdexcept>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 namespace mathutils {
@@ -222,4 +223,80 @@ public:
     }
   }
 };
+
+/**
+ * @brief Assign an output matrix from a variant holding a matrix of (possibly)
+ * different scalar type.
+ *
+ * This helper extracts the matrix stored in @p v (a @c std::variant of matrix
+ * types) and writes it into @p out. If the stored matrix type matches @p OutMat
+ * exactly, the assignment is performed directly. Otherwise, if the stored
+ * scalar type @c InScalar is constructible as @c OutScalar, the stored matrix
+ * is converted to @c OutScalar via @c to_dtype<OutScalar>() and assigned to
+ * @p out.
+ *
+ * The @c key argument is used only to annotate exception messages with the
+ * logical field name (e.g., map key) corresponding to @p v.
+ *
+ * @tparam MatrixVariant Variant type storing matrix objects. Must be a
+ * @c std::variant whose alternatives define:
+ *   - @c value_type (scalar type),
+ *   - @c template <class S> auto to_dtype() const (or compatible) for scalar
+ *     conversion to @c S.
+ *
+ * @tparam OutMat Output matrix type. Must define:
+ *   - @c value_type (scalar type),
+ *   - copy assignment from @c OutMat,
+ *   - @c template <class S> OutMat to_dtype() const (or compatible) for scalar
+ *     conversion.
+ *
+ * @param[in]  v    Variant containing an input matrix instance.
+ * @param[in]  key  Name used to prefix error messages (typically the
+ * dictionary/map key for @p v).
+ * @param[out] out  Output matrix to be overwritten.
+ *
+ * @throws std::runtime_error
+ *   - if the stored matrix scalar type cannot be converted to @c OutScalar, or
+ *   - if @c to_dtype<OutScalar>() throws (e.g., due to overflow/invalid
+ *     conversion checks).
+ *
+ * @note This function performs a full assignment (and may allocate) depending
+ * on @p OutMat. It does not attempt to create a view into the input matrix.
+ *
+ * @par Example
+ * @code{.cpp}
+ * using MatrixVariant = std::variant<SamplesField, SamplesIndex, SamplesRGBA>;
+ * MatrixVariant v = SamplesField{...}; // e.g., Matrix<float>
+ *
+ * SamplesField out_f;
+ * assign_matrix_from_variant(v, "X_ambient_V", out_f); // exact dtype or
+ * conversion
+ *
+ * SamplesIndex out_i;
+ * assign_matrix_from_variant(v, "X_ambient_V", out_i); // may throw if
+ * incompatible
+ * @endcode
+ */
+template <typename MatrixVariant, class OutMat>
+static void assign_matrix_from_variant(const MatrixVariant &v,
+                                       const std::string &key, OutMat &out) {
+  using OutScalar = typename OutMat::value_type;
+
+  std::visit(
+      [&](auto const &in_mat) {
+        using InMat = std::decay_t<decltype(in_mat)>;
+        using InScalar = typename InMat::value_type;
+
+        if constexpr (std::is_same_v<InMat, OutMat>) {
+          out = in_mat; // exact type
+        } else if constexpr (std::is_constructible_v<OutScalar, InScalar>) {
+          // numeric conversion with overflow checks in to_dtype()
+          out = in_mat.template to_dtype<OutScalar>();
+        } else {
+          throw std::runtime_error(key + ": incompatible matrix dtype");
+        }
+      },
+      v);
+}
+
 } // namespace mathutils

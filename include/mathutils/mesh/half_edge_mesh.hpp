@@ -14,37 +14,27 @@
 
 // #include <unordered_map>
 
-/////////////////////////////////////
-/////////////////////////////////////
-// Mesh utilities //////
-/////////////////////////////////////
-/////////////////////////////////////
 namespace mathutils {
 namespace mesh {
 /** @addtogroup Mesh
  *  @{
  */
-class SimplicialComplexBase {
+
+class SimplicialTopology2 {
 public:
-  SamplesReal X_ambient_V_; // coords in ambient space
   SamplesIndex V_cycle_E_;
   SamplesIndex V_cycle_F_;
-  SamplesIndex V_cycle_C_;
 
-  SimplicialComplexBase() = default;
+  SimplicialTopology2() = default;
 
-  SamplesReal &X_ambient_V() { return X_ambient_V_; }
   SamplesIndex &V_cycle_E() { return V_cycle_E_; }
   SamplesIndex &V_cycle_F() { return V_cycle_F_; }
-  SamplesIndex &V_cycle_C() { return V_cycle_C_; }
 
-  std::span<Real> X_ambient_v(Index v) { return X_ambient_V_.row(v); }
   std::span<Index> V_cycle_e(Index e) { return V_cycle_E_.row(e); }
   std::span<Index> V_cycle_f(Index f) { return V_cycle_F_.row(f); }
-  std::span<Index> V_cycle_c(Index c) { return V_cycle_C_.row(c); }
 };
 
-class HalfPlexMesh : public SimplicialComplexBase {
+class HalfEdgeTopology {
   using Generatori = mathutils::SimpleGenerator<Index>;
 
 public:
@@ -54,33 +44,28 @@ public:
   SamplesIndex h_out_V_;
   SamplesIndex h_directed_E_;
   SamplesIndex h_right_F_;
-  SamplesIndex h_above_C_;
   SamplesIndex h_negative_B_;
 
   SamplesIndex v_origin_H_;
   SamplesIndex e_undirected_H_;
   SamplesIndex f_left_H_;
-  SamplesIndex c_below_H_;
 
   SamplesIndex h_next_H_; // (v, e, f, c) --> (v', e', f, c)
   SamplesIndex h_twin_H_; // (v, e, f, c) --> (v', e, f', c)
-  SamplesIndex h_flip_H_; // (v, e, f, c) --> (v', e, f, c')
   ////////////////////////////
 
   SamplesIndex &h_out_V() { return h_out_V_; }
   SamplesIndex &h_directed_E() { return h_directed_E_; }
   SamplesIndex &h_right_F() { return h_right_F_; }
-  SamplesIndex &h_above_C() { return h_above_C_; }
+  // SamplesIndex &h_above_C() { return h_above_C_; }
   SamplesIndex &h_negative_B() { return h_negative_B_; }
 
   SamplesIndex &v_origin_H() { return v_origin_H_; }
   SamplesIndex &e_undirected_H() { return e_undirected_H_; }
   SamplesIndex &f_left_H() { return f_left_H_; }
-  SamplesIndex &c_below_H() { return c_below_H_; }
 
   SamplesIndex &h_next_H() { return h_next_H_; }
   SamplesIndex &h_twin_H() { return h_twin_H_; }
-  SamplesIndex &h_flip_H() { return h_flip_H_; }
 
   ///////////////////////////////////////////////////////
   // Combinatorial maps /////////////////////////////////
@@ -88,20 +73,17 @@ public:
   Index h_out_v(Index v) const { return h_out_V_[v]; }
   Index h_directed_e(Index e) const { return h_directed_E_[e]; }
   Index h_right_f(Index f) const { return h_right_F_[f]; }
-  Index h_above_c(Index c) const { return h_above_C_[c]; }
+  // Index h_above_c(Index c) const { return h_above_C_[c]; }
   Index h_negative_b(Index b) const { return h_negative_B_[b]; }
 
   Index v_origin_h(Index h) const { return v_origin_H_[h]; }
   Index e_undirected_h(Index h) const { return e_undirected_H_[h]; }
   Index f_left_h(Index h) const { return f_left_H_[h]; }
-  Index c_below_h(Index h) const { return c_below_H_[h]; }
 
   Index h_next_h(Index h) const { return h_next_H_[h]; } // (v', e', f, c)
   Index h_twin_h(Index h) const { return h_twin_H_[h]; } // (v', e, f', c)
-  Index h_flip_h(Index h) const { return h_flip_H_[h]; } // (v', e, f, c')
 
   Index b_ghost_f(Index f) const { return -f - 1; }
-  Index b_ghost_c(Index c) const { return -c - 1; }
 
   Index h_in_v(Index v) const { return h_twin_H_[h_out_V_[v]]; }
   Index v_head_h(Index h) const { return v_origin_H_[h_twin_H_[h]]; }
@@ -178,12 +160,9 @@ public:
    * @return Index
    */
   Index num_faces() const { return h_right_F_.size(); }
-  /**
-   * @brief Get the number of cells in the mesh
-   *
-   * @return Index
-   */
-  Index num_cells() const { return h_above_C_.size(); }
+
+  // Index num_cells() const { return h_above_C_.size(); }
+
   /**
    * @brief Get the numberhalf edges in the mesh
    *
@@ -213,59 +192,21 @@ public:
     return (2 - euler_characteristic() - num_boundaries()) / 2;
   }
 
-  MeshSamples to_mesh_samples() const {
-    MeshSamples ms;
-    if (!h_out_V_.empty()) {
-      ms["h_out_V"] = h_out_V_;
-    }
-    if (!h_directed_E_.empty()) {
-      ms["h_directed_E"] = h_directed_E_;
-    }
-    if (!h_right_F_.empty()) {
-      ms["h_right_F"] = h_right_F_;
-    }
-    if (!h_above_C_.empty()) {
-      ms["h_above_C"] = h_above_C_;
-    }
-    if (!h_negative_B_.empty()) {
-      ms["h_negative_B"] = h_negative_B_;
-    }
-    if (!v_origin_H_.empty()) {
-      ms["v_origin_H"] = v_origin_H_;
-    }
-    if (!e_undirected_H_.empty()) {
-      ms["e_undirected_H"] = e_undirected_H_;
-    }
-    if (!f_left_H_.empty()) {
-      ms["f_left_H"] = f_left_H_;
-    }
-    if (!c_below_H_.empty()) {
-      ms["c_below_H"] = c_below_H_;
-    }
-    if (!h_next_H_.empty()) {
-      ms["h_next_H"] = h_next_H_;
-    }
-    if (!h_twin_H_.empty()) {
-      ms["h_twin_H"] = h_twin_H_;
-    }
-    if (!h_flip_H_.empty()) {
-      ms["h_flip_H"] = h_flip_H_;
-    }
-    if (!X_ambient_V_.empty()) {
-      ms["X_ambient_V"] = X_ambient_V_;
-    }
-    if (!V_cycle_E_.empty()) {
-      ms["V_cycle_E"] = V_cycle_E_;
-    }
-    if (!V_cycle_F_.empty()) {
-      ms["V_cycle_F"] = V_cycle_F_;
-    }
-    if (!V_cycle_C_.empty()) {
-      ms["V_cycle_C"] = V_cycle_C_;
-    }
-    return ms;
-  }
+  MeshSamples to_mesh_samples() const;
 
+  void from_mesh_samples(const MeshSamples &ms);
+};
+
+class HalfEdgeMesh {
+
+public:
+  SamplesReal X_ambient_V_;
+  HalfEdgeTopology topo;
+
+  SamplesReal &X_ambient_V() { return X_ambient_V_; }
+  std::span<Real> X_ambient_v(Index v) { return X_ambient_V_.row(v); }
+
+  MeshSamples to_mesh_samples() const;
   void from_mesh_samples(const MeshSamples &ms);
 };
 /**
