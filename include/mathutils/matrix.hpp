@@ -235,8 +235,8 @@ public:
  * is converted to @c OutScalar via @c to_dtype<OutScalar>() and assigned to
  * @p out.
  *
- * The @c key argument is used only to annotate exception messages with the
- * logical field name (e.g., map key) corresponding to @p v.
+ * If provided, @p key is used only to annotate exception messages with the
+ * logical field name (e.g., map/dictionary key) corresponding to @p v.
  *
  * @tparam MatrixVariant Variant type storing matrix objects. Must be a
  * @c std::variant whose alternatives define:
@@ -251,9 +251,9 @@ public:
  *     conversion.
  *
  * @param[in]  v    Variant containing an input matrix instance.
- * @param[in]  key  Name used to prefix error messages (typically the
- * dictionary/map key for @p v).
  * @param[out] out  Output matrix to be overwritten.
+ * @param[in]  key  Optional label used to prefix error messages (typically the
+ * map key for @p v). If empty, error messages omit the label.
  *
  * @throws std::runtime_error
  *   - if the stored matrix scalar type cannot be converted to @c OutScalar, or
@@ -269,17 +269,17 @@ public:
  * MatrixVariant v = SamplesField{...}; // e.g., Matrix<float>
  *
  * SamplesField out_f;
- * assign_matrix_from_variant(v, "X_ambient_V", out_f); // exact dtype or
+ * assign_matrix_from_variant(v, out_f, "X_ambient_V"); // exact dtype or
  * conversion
  *
  * SamplesIndex out_i;
- * assign_matrix_from_variant(v, "X_ambient_V", out_i); // may throw if
+ * assign_matrix_from_variant(v, out_i, "X_ambient_V"); // may throw if
  * incompatible
  * @endcode
  */
 template <typename MatrixVariant, class OutMat>
-static void assign_matrix_from_variant(const MatrixVariant &v,
-                                       const std::string &key, OutMat &out) {
+static void assign_matrix_from_variant(const MatrixVariant &v, OutMat &out,
+                                       std::string_view key = {}) {
   using OutScalar = typename OutMat::value_type;
 
   std::visit(
@@ -293,7 +293,8 @@ static void assign_matrix_from_variant(const MatrixVariant &v,
           // numeric conversion with overflow checks in to_dtype()
           out = in_mat.template to_dtype<OutScalar>();
         } else {
-          throw std::runtime_error(key + ": incompatible matrix dtype");
+          throw std::runtime_error(std::string(key) +
+                                   " incompatible matrix dtype");
         }
       },
       v);

@@ -347,8 +347,8 @@ PlyMeshSamples load_ply_samples(const std::string &filepath,
       if (rows == 0 || cols == 0) {
         if (verbose) {
           std::cout << "\t[ply_load] skipping property spec "
-                    << property_spec_ptr->samples_key
-                    << " because it has zero rows or columns." << std::endl;
+                    << property_spec_ptr->samples_key << " because it has "
+                    << rows << " rows and " << cols << " columns." << std::endl;
         }
         continue;
       }

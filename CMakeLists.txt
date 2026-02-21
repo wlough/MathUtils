@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
 project(pymathutils LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Python & pybind11
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 find_package(pybind11 CONFIG REQUIRED)
@@ -19,6 +22,7 @@ pybind11_add_module(pymathutils_backend
     src/cpp/half_edge_mesh.cpp
     src/cpp/mesh_convert_funs.cpp
     src/cpp/mesh_plyio.cpp
+    src/cpp/mesh_common.cpp
     src/cpp/bind_mesh.cpp
     src/cpp/random.cpp
     src/cpp/bind_random.cpp

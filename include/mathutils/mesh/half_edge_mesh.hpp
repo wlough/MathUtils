@@ -5,6 +5,7 @@
  * @brief Simple half-edge mesh class
  */
 #include "mathutils/mesh/mesh_common.hpp"
+#include "mathutils/mesh/mesh_plyio.hpp"
 #include "mathutils/simple_generator.hpp"
 // #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
 // #include <array>
@@ -194,7 +195,7 @@ public:
 
   MeshSamples to_mesh_samples() const;
 
-  void from_mesh_samples(const MeshSamples &ms);
+  void from_mesh_samples(MeshSamples &ms);
 };
 
 class HalfEdgeMesh {
@@ -202,12 +203,22 @@ class HalfEdgeMesh {
 public:
   SamplesReal X_ambient_V_;
   HalfEdgeTopology topo;
+  MeshSamples attrs;
 
   SamplesReal &X_ambient_V() { return X_ambient_V_; }
   std::span<Real> X_ambient_v(Index v) { return X_ambient_V_.row(v); }
 
   MeshSamples to_mesh_samples() const;
-  void from_mesh_samples(const MeshSamples &ms);
+  void from_mesh_samples(MeshSamples &ms);
+  void load_ply(const std::string &filepath,
+                const bool preload_into_memory = true,
+                const bool verbose = false,
+                const std::string &ply_property_convention = "MathUtils") {
+    MeshSamples ms = mesh::io::load_mesh_samples(
+        filepath, preload_into_memory, verbose, ply_property_convention);
+
+    from_mesh_samples(ms);
+  }
 };
 /**
 @} // addtogroup Mesh

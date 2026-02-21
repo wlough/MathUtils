@@ -4,6 +4,7 @@
 #include "mathutils/bind/numpy_view_span.hpp"
 #include "mathutils/mesh/half_edge_mesh.hpp"
 #include "mathutils/mesh/mesh.hpp"
+#include "mathutils/mesh/mesh_common.hpp"
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -187,6 +188,13 @@ Args:
           [](HalfEdgeMesh &self) -> HalfEdgeTopology & { return self.topo; },
           py::return_value_policy::reference_internal)
 
+      .def_property_readonly(
+          "attrs",
+          [](HalfEdgeMesh &self) -> mathutils::mesh::MeshSamples & {
+            return self.attrs;
+          },
+          py::return_value_policy::reference_internal)
+
       .def("X_ambient_V", &HalfEdgeMesh::X_ambient_V,
            py::return_value_policy::reference_internal)
 
@@ -200,5 +208,9 @@ Args:
           "Return a writable NumPy view of the vertex position row (shape "
           "(3,), etc.).")
       .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
-      .def("from_mesh_samples", &HalfEdgeMesh::from_mesh_samples);
+      .def("from_mesh_samples", &HalfEdgeMesh::from_mesh_samples)
+      .def("load_ply", &HalfEdgeMesh::load_ply,
+           "Load mesh samples from a PLY file", py::arg("filepath"),
+           py::arg("preload_into_memory") = true, py::arg("verbose") = false,
+           py::arg("ply_property_convention") = "MathUtils");
 }

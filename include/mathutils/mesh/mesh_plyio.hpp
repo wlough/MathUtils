@@ -45,7 +45,7 @@ using PlyMeshSamples = std::map<std::string, PlySamplesVariant>;
 enum class SampleType : uint8_t { INDEX, REAL, COLOR, INVALID };
 
 static std::map<SampleType, tinyply::Type> TinyplyTypeFromSampleType{
-    {SampleType::INDEX, tinyply::Type::UINT32},
+    {SampleType::INDEX, tinyply::Type::INT32},
     {SampleType::REAL, tinyply::Type::FLOAT64},
     {SampleType::COLOR, tinyply::Type::UINT8},
     {SampleType::INVALID, tinyply::Type::INVALID}};
@@ -63,17 +63,9 @@ struct MeshPlyPropertySpec {
   MeshPlyPropertySpec(const std::string element_key_,
                       const std::string samples_key_,
                       const std::vector<std::string> property_keys_,
-                      const SampleType sample_type_, bool is_list_)
-      : element_key(element_key_), samples_key(samples_key_),
-        property_keys(property_keys_), sample_type(sample_type_),
-        is_list(is_list_) {}
-  MeshPlyPropertySpec(const std::string element_key_,
-                      const std::string samples_key_,
-                      const std::vector<std::string> property_keys_,
                       const SampleType sample_type_)
       : element_key(element_key_), samples_key(samples_key_),
-        property_keys(property_keys_), sample_type(sample_type_),
-        is_list(false) {}
+        property_keys(property_keys_), sample_type(sample_type_) {}
   MeshPlyPropertySpec(const std::string element_key_,
                       const std::string samples_key_,
                       const std::vector<std::string> property_keys_,
@@ -82,6 +74,7 @@ struct MeshPlyPropertySpec {
         property_keys(property_keys_), sample_type(sample_type_),
         is_list(list_count_ > 0), list_count(list_count_) {}
 
+  // "face", "V_cycle_F", {"V_cycle"}, SampleType::INDEX, true, 3
   ///////////////////
   // Keys and data //
   ///////////////////
@@ -114,123 +107,103 @@ static std::vector<MeshPlyPropertySpec> PlyPropertySpecs{
     ////////////
     // Vertex //
     ////////////
-    MeshPlyPropertySpec("vertex", "xyz_coord_V", {"x", "y", "z"},
-                        SampleType::REAL, false),
-    MeshPlyPropertySpec("vertex", "h_out_V", {"h_out"}, SampleType::INDEX,
-                        false),
+    MeshPlyPropertySpec("vertex", "X_ambient_V", {"x", "y", "z"},
+                        SampleType::REAL),
+    MeshPlyPropertySpec("vertex", "h_out_V", {"h_out"}, SampleType::INDEX),
     MeshPlyPropertySpec("vertex", "d_through_V", {"d_through"},
-                        SampleType::INDEX, false),
+                        SampleType::INDEX),
     MeshPlyPropertySpec("vertex", "rgba_V", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
+                        SampleType::COLOR),
     //////////
     // Edge //
     //////////
-    MeshPlyPropertySpec("edge", "V_cycle_E", {"V_cycle"}, SampleType::INDEX,
-                        true),
+    MeshPlyPropertySpec("edge", "V_cycle_E", {"V_cycle"}, SampleType::INDEX, 2),
     MeshPlyPropertySpec("edge", "h_directed_E", {"h_directed"},
-                        SampleType::INDEX, false),
-    MeshPlyPropertySpec("edge", "d_through_E", {"d_through"}, SampleType::INDEX,
-                        false),
+                        SampleType::INDEX),
+    MeshPlyPropertySpec("edge", "d_through_E", {"d_through"},
+                        SampleType::INDEX),
     MeshPlyPropertySpec("edge", "rgba_E", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
+                        SampleType::COLOR),
     //////////
     // Face //
     //////////
-    MeshPlyPropertySpec("face", "V_cycle_F", {"V_cycle"}, SampleType::INDEX,
-                        true),
-    MeshPlyPropertySpec("face", "h_right_F", {"h_right"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("face", "d_through_F", {"d_through"}, SampleType::INDEX,
-                        false),
+    MeshPlyPropertySpec("face", "V_cycle_F", {"V_cycle"}, SampleType::INDEX, 3),
+    MeshPlyPropertySpec("face", "h_right_F", {"h_right"}, SampleType::INDEX),
+    MeshPlyPropertySpec("face", "d_through_F", {"d_through"},
+                        SampleType::INDEX),
     MeshPlyPropertySpec("face", "rgba_F", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
+                        SampleType::COLOR),
     //////////
     // Cell //
     //////////
-    MeshPlyPropertySpec("cell", "V_cycle_C", {"V_cycle"}, SampleType::INDEX,
-                        true),
-    MeshPlyPropertySpec("cell", "h_above_C", {"h_above"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("cell", "d_through_C", {"d_through"}, SampleType::INDEX,
-                        false),
+    MeshPlyPropertySpec("cell", "V_cycle_C", {"V_cycle"}, SampleType::INDEX, 4),
+    MeshPlyPropertySpec("cell", "d_through_C", {"d_through"},
+                        SampleType::INDEX),
     MeshPlyPropertySpec("cell", "rgba_C", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
+                        SampleType::COLOR),
     //////////////
     // Boundary //
     //////////////
     MeshPlyPropertySpec("boundary", "h_negative_B", {"h_negative"},
-                        SampleType::INDEX, false),
+                        SampleType::INDEX),
     MeshPlyPropertySpec("boundary", "d_through_B", {"d_through"},
-                        SampleType::INDEX, false),
+                        SampleType::INDEX),
     MeshPlyPropertySpec("boundary", "rgba_B", {"red", "green", "blue", "alpha"},
-                        SampleType::COLOR, false),
+                        SampleType::COLOR),
     //////////////
     // HalfEdge //
     //////////////
     MeshPlyPropertySpec("half_edge", "v_origin_H", {"v_origin"},
-                        SampleType::INDEX, false),
+                        SampleType::INDEX),
     MeshPlyPropertySpec("half_edge", "e_undirected_H", {"e_undirected"},
-                        SampleType::INDEX, false),
-    MeshPlyPropertySpec("half_edge", "f_left_H", {"f_left"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "c_below_H", {"c_below"},
-                        SampleType::INDEX, false),
-    MeshPlyPropertySpec("half_edge", "h_next_H", {"h_next"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "h_twin_H", {"h_twin"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "h_flip_H", {"h_flip"}, SampleType::INDEX,
-                        false),
+                        SampleType::INDEX),
+    MeshPlyPropertySpec("half_edge", "f_left_H", {"f_left"}, SampleType::INDEX),
+    MeshPlyPropertySpec("half_edge", "h_next_H", {"h_next"}, SampleType::INDEX),
+    MeshPlyPropertySpec("half_edge", "h_twin_H", {"h_twin"}, SampleType::INDEX),
     //////////
     // Dart //
     //////////
-    MeshPlyPropertySpec("dart", "s0_D", {"s0"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("dart", "s1_D", {"s1"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("dart", "s2_D", {"s2"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("dart", "s3_D", {"s3"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("dart", "d0_D", {"d0"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("dart", "d1_D", {"d1"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("dart", "d2_D", {"d2"}, SampleType::INDEX, false),
-    MeshPlyPropertySpec("dart", "d3_D", {"d3"}, SampleType::INDEX, false)};
+    MeshPlyPropertySpec("dart", "s0_in_D", {"s0"}, SampleType::INDEX),
+    MeshPlyPropertySpec("dart", "s1_in_D", {"s1"}, SampleType::INDEX),
+    MeshPlyPropertySpec("dart", "s2_in_D", {"s2"}, SampleType::INDEX),
+    MeshPlyPropertySpec("dart", "s3_in_D", {"s3"}, SampleType::INDEX),
+    MeshPlyPropertySpec("dart", "d_diffs0_D", {"d0"}, SampleType::INDEX),
+    MeshPlyPropertySpec("dart", "d_diffs1_D", {"d1"}, SampleType::INDEX),
+    MeshPlyPropertySpec("dart", "d_diffs2_D", {"d2"}, SampleType::INDEX),
+    MeshPlyPropertySpec("dart", "d_diffs3_D", {"d3"}, SampleType::INDEX)};
 
 static std::vector<MeshPlyPropertySpec> MeshBranePlyPropertySpecs{
     ////////////
     // Vertex //
     ////////////
     MeshPlyPropertySpec("vertex", "xyz_coord_V", {"x", "y", "z"},
-                        SampleType::REAL, false),
-    MeshPlyPropertySpec("vertex", "h_out_V", {"h"}, SampleType::INDEX, false),
+                        SampleType::REAL),
+    MeshPlyPropertySpec("vertex", "h_out_V", {"h"}, SampleType::INDEX),
     //////////
     // Edge //
     //////////
     MeshPlyPropertySpec("edge", "V_cycle_E", {"vertex_indices"},
-                        SampleType::INDEX, true),
-    MeshPlyPropertySpec("edge", "h_directed_E", {"h"}, SampleType::INDEX,
-                        false),
+                        SampleType::INDEX, 2),
+    MeshPlyPropertySpec("edge", "h_directed_E", {"h"}, SampleType::INDEX),
     //////////
     // Face //
     //////////
     MeshPlyPropertySpec("face", "V_cycle_F", {"vertex_indices"},
-                        SampleType::INDEX, true),
-    MeshPlyPropertySpec("face", "h_right_F", {"h"}, SampleType::INDEX, false),
+                        SampleType::INDEX, 3),
+    MeshPlyPropertySpec("face", "h_right_F", {"h"}, SampleType::INDEX),
     //////////////
     // Boundary //
     //////////////
-    MeshPlyPropertySpec("boundary", "h_negative_B", {"h"}, SampleType::INDEX,
-                        false),
+    MeshPlyPropertySpec("boundary", "h_negative_B", {"h"}, SampleType::INDEX),
     //////////////
     // HalfEdge //
     //////////////
-    MeshPlyPropertySpec("half_edge", "v_origin_H", {"v"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "e_undirected_H", {"e"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "f_left_H", {"f"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "h_next_H", {"n"}, SampleType::INDEX,
-                        false),
-    MeshPlyPropertySpec("half_edge", "h_twin_H", {"t"}, SampleType::INDEX,
-                        false)};
+    MeshPlyPropertySpec("half_edge", "v_origin_H", {"v"}, SampleType::INDEX),
+    MeshPlyPropertySpec("half_edge", "e_undirected_H", {"e"},
+                        SampleType::INDEX),
+    MeshPlyPropertySpec("half_edge", "f_left_H", {"f"}, SampleType::INDEX),
+    MeshPlyPropertySpec("half_edge", "h_next_H", {"n"}, SampleType::INDEX),
+    MeshPlyPropertySpec("half_edge", "h_twin_H", {"t"}, SampleType::INDEX)};
 
 /**
  * @brief Get std::set<std::shared_ptr<MeshPlyPropertySpec>> of all known PLY
@@ -306,6 +279,20 @@ load_mesh_samples(const std::string &filepath,
                   const bool preload_into_memory = true,
                   const bool verbose = false,
                   const std::string &ply_property_convention = "MathUtils");
+
+// template <class M>
+// M load_mesh_from_ply(const std::string &filepath,
+//                      const bool preload_into_memory = true,
+//                      const bool verbose = false,
+//                      const std::string &ply_property_convention =
+//                      "MathUtils") {
+//   M m;
+//   MeshSamples ms = load_mesh_samples(filepath, preload_into_memory, verbose,
+//                                      ply_property_convention);
+//   m.from_mesh_samples(ms);
+//   return m;
+//   // m.from_mesh
+// }
 /**
 @} // addtogroup Mesh
 */

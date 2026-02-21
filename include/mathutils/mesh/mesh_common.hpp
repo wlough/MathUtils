@@ -43,31 +43,30 @@ using SamplesIndex = Matrix<Index>;
 using SamplesReal = Matrix<Real>;
 using SamplesColor = Matrix<Color>;
 using SamplesVariant = std::variant<SamplesReal, SamplesIndex, SamplesColor>;
-using MeshSamples = std::map<std::string, SamplesVariant>;
+
+using MeshSamples = std::map<std::string, SamplesVariant, std::less<>>;
+// using MeshSamples =
+//     std::map<std::string, SamplesVariant, TransparentStringLess>;
+// using MeshSamples = std::map<std::string, SamplesVariant>;
 
 static constexpr Index InvalidIndex = std::numeric_limits<Index>::max();
-//
-// template <class OutMat>
-// static void assign_matrix_from_variant(const SamplesVariant &v,
-//                                        const std::string &key, OutMat &out) {
-//   using OutScalar = typename OutMat::value_type;
-//
-//   std::visit(
-//       [&](auto const &in_mat) {
-//         using InMat = std::decay_t<decltype(in_mat)>;
-//         using InScalar = typename InMat::value_type;
-//
-//         if constexpr (std::is_same_v<InMat, OutMat>) {
-//           out = in_mat; // exact type
-//         } else if constexpr (std::is_constructible_v<OutScalar, InScalar>) {
-//           // numeric conversion with overflow checks in to_dtype()
-//           out = in_mat.template to_dtype<OutScalar>();
-//         } else {
-//           throw std::runtime_error(key + ": incompatible matrix dtype");
-//         }
-//       },
-//       v);
-// }
+
+// const SamplesVariant *get_variant_from_mesh_samples(const MeshSamples &ms,
+//                                                     std::string_view key);
+
+const SamplesVariant *get_variant_from_mesh_samples(const MeshSamples &ms,
+                                                    std::string_view key);
+
+bool erase_variant_from_mesh_samples(MeshSamples &ms, std::string_view key);
+
+template <typename T>
+bool pop_variant_to_mat_from_mesh_samples(std::string_view key,
+                                          Matrix<T> &out_mat, MeshSamples &ms) {
+  if (const SamplesVariant *v = get_variant_from_mesh_samples(ms, key)) {
+    assign_matrix_from_variant(*v, out_mat);
+  }
+  return erase_variant_from_mesh_samples(ms, key);
+}
 
 /**
 @} // addtogroup Mesh
