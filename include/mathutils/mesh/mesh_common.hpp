@@ -33,7 +33,6 @@ namespace mesh {
 using Index = std::int64_t;
 using Real = double;
 using Color = std::uint8_t;
-
 static_assert(std::is_integral<Index>::value, "Index must be an integral type");
 static_assert(std::is_floating_point<Real>::value,
               "Real must be a floating point type");
@@ -43,16 +42,9 @@ using SamplesIndex = Matrix<Index>;
 using SamplesReal = Matrix<Real>;
 using SamplesColor = Matrix<Color>;
 using SamplesVariant = std::variant<SamplesReal, SamplesIndex, SamplesColor>;
-
 using MeshSamples = std::map<std::string, SamplesVariant, std::less<>>;
-// using MeshSamples =
-//     std::map<std::string, SamplesVariant, TransparentStringLess>;
-// using MeshSamples = std::map<std::string, SamplesVariant>;
 
 static constexpr Index InvalidIndex = std::numeric_limits<Index>::max();
-
-// const SamplesVariant *get_variant_from_mesh_samples(const MeshSamples &ms,
-//                                                     std::string_view key);
 
 const SamplesVariant *get_variant_from_mesh_samples(const MeshSamples &ms,
                                                     std::string_view key);
@@ -65,7 +57,7 @@ bool pop_variant_to_mat_from_mesh_samples(std::string_view key,
   if (const SamplesVariant *v = get_variant_from_mesh_samples(ms, key)) {
     assign_matrix_from_variant(*v, out_mat);
   }
-  return erase_variant_from_mesh_samples(ms, key);
+  return ms.erase(std::string(key)) != 0;
 }
 
 /**

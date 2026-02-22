@@ -142,7 +142,8 @@ namespace mesh {
  * @param h Index of half-edge in H
  * @return Index of twin half-edge in H, or -1 if not found
  */
-int find_halfedge_index_of_twin(const Samples2i &H, const int &h);
+// int find_halfedge_index_of_twin(const Samples2i &H, const int &h);
+Index find_halfedge_index_of_twin(const SamplesIndex &H, const Index &h);
 
 /**
  * @brief Convert triangle vertex cycles to half-edge samples.
@@ -150,8 +151,14 @@ int find_halfedge_index_of_twin(const Samples2i &H, const int &h);
  * @param V_cycle_F (Nf, 3) triangle vertex cycles
  * @return std::map<std::string, Samplesi> Half-edge samples and related data
  */
-std::map<std::string, Samplesi>
-tri_vertex_cycles_to_half_edge_samples(const Samples3i &V_cycle_F);
+// std::map<std::string, Samplesi>
+// tri_cycles_to_half_edge_samples(const Samples3i &V_cycle_F);
+
+std::map<std::string, SamplesIndex>
+tri_cycles_to_half_edge_samples(const SamplesIndex &V_cycle_F);
+
+std::map<std::string, SamplesIndex>
+tri_cycles_to_dart_samples(const SamplesIndex &V_cycle_F);
 
 } // namespace mesh
 } // namespace mathutils

@@ -22,8 +22,8 @@ void bind_mesh(py::module_ &m) {
 Find the index ht of H[ht]=[j, i] in H, where H[h]=[i, j]. Return -1 if not found.
 )doc");
 
-  m.def("tri_vertex_cycles_to_half_edge_samples",
-        &mathutils::mesh::tri_vertex_cycles_to_half_edge_samples,
+  m.def("tri_cycles_to_half_edge_samples",
+        &mathutils::mesh::tri_cycles_to_half_edge_samples,
         "Convert triangle vertex cycles to half-edge samples",
         py::arg("V_cycle_F"),
         R"doc(
@@ -195,8 +195,8 @@ Args:
           },
           py::return_value_policy::reference_internal)
 
-      .def("X_ambient_V", &HalfEdgeMesh::X_ambient_V,
-           py::return_value_policy::reference_internal)
+      // .def("X_ambient_V", &HalfEdgeMesh::X_ambient_V,
+      //      py::return_value_policy::reference_internal)
 
       .def(
           "X_ambient_v",
@@ -212,5 +212,9 @@ Args:
       .def("load_ply", &HalfEdgeMesh::load_ply,
            "Load mesh samples from a PLY file", py::arg("filepath"),
            py::arg("preload_into_memory") = true, py::arg("verbose") = false,
+           py::arg("ply_property_convention") = "MathUtils")
+      .def("save_ply", &HalfEdgeMesh::save_ply,
+           "Save mesh samples to a PLY file", py::arg("filepath"),
+           py::arg("use_binary") = true,
            py::arg("ply_property_convention") = "MathUtils");
 }

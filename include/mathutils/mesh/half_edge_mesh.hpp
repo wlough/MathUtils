@@ -219,6 +219,13 @@ public:
 
     from_mesh_samples(ms);
   }
+
+  void save_ply(const std::string &filepath, const bool use_binary = true,
+                const std::string &ply_property_convention = "MathUtils") {
+
+    mathutils::mesh::io::save_mesh_samples(to_mesh_samples(), filepath,
+                                           use_binary, ply_property_convention);
+  }
 };
 /**
 @} // addtogroup Mesh

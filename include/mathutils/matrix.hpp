@@ -51,10 +51,14 @@ public:
 
   Matrix() = default;
   Matrix(std::size_t rows, std::size_t cols)
-      : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)) {}
+      : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)),
+        numpy_view_(cols == 1 ? NumpyView::Ndarray1D : NumpyView::Ndarray2D) {}
   Matrix(std::size_t rows, std::size_t cols, NumpyView view)
       : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)),
         numpy_view_(view) {}
+  Matrix(std::size_t rows)
+      : rows_(rows), cols_(1), elements_(checked_size(rows, 1)),
+        numpy_view_(NumpyView::Ndarray1D) {}
 
   // Matrix(std::size_t rows, std::size_t cols, const DataType &fill)
   //     : rows_(rows), cols_(cols), elements_(checked_size(rows, cols), fill)
@@ -85,11 +89,14 @@ public:
   //   }
   // }
 
-  void set_numpy_view(NumpyView v) { numpy_view_ = v; }
-  NumpyView numpy_view() const { return numpy_view_; }
-  bool want_numpy_vector() const {
-    return (rows_ == 1 || cols_ == 1) && (numpy_view_ == NumpyView::Ndarray1D);
-  }
+  // void set_numpy_view (NumpyView v) { numpy_view_ = v; }
+  // NumpyView numpy_view() const { return numpy_view_; }
+  // bool want_numpy_vector() const {
+  //   return (rows_ == 1 || cols_ == 1) && (numpy_view_ ==
+  //   NumpyView::Ndarray1D);
+  // }
+
+  bool is_vector() const { return (rows_ == 1 || cols_ == 1); }
 
   // Dimensions
   std::size_t rows() const noexcept { return rows_; }
@@ -157,6 +164,32 @@ public:
     elements_.assign(checked_size(rows, cols), fill);
   }
 
+  void conservativeResize(std::size_t new_rows, std::size_t new_cols) {
+    // compute new size (also checks overflow)
+    const std::size_t new_size = checked_size(new_rows, new_cols);
+
+    // allocate new storage (value-initialized to DataType{})
+    std::vector<DataType> new_elems(new_size, DataType{});
+
+    // copy overlap block (top-left)
+    const std::size_t rmin = std::min(rows_, new_rows);
+    const std::size_t cmin = std::min(cols_, new_cols);
+
+    for (std::size_t r = 0; r < rmin; ++r) {
+      const DataType *src = elements_.data() + r * cols_;
+      DataType *dst = new_elems.data() + r * new_cols;
+      std::copy(src, src + cmin, dst);
+    }
+
+    rows_ = new_rows;
+    cols_ = new_cols;
+    elements_ = std::move(new_elems);
+  }
+
+  void conservativeResize(std::size_t new_rows) {
+    conservativeResize(new_rows, 1);
+  }
+
   void fill(const DataType &value) {
     std::fill(elements_.begin(), elements_.end(), value);
   }
@@ -164,6 +197,27 @@ public:
   void clear() noexcept {
     rows_ = cols_ = 0;
     elements_.clear();
+  }
+
+  void set_row(std::size_t r, std::initializer_list<DataType> xs) {
+    row_bounds_check(r);
+    if (xs.size() != cols_) {
+      throw std::invalid_argument("Matrix: set_row wrong length");
+    }
+    std::copy(xs.begin(), xs.end(), elements_.data() + r * cols_);
+  }
+
+  void set_col(std::size_t c, std::initializer_list<DataType> xs) {
+    if (c >= cols_) {
+      throw std::out_of_range("Matrix: col out of range");
+    }
+    if (xs.size() != rows_) {
+      throw std::invalid_argument("Matrix: set_col wrong length");
+    }
+    auto it = xs.begin();
+    for (std::size_t r = 0; r < rows_; ++r, ++it) {
+      elements_[r * cols_ + c] = *it; // row-major stride
+    }
   }
 
   DataType maxCoeff() const {

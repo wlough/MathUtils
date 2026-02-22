@@ -25,42 +25,53 @@ public:
     py::array arr_in = py::array::ensure(src);
     if (!arr_in)
       return false;
-    // Only accept 1D or 2D
-    auto ndim = arr_in.ndim();
-    if (ndim != 1 && ndim != 2)
-      return false;
     // Require exact dtype so std::variant can try other T's.
     // Stuff gets cast to wrong data types without this.
     if (!py::dtype::of<T>().is(arr_in.dtype()))
       return false;
+    // Only accept 1D or 2D
+    auto ndim = arr_in.ndim();
+    if (ndim != 1 && ndim != 2)
+      return false;
 
-    if (ndim == 2) {
-      // Require C-contiguous (row-major) layout. No forcecast.
-      py::array_t<T, py::array::c_style> at(arr_in);
-      // py::array_t<T, py::array::c_style | py::array::forcecast> at(arr_in);
-      if (!at)
-        return false;
+    // if (ndim == 2) {
+    //   // Require C-contiguous (row-major) layout. No forcecast.
+    //   py::array_t<T, py::array::c_style> at(arr_in);
+    //   if (!at)
+    //     return false;
+    //
+    //   const std::size_t num_rows = static_cast<std::size_t>(at.shape(0));
+    //   const std::size_t num_cols = static_cast<std::size_t>(at.shape(1));
+    //   value = mathutils::Matrix<T>(num_rows, num_cols,
+    //                                mathutils::NumpyView::Ndarray2D);
+    //   if (value.size() != 0)
+    //     std::memcpy(value.data(), at.data(), sizeof(T) * value.size());
+    //   return true;
+    // }
+    // // else if (ndim == 1)
+    // // Require C-contiguous (row-major) layout. No forcecast.
+    // py::array_t<T, py::array::c_style> at(arr_in);
+    // if (!at)
+    //   return false;
+    //
+    // const std::size_t num_rows = static_cast<std::size_t>(at.shape(0));
+    //
+    // value = mathutils::Matrix<T>(num_rows, 1,
+    // mathutils::NumpyView::Ndarray1D);
+    //
+    // if (value.size() != 0)
+    //   std::memcpy(value.data(), at.data(), sizeof(T) * value.size());
+    // return true;
 
-      const std::size_t num_rows = static_cast<std::size_t>(at.shape(0));
-      const std::size_t num_cols = static_cast<std::size_t>(at.shape(1));
-      value = mathutils::Matrix<T>(num_rows, num_cols,
-                                   mathutils::NumpyView::Ndarray2D);
-      if (value.size() != 0)
-        std::memcpy(value.data(), at.data(), sizeof(T) * value.size());
-      return true;
-    }
-    // else if (ndim == 1)
     // Require C-contiguous (row-major) layout. No forcecast.
     py::array_t<T, py::array::c_style> at(arr_in);
     if (!at)
       return false;
 
-    const std::size_t num_vals = static_cast<std::size_t>(at.shape(0));
-
-    value = mathutils::Matrix<T>(num_vals, 1, mathutils::NumpyView::Ndarray1D);
-
-    // Ensure Matrix remembers "this was 1D"
-    // value.set_numpy_view(mathutils::NumpyView::Ndarray1D);
+    const std::size_t num_rows = static_cast<std::size_t>(at.shape(0));
+    const std::size_t num_cols =
+        ndim == 2 ? static_cast<std::size_t>(at.shape(1)) : 1;
+    value = mathutils::Matrix<T>(num_rows, num_cols);
     if (value.size() != 0)
       std::memcpy(value.data(), at.data(), sizeof(T) * value.size());
     return true;
@@ -74,8 +85,8 @@ public:
     py::capsule base(heap, [](void *p) {
       delete reinterpret_cast<mathutils::Matrix<T> *>(p);
     });
-    bool want_1d = heap->want_numpy_vector();
 
+    bool want_1d = heap->is_vector();
     if (want_1d) {
       const ssize_t n = static_cast<ssize_t>(heap->size()); // N for N×1 or 1×N
       const ssize_t s0 = static_cast<ssize_t>(sizeof(T));

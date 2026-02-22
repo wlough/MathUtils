@@ -7,7 +7,7 @@ from pymathutils.mesh.pyutils import (
 )
 
 from pymathutils.mesh import (
-    tri_vertex_cycles_to_half_edge_samples,
+    tri_cycles_to_half_edge_samples,
     find_halfedge_index_of_twin,
     load_vf_samples_from_ply,
 )
@@ -21,7 +21,7 @@ m0 = HalfEdgeMesh.init_icososphere(
     num_refinements=0,
     compute_he_stuff=False,
 )
-he_samples = tri_vertex_cycles_to_half_edge_samples(m0.V_cycle_F)
+he_samples = tri_cycles_to_half_edge_samples(m0.V_cycle_F)
 he_samples = dict(he_samples) | {"xyz_coord_V": m0.xyz_coord_V}
 m = HalfEdgeMesh.from_samples(**he_samples)
 # m = HalfEdgeMesh.load_vf_ply("/home/wlough/projects/MeshBrane/data/example_ply/dumbbell_coarse_vf.ply")

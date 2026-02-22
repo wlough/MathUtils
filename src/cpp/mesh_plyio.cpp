@@ -352,19 +352,17 @@ PlyMeshSamples load_ply_samples(const std::string &filepath,
         }
         continue;
       }
-      mathutils::NumpyView numpy_view = rows == 1 || cols == 1
-                                            ? mathutils::NumpyView::Ndarray1D
-                                            : mathutils::NumpyView::Ndarray2D;
+
       PlySamplesVariant samples_variant;
       if (property_spec_ptr->sample_type == SampleType::INDEX) {
         mesh_samples[property_spec_ptr->samples_key] =
-            Matrix<PlyIndex>(rows, cols, numpy_view);
+            Matrix<PlyIndex>(rows, cols);
       } else if (property_spec_ptr->sample_type == SampleType::REAL) {
         mesh_samples[property_spec_ptr->samples_key] =
-            Matrix<PlyReal>(rows, cols, numpy_view);
+            Matrix<PlyReal>(rows, cols);
       } else if (property_spec_ptr->sample_type == SampleType::COLOR) {
         mesh_samples[property_spec_ptr->samples_key] =
-            Matrix<PlyColor>(rows, cols, numpy_view);
+            Matrix<PlyColor>(rows, cols);
       } else {
         throw std::runtime_error("[ply_load] Unsupported sample type for key " +
                                  property_spec_ptr->samples_key);
