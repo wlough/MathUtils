@@ -28,7 +28,7 @@ public:
 
   SimplicialTopology2() = default;
   SimplicialTopology2(size_t Ne, size_t Nf)
-      : V_cycle_E_(SamplesIndex(Ne)), V_cycle_F_(SamplesIndex(Nf)) {}
+      : V_cycle_E_(SamplesIndex(Ne, 2)), V_cycle_F_(SamplesIndex(Nf, 3)) {}
 
   SamplesIndex &V_cycle_E() { return V_cycle_E_; }
   SamplesIndex &V_cycle_F() { return V_cycle_F_; }

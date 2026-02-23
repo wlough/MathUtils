@@ -156,6 +156,8 @@ public:
     elements_.assign(checked_size(rows, cols), DataType{});
   }
 
+  void resize(std::size_t rows) { resize(rows, 1); }
+
   void resize(std::size_t rows, std::size_t cols, const DataType &fill) {
     rows_ = rows;
     cols_ = cols;
@@ -200,7 +202,9 @@ public:
   void set_row(std::size_t r, std::initializer_list<DataType> xs) {
     row_bounds_check(r);
     if (xs.size() != cols_) {
-      throw std::invalid_argument("Matrix: set_row wrong length");
+      throw std::invalid_argument("Matrix::set_row: row " + std::to_string(r) +
+                                  " expected " + std::to_string(cols_) +
+                                  " values, got " + std::to_string(xs.size()));
     }
     std::copy(xs.begin(), xs.end(), elements_.data() + r * cols_);
   }

@@ -10,16 +10,17 @@
  * complex
  */
 
-#include "mathutils/hash.hpp" // mathutils::hash::ArrayHash, mathutils::hash::hash_combine
+// #include "mathutils/hash.hpp" // mathutils::hash::ArrayHash,
+// mathutils::hash::hash_combine
 #include "mathutils/mesh/half_edge_mesh.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 // #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
-#include <array>
-#include <cstddef>
+// #include <array>
+// #include <cstddef>
 #include <map>
-#include <tuple>
-#include <unordered_map>
-#include <unordered_set>
+// #include <tuple>
+// #include <unordered_map>
+// #include <unordered_set>
 
 /////////////////////////////////////
 /////////////////////////////////////
@@ -101,6 +102,23 @@ namespace mesh {
 Index find_halfedge_index_of_twin(const SamplesIndex &H, const Index &h);
 
 /**
+ * @brief Convert triangle vertex cycles to edge vertex cycles.
+ *
+ * @param V_cycle_F triangle vertex cycles (Nh, 3)
+ * @return SamplesIndex V_cycle_E edge vertex cycles (Nh, 2)
+ */
+SamplesIndex tri_cycles_to_edge_cycles(const SamplesIndex &V_cycle_F);
+
+/**
+ * @brief Convert triangle vertex cycles to half-edge samples.
+ *
+ * @param V_cycle_F (Nf, 3) triangle vertex cycles
+ * @return std::map<std::string, Samplesi> Half-edge samples and related data
+ */
+std::map<std::string, SamplesIndex>
+tri_cycles_to_half_edge_samples_alt(const SamplesIndex &V_cycle_F);
+
+/**
  * @brief Convert triangle vertex cycles to half-edge samples.
  *
  * @param V_cycle_F (Nf, 3) triangle vertex cycles
@@ -110,15 +128,22 @@ std::map<std::string, SamplesIndex>
 tri_cycles_to_half_edge_samples(const SamplesIndex &V_cycle_F);
 
 std::map<std::string, SamplesIndex>
+half_edge_samples_no_edge_data_to_edge_tri_cycles(
+    const std::map<std::string_view, SamplesIndex> &he_samples);
+
+std::map<std::string, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
+    const std::map<std::string_view, SamplesIndex> &he_samples);
+
+std::map<std::string, SamplesIndex>
 tri_cycles_to_dart_samples(const SamplesIndex &V_cycle_F);
 
 std::map<std::string, SamplesIndex> half_edge_samples_to_dart_samples(
     const std::map<std::string, SamplesIndex> &ms);
 
 SimplicialTopology2
-HalfEdgeTopology_to_SimplicialTopology2(const HalfEdgeTopology he_topo);
+HalfEdgeTopology_to_SimplicialTopology2(const HalfEdgeTopology &he_topo);
 
 HalfEdgeTopology
-SimplicialTopology2_to_HalfEdgeTopology(const SimplicialTopology2 he_topo);
+SimplicialTopology2_to_HalfEdgeTopology(const SimplicialTopology2 &he_topo);
 } // namespace mesh
 } // namespace mathutils

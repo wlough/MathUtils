@@ -262,4 +262,7 @@ Args:
   m.def("HalfEdgeTopology_to_SimplicialTopology2",
         &mathutils::mesh::HalfEdgeTopology_to_SimplicialTopology2,
         "Convert HalfEdgeTopology to SimplicialTopology2", py::arg("he_topo"));
+  m.def("tri_cycles_to_edge_cycles",
+        &mathutils::mesh::tri_cycles_to_edge_cycles,
+        "Convert triangles to edges", py::arg("V_cycle_F"));
 }
