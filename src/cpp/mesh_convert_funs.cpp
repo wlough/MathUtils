@@ -427,13 +427,11 @@ half_edge_samples_no_edge_data_to_edge_tri_cycles(
   const SamplesIndex &h_twin_H = he_samples.at("h_twin_H");
   const SamplesIndex &f_left_H = he_samples.at("f_left_H");
   const SamplesIndex &h_right_F = he_samples.at("h_right_F");
-  const SamplesIndex &h_negative_B = he_samples.at("h_negative_B");
 
   size_t num_vertices = h_out_V.size();
   size_t num_edges = v_origin_H.size() / 2;
   size_t num_faces = h_right_F.size();
   size_t num_half_edges = v_origin_H.size();
-  size_t num_boundaries = h_negative_B.size();
 
   SamplesIndex V_cycle_E(num_edges, 2);
   SamplesIndex V_cycle_F(num_edges, 3);

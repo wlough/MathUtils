@@ -265,4 +265,9 @@ Args:
   m.def("tri_cycles_to_edge_cycles",
         &mathutils::mesh::tri_cycles_to_edge_cycles,
         "Convert triangles to edges", py::arg("V_cycle_F"));
+  m.def("half_edge_samples_no_edge_data_to_edge_tri_cycles",
+        &mathutils::mesh::half_edge_samples_no_edge_data_to_edge_tri_cycles,
+        "Convert triangles to edges", py::arg("he_samples"));
+
+  // half_edge_samples_no_edge_data_to_edge_tri_cycles
 }

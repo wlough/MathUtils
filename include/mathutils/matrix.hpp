@@ -259,6 +259,9 @@ public:
   {
     if constexpr (std::is_same_v<NewDataType, DataType>) {
       return *this;
+    } else if (elements_.empty()) {
+      Matrix<NewDataType> out(rows_, cols_);
+      return out;
     } else { // check for overflow/underflow
       const auto [min_val, max_val] = minmaxCoeff();
       const long double new_low =
