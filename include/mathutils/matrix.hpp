@@ -13,7 +13,7 @@
 
 namespace mathutils {
 
-enum class NumpyView : uint8_t { Ndarray2D, Ndarray1D };
+// enum class NumpyView : uint8_t { Ndarray2D, Ndarray1D };
 
 /**
  * @brief A simple 2D matrix class with row-major contiguous storage.
@@ -44,21 +44,19 @@ private:
   std::size_t rows_{0};
   std::size_t cols_{0};
   std::vector<DataType> elements_;
-  NumpyView numpy_view_{NumpyView::Ndarray2D};
+  // NumpyView numpy_view_{NumpyView::Ndarray2D};
 
 public:
   using value_type = DataType;
 
   Matrix() = default;
   Matrix(std::size_t rows, std::size_t cols)
-      : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)),
-        numpy_view_(cols == 1 ? NumpyView::Ndarray1D : NumpyView::Ndarray2D) {}
-  Matrix(std::size_t rows, std::size_t cols, NumpyView view)
-      : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)),
-        numpy_view_(view) {}
+      : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)) {}
+  // Matrix(std::size_t rows, std::size_t cols, NumpyView view)
+  //     : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)),
+  //       numpy_view_(view) {}
   Matrix(std::size_t rows)
-      : rows_(rows), cols_(1), elements_(checked_size(rows, 1)),
-        numpy_view_(NumpyView::Ndarray1D) {}
+      : rows_(rows), cols_(1), elements_(checked_size(rows, 1)) {}
 
   // Matrix(std::size_t rows, std::size_t cols, const DataType &fill)
   //     : rows_(rows), cols_(cols), elements_(checked_size(rows, cols), fill)
@@ -268,7 +266,7 @@ public:
       if (old_min < new_low || old_max > new_hi) {
         throw std::runtime_error("Matrix: to_dtype would overflow");
       }
-      Matrix<NewDataType> out(rows_, cols_, numpy_view_);
+      Matrix<NewDataType> out(rows_, cols_);
       auto *dst = out.data();
       for (std::size_t i = 0; i < elements_.size(); ++i) {
         dst[i] = static_cast<NewDataType>(elements_[i]);

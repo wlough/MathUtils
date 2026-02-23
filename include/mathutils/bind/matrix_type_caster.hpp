@@ -34,35 +34,6 @@ public:
     if (ndim != 1 && ndim != 2)
       return false;
 
-    // if (ndim == 2) {
-    //   // Require C-contiguous (row-major) layout. No forcecast.
-    //   py::array_t<T, py::array::c_style> at(arr_in);
-    //   if (!at)
-    //     return false;
-    //
-    //   const std::size_t num_rows = static_cast<std::size_t>(at.shape(0));
-    //   const std::size_t num_cols = static_cast<std::size_t>(at.shape(1));
-    //   value = mathutils::Matrix<T>(num_rows, num_cols,
-    //                                mathutils::NumpyView::Ndarray2D);
-    //   if (value.size() != 0)
-    //     std::memcpy(value.data(), at.data(), sizeof(T) * value.size());
-    //   return true;
-    // }
-    // // else if (ndim == 1)
-    // // Require C-contiguous (row-major) layout. No forcecast.
-    // py::array_t<T, py::array::c_style> at(arr_in);
-    // if (!at)
-    //   return false;
-    //
-    // const std::size_t num_rows = static_cast<std::size_t>(at.shape(0));
-    //
-    // value = mathutils::Matrix<T>(num_rows, 1,
-    // mathutils::NumpyView::Ndarray1D);
-    //
-    // if (value.size() != 0)
-    //   std::memcpy(value.data(), at.data(), sizeof(T) * value.size());
-    // return true;
-
     // Require C-contiguous (row-major) layout. No forcecast.
     py::array_t<T, py::array::c_style> at(arr_in);
     if (!at)

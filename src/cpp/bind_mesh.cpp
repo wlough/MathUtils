@@ -109,6 +109,31 @@ Args:
   using mathutils::mesh::HalfEdgeTopology;
   using mathutils::mesh::Index;
   using mathutils::mesh::Real;
+  using mathutils::mesh::SimplicialTopology2;
+
+  py::class_<SimplicialTopology2>(m, "SimplicialTopology2")
+      .def(py::init<>())
+      .def("V_cycle_E", &SimplicialTopology2::V_cycle_E,
+           py::return_value_policy::reference_internal)
+      .def("V_cycle_F", &SimplicialTopology2::V_cycle_F,
+           py::return_value_policy::reference_internal)
+
+      .def(
+          "V_cycle_e",
+          [](SimplicialTopology2 &self, Index e) {
+            std::span<Index> s = self.V_cycle_e(e);
+            return numpy_view_span(s, py::cast(&self));
+          },
+          py::arg("e"),
+          "Return a writable NumPy view of the vertex cycle for the edge")
+      .def(
+          "V_cycle_f",
+          [](SimplicialTopology2 &self, Index f) {
+            std::span<Index> s = self.V_cycle_f(f);
+            return numpy_view_span(s, py::cast(&self));
+          },
+          py::arg("f"),
+          "Return a writable NumPy view of the vertex cycle for the face");
 
   // using mathutils::mesh::SimplicialComplexBase;
 
@@ -207,6 +232,21 @@ Args:
           py::arg("v"),
           "Return a writable NumPy view of the vertex position row (shape "
           "(3,), etc.).")
+      // .def("set_X_ambient_v", &HalfEdgeMesh::set_X_ambient_v,
+      //      "Set ambient coordinates of a vertex", py::arg("v"), py::arg("X"))
+      .def("set_X_ambient_v",
+       [](HalfEdgeMesh& self, Index v,
+          py::array_t<Real, py::array::c_style | py::array::forcecast> X) {
+         if (X.ndim() != 1) {
+           throw std::runtime_error("set_X_ambient_v: expected 1D array");
+         }
+         if (static_cast<std::size_t>(X.shape(0)) != self.X_ambient_V_.cols()) {
+           throw std::runtime_error("set_X_ambient_v: wrong length");
+         }
+         auto r = self.X_ambient_V_.row(static_cast<std::size_t>(v));
+         const Real* src = X.data();
+         std::copy(src, src + r.size(), r.begin());
+       })
       .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
       .def("from_mesh_samples", &HalfEdgeMesh::from_mesh_samples)
       .def("load_ply", &HalfEdgeMesh::load_ply,
@@ -217,4 +257,8 @@ Args:
            "Save mesh samples to a PLY file", py::arg("filepath"),
            py::arg("use_binary") = true,
            py::arg("ply_property_convention") = "MathUtils");
+
+  m.def("HalfEdgeTopology_to_SimplicialTopology2",
+        &mathutils::mesh::HalfEdgeTopology_to_SimplicialTopology2,
+        "Convert HalfEdgeTopology to SimplicialTopology2", py::arg("he_topo"));
 }
