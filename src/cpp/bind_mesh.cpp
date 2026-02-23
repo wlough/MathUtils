@@ -235,18 +235,19 @@ Args:
       // .def("set_X_ambient_v", &HalfEdgeMesh::set_X_ambient_v,
       //      "Set ambient coordinates of a vertex", py::arg("v"), py::arg("X"))
       .def("set_X_ambient_v",
-       [](HalfEdgeMesh& self, Index v,
-          py::array_t<Real, py::array::c_style | py::array::forcecast> X) {
-         if (X.ndim() != 1) {
-           throw std::runtime_error("set_X_ambient_v: expected 1D array");
-         }
-         if (static_cast<std::size_t>(X.shape(0)) != self.X_ambient_V_.cols()) {
-           throw std::runtime_error("set_X_ambient_v: wrong length");
-         }
-         auto r = self.X_ambient_V_.row(static_cast<std::size_t>(v));
-         const Real* src = X.data();
-         std::copy(src, src + r.size(), r.begin());
-       })
+           [](HalfEdgeMesh &self, Index v,
+              py::array_t<Real, py::array::c_style | py::array::forcecast> X) {
+             if (X.ndim() != 1) {
+               throw std::runtime_error("set_X_ambient_v: expected 1D array");
+             }
+             if (static_cast<std::size_t>(X.shape(0)) !=
+                 self.X_ambient_V_.cols()) {
+               throw std::runtime_error("set_X_ambient_v: wrong length");
+             }
+             auto r = self.X_ambient_V_.row(static_cast<std::size_t>(v));
+             const Real *src = X.data();
+             std::copy(src, src + r.size(), r.begin());
+           })
       .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
       .def("from_mesh_samples", &HalfEdgeMesh::from_mesh_samples)
       .def("load_ply", &HalfEdgeMesh::load_ply,
