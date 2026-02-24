@@ -214,6 +214,7 @@ public:
   }
 
   MeshSamples to_mesh_samples() const;
+  std::map<std::string_view, SamplesIndex> to_topo_samples() const;
 
   void from_mesh_samples(MeshSamples &ms);
 };
@@ -222,6 +223,8 @@ class HalfEdgeMesh {
 
 public:
   SamplesReal X_ambient_V_;
+  SamplesIndex V_cycle_E_;
+  SamplesIndex V_cycle_F_;
   HalfEdgeTopology topo;
   MeshSamples attrs;
 
@@ -249,6 +252,11 @@ public:
     mathutils::mesh::io::save_mesh_samples(to_mesh_samples(), filepath,
                                            use_binary, ply_property_convention);
   }
+
+  /**
+   * @brief Add V_cycle_E and V_cycle_F to attrs.
+   */
+  void add_simplex_cycles_to_attrs();
 };
 /**
 @} // addtogroup Mesh

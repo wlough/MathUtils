@@ -485,7 +485,7 @@ half_edge_samples_no_edge_data_to_edge_tri_cycles(
   return data_map;
 }
 
-std::map<std::string, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
+std::map<std::string_view, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
     const std::map<std::string_view, SamplesIndex> &he_samples) {
 
   const SamplesIndex &h_directed_E = he_samples.at("h_directed_E");
@@ -515,7 +515,7 @@ std::map<std::string, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
     V_cycle_E.set_row(e, {v_origin_H[h0], v_origin_H[h1]});
   }
 
-  std::map<std::string, SamplesIndex> data_map;
+  std::map<std::string_view, SamplesIndex> data_map;
   data_map["V_cycle_E"] = V_cycle_E;
   data_map["V_cycle_F"] = V_cycle_F;
   return data_map;

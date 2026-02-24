@@ -1,19 +1,25 @@
 // bind_mesh.cpp
 #include "mathutils/bind/bind_mesh.hpp"
 #include "mathutils/bind/matrix_type_caster.hpp"
-#include "mathutils/bind/numpy_view_span.hpp"
+#include "mathutils/bind/matrix_view.hpp"
+#include "mathutils/bind/span_view.hpp"
 #include "mathutils/mesh/half_edge_mesh.hpp"
-#include "mathutils/mesh/mesh.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
-#include <pybind11/eigen.h>
+#include "mathutils/mesh/mesh_convert_funs.hpp"
+#include "mathutils/mesh/mesh_plyio.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/stl_bind.h>
+
+PYBIND11_MAKE_OPAQUE(mathutils::mesh::MeshSamples);
 
 namespace py = pybind11;
 
 void bind_mesh(py::module_ &m) {
 
   m.doc() = "Mesh utilities";
+
+  py::bind_map<mathutils::mesh::MeshSamples>(m, "MeshSamples");
 
   m.def("find_halfedge_index_of_twin",
         &mathutils::mesh::find_halfedge_index_of_twin,
@@ -88,15 +94,52 @@ Args:
     use_binary: Whether to write binary format (default: True)
 )doc");
 
-  m.def("save_mesh_samples", &mathutils::mesh::io::save_mesh_samples,
-        "Write mesh samples to a PLY file", py::arg("mesh_samples"),
-        py::arg("ply_path"), py::arg("use_binary") = true,
-        py::arg("ply_property_convention") = "MathUtils");
+  // m.def("save_mesh_samples", &mathutils::mesh::io::save_mesh_samples,
+  //       "Write mesh samples to a PLY file", py::arg("mesh_samples"),
+  //       py::arg("ply_path"), py::arg("use_binary") = true,
+  //       py::arg("ply_property_convention") = "MathUtils");
 
-  m.def("load_mesh_samples", &mathutils::mesh::io::load_mesh_samples,
-        "Load mesh samples from a PLY file", py::arg("filepath"),
-        py::arg("preload_into_memory") = true, py::arg("verbose") = false,
-        py::arg("ply_property_convention") = "MathUtils");
+  m.def(
+      "save_mesh_samples",
+      [](const py::dict &d, const std::string &ply_path, bool use_binary,
+         const std::string &ply_property_convention) {
+        mathutils::mesh::MeshSamples ms;
+
+        for (auto item : d) {
+          std::string key = py::cast<std::string>(item.first);
+          mathutils::mesh::SamplesVariant val =
+              py::cast<mathutils::mesh::SamplesVariant>(item.second);
+          ms.insert_or_assign(std::move(key), std::move(val));
+        }
+
+        mathutils::mesh::io::save_mesh_samples(ms, ply_path, use_binary,
+                                               ply_property_convention);
+      },
+      "Write mesh samples to a PLY file", py::arg("mesh_samples"),
+      py::arg("ply_path"), py::arg("use_binary") = true,
+      py::arg("ply_property_convention") = "MathUtils");
+
+  // m.def("load_mesh_samples", &mathutils::mesh::io::load_mesh_samples,
+  //       "Load mesh samples from a PLY file", py::arg("filepath"),
+  //       py::arg("preload_into_memory") = true, py::arg("verbose") = false,
+  //       py::arg("ply_property_convention") = "MathUtils");
+
+  m.def(
+      "load_mesh_samples",
+      [](const std::string &filepath, bool preload_into_memory, bool verbose,
+         const std::string &ply_property_convention) {
+        auto ms = mathutils::mesh::io::load_mesh_samples(
+            filepath, preload_into_memory, verbose, ply_property_convention);
+
+        py::dict d;
+        for (auto &[k, v] : ms) {
+          d[py::str(k)] = py::cast(v); // SamplesVariant -> Python object
+        }
+        return d;
+      },
+      "Load mesh samples from a PLY file", py::arg("filepath"),
+      py::arg("preload_into_memory") = true, py::arg("verbose") = false,
+      py::arg("ply_property_convention") = "MathUtils");
 
   //////////////////////////////////////////////
   //////////////////////////////////////////////
@@ -105,6 +148,7 @@ Args:
   //////////////////////////////////////////////
   //////////////////////////////////////////////
   //////////////////////////////////////////////
+
   using mathutils::mesh::HalfEdgeMesh;
   using mathutils::mesh::HalfEdgeTopology;
   using mathutils::mesh::Index;
@@ -122,7 +166,7 @@ Args:
           "V_cycle_e",
           [](SimplicialTopology2 &self, Index e) {
             std::span<Index> s = self.V_cycle_e(e);
-            return numpy_view_span(s, py::cast(&self));
+            return span_view(s, py::cast(&self));
           },
           py::arg("e"),
           "Return a writable NumPy view of the vertex cycle for the edge")
@@ -130,7 +174,7 @@ Args:
           "V_cycle_f",
           [](SimplicialTopology2 &self, Index f) {
             std::span<Index> s = self.V_cycle_f(f);
-            return numpy_view_span(s, py::cast(&self));
+            return span_view(s, py::cast(&self));
           },
           py::arg("f"),
           "Return a writable NumPy view of the vertex cycle for the face");
@@ -143,37 +187,6 @@ Args:
   // Public class
   py::class_<HalfEdgeTopology>(m, "HalfEdgeTopology")
       .def(py::init<>())
-
-      // storage accessors (refs)
-      // .def("X_ambient_V", &HalfEdgeTopology::X_ambient_V,
-      //      py::return_value_policy::reference_internal)
-      // .def("V_cycle_E", &HalfEdgeTopology::V_cycle_E,
-      //      py::return_value_policy::reference_internal)
-      // .def("V_cycle_F", &HalfEdgeTopology::V_cycle_F,
-      //      py::return_value_policy::reference_internal)
-      // .def("V_cycle_C", &HalfEdgeTopology::V_cycle_C,
-      //      py::return_value_policy::reference_internal)
-
-      .def("h_out_V", &HalfEdgeTopology::h_out_V,
-           py::return_value_policy::reference_internal)
-      .def("h_directed_E", &HalfEdgeTopology::h_directed_E,
-           py::return_value_policy::reference_internal)
-      .def("h_right_F", &HalfEdgeTopology::h_right_F,
-           py::return_value_policy::reference_internal)
-      .def("h_negative_B", &HalfEdgeTopology::h_negative_B,
-           py::return_value_policy::reference_internal)
-
-      .def("v_origin_H", &HalfEdgeTopology::v_origin_H,
-           py::return_value_policy::reference_internal)
-      .def("e_undirected_H", &HalfEdgeTopology::e_undirected_H,
-           py::return_value_policy::reference_internal)
-      .def("f_left_H", &HalfEdgeTopology::f_left_H,
-           py::return_value_policy::reference_internal)
-
-      .def("h_next_H", &HalfEdgeTopology::h_next_H,
-           py::return_value_policy::reference_internal)
-      .def("h_twin_H", &HalfEdgeTopology::h_twin_H,
-           py::return_value_policy::reference_internal)
 
       // scalar queries
       .def("h_out_v", &HalfEdgeTopology::h_out_v, py::arg("v"))
@@ -220,36 +233,174 @@ Args:
           },
           py::return_value_policy::reference_internal)
 
-      // .def("X_ambient_V", &HalfEdgeMesh::X_ambient_V,
-      //      py::return_value_policy::reference_internal)
+      .def_property_readonly(
+          "X_ambient_V",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return matrix_view(self.X_ambient_V_, py::cast(&self));
+          },
+          "Writable NumPy view of X_ambient_V.")
+      .def_property_readonly(
+          "xyz_coord_V",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return matrix_view(self.X_ambient_V_, py::cast(&self));
+          },
+          "Writable NumPy view of X_ambient_V.")
+
+      .def_property_readonly(
+          "h_out_V",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.h_out_V_, py::cast(&self));
+          },
+          "Writable NumPy view of h_out_V.")
+      .def_property_readonly(
+          "h_directed_E",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.h_directed_E_, py::cast(&self));
+          },
+          "Writable NumPy view of h_directed_E.")
+      .def_property_readonly(
+          "h_right_F",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.h_right_F_, py::cast(&self));
+          },
+          "Writable NumPy view of h_right_F.")
+      .def_property_readonly(
+          "h_negative_B",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.h_negative_B_, py::cast(&self));
+          },
+          "Writable NumPy view of h_negative_B.")
+
+      .def_property_readonly(
+          "v_origin_H",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.v_origin_H_, py::cast(&self));
+          },
+          "Writable NumPy view of v_origin_H.")
+      .def_property_readonly(
+          "e_undirected_H",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.e_undirected_H_, py::cast(&self));
+          },
+          "Writable NumPy view of e_undirected_H.")
+      .def_property_readonly(
+          "f_left_H",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.f_left_H_, py::cast(&self));
+          },
+          "Writable NumPy view of f_left_H.")
+
+      .def_property_readonly(
+          "h_next_H",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.h_next_H_, py::cast(&self));
+          },
+          "Writable NumPy view of h_next_H.")
+      .def_property_readonly(
+          "h_twin_H",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return vector_view(self.topo.h_twin_H_, py::cast(&self));
+          },
+          "Writable NumPy view of h_twin_H.")
+
+      .def_property_readonly(
+          "V_cycle_E",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return matrix_view(self.V_cycle_E_, py::cast(&self));
+          },
+          "Writable NumPy view of V_cycle_E.")
+      .def_property_readonly(
+          "V_cycle_F",
+          [](mathutils::mesh::HalfEdgeMesh &self) {
+            return matrix_view(self.V_cycle_F_, py::cast(&self));
+          },
+          "Writable NumPy view of V_cycle_F.")
 
       .def(
           "X_ambient_v",
           [](HalfEdgeMesh &self, Index v) {
             std::span<Real> s = self.X_ambient_v(v);
-            return numpy_view_span(s, py::cast(&self));
+            return span_view(s, py::cast(&self));
           },
           py::arg("v"),
           "Return a writable NumPy view of the vertex position row (shape "
           "(3,), etc.).")
-      // .def("set_X_ambient_v", &HalfEdgeMesh::set_X_ambient_v,
-      //      "Set ambient coordinates of a vertex", py::arg("v"), py::arg("X"))
-      .def("set_X_ambient_v",
-           [](HalfEdgeMesh &self, Index v,
-              py::array_t<Real, py::array::c_style | py::array::forcecast> X) {
-             if (X.ndim() != 1) {
-               throw std::runtime_error("set_X_ambient_v: expected 1D array");
+      .def(
+          "xyz_coord_v",
+          [](HalfEdgeMesh &self, Index v) {
+            std::span<Real> s = self.X_ambient_v(v);
+            return span_view(s, py::cast(&self));
+          },
+          py::arg("v"),
+          "Return a writable NumPy view of the vertex position row (shape "
+          "(3,), etc.).")
+
+      .def(
+          "h_out_v",
+          [](HalfEdgeMesh &self, Index v) { return self.topo.h_out_v(v); },
+          py::arg("v"))
+      .def(
+          "h_directed_e",
+          [](HalfEdgeMesh &self, Index e) { return self.topo.h_directed_e(e); },
+          py::arg("e"))
+      .def(
+          "h_right_f",
+          [](HalfEdgeMesh &self, Index f) { return self.topo.h_right_f(f); },
+          py::arg("f"))
+      .def(
+          "h_negative_b",
+          [](HalfEdgeMesh &self, Index b) { return self.topo.h_negative_b(b); },
+          py::arg("b"))
+
+      .def(
+          "v_origin_h",
+          [](HalfEdgeMesh &self, Index h) { return self.topo.v_origin_h(h); },
+          py::arg("h"))
+      .def(
+          "e_undirected_h",
+          [](HalfEdgeMesh &self, Index h) {
+            return self.topo.e_undirected_h(h);
+          },
+          py::arg("h"))
+      .def(
+          "f_left_h",
+          [](HalfEdgeMesh &self, Index h) { return self.topo.f_left_h(h); },
+          py::arg("h"))
+
+      .def(
+          "h_next_h",
+          [](HalfEdgeMesh &self, Index h) { return self.topo.h_next_h(h); },
+          py::arg("h"))
+      .def(
+          "h_twin_h",
+          [](HalfEdgeMesh &self, Index h) { return self.topo.h_twin_h(h); },
+          py::arg("h"))
+
+      // .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
+      .def("to_mesh_samples",
+           [](const HalfEdgeMesh &self) {
+             mathutils::mesh::MeshSamples ms =
+                 self.to_mesh_samples(); // copy/move return
+             py::dict d;
+             for (auto &[k, v] : ms) {
+               d[py::str(k)] = py::cast(v); // SamplesVariant -> Python object
              }
-             if (static_cast<std::size_t>(X.shape(0)) !=
-                 self.X_ambient_V_.cols()) {
-               throw std::runtime_error("set_X_ambient_v: wrong length");
-             }
-             auto r = self.X_ambient_V_.row(static_cast<std::size_t>(v));
-             const Real *src = X.data();
-             std::copy(src, src + r.size(), r.begin());
+             return d;
            })
-      .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
-      .def("from_mesh_samples", &HalfEdgeMesh::from_mesh_samples)
+      // .def("from_mesh_samples", &HalfEdgeMesh::from_mesh_samples)
+      .def("from_mesh_samples",
+           [](HalfEdgeMesh &self, const py::dict &d) {
+             mathutils::mesh::MeshSamples ms;
+
+             for (auto item : d) {
+               std::string key = py::cast<std::string>(item.first);
+               mathutils::mesh::SamplesVariant val =
+                   py::cast<mathutils::mesh::SamplesVariant>(item.second);
+               ms.insert_or_assign(std::move(key), std::move(val));
+             }
+
+             self.from_mesh_samples(ms);
+           })
       .def("load_ply", &HalfEdgeMesh::load_ply,
            "Load mesh samples from a PLY file", py::arg("filepath"),
            py::arg("preload_into_memory") = true, py::arg("verbose") = false,

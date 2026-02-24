@@ -131,7 +131,7 @@ std::map<std::string, SamplesIndex>
 half_edge_samples_no_edge_data_to_edge_tri_cycles(
     const std::map<std::string_view, SamplesIndex> &he_samples);
 
-std::map<std::string, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
+std::map<std::string_view, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
     const std::map<std::string_view, SamplesIndex> &he_samples);
 
 std::map<std::string, SamplesIndex>
