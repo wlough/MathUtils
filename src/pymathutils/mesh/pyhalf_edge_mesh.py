@@ -18,7 +18,9 @@ NUMBA_SIMPLEX1 = NUMBA_UNITUPLE(NUMBA_INT, 2)
 NUMBA_SIMPLEX2 = NUMBA_UNITUPLE(NUMBA_INT, 3)
 NUMBA_SIMPLEX3 = NUMBA_UNITUPLE(NUMBA_INT, 4)
 NUMBA_DART2 = NUMBA_TUPLE([NUMBA_SIMPLEX0, NUMBA_SIMPLEX1, NUMBA_SIMPLEX2])
-NUMBA_DART3 = NUMBA_TUPLE([NUMBA_SIMPLEX0, NUMBA_SIMPLEX1, NUMBA_SIMPLEX2, NUMBA_SIMPLEX3])
+NUMBA_DART3 = NUMBA_TUPLE(
+    [NUMBA_SIMPLEX0, NUMBA_SIMPLEX1, NUMBA_SIMPLEX2, NUMBA_SIMPLEX3]
+)
 
 DART2_0_01_012 = ((0,), (0, 1), (0, 1, 2))
 DART2_1_12_012 = ((1,), (1, 2), (0, 1, 2))
@@ -1025,8 +1027,12 @@ class HalfEdgeMesh:
         )
         xyz_coord_V *= radius
         for _ in range(num_refinements):
-            xyz_coord_V, V_cycle_F = jit_refine_icososphere(xyz_coord_V, V_cycle_F, radius)
-        return cls.from_vf_samples(xyz_coord_V, V_cycle_F, compute_he_stuff=compute_he_stuff)
+            xyz_coord_V, V_cycle_F = jit_refine_icososphere(
+                xyz_coord_V, V_cycle_F, radius
+            )
+        return cls.from_vf_samples(
+            xyz_coord_V, V_cycle_F, compute_he_stuff=compute_he_stuff
+        )
 
     @classmethod
     def from_samples(cls, **samples_dict):
@@ -1055,7 +1061,9 @@ class HalfEdgeMesh:
         return m
 
     @classmethod
-    def from_vf_samples(cls, xyz_coord_V, V_cycle_F, *args, compute_he_stuff=True, **kwargs):
+    def from_vf_samples(
+        cls, xyz_coord_V, V_cycle_F, *args, compute_he_stuff=True, **kwargs
+    ):
         """
         Initialize a half-edge mesh from vertex/face data.
 
@@ -1344,12 +1352,16 @@ class HalfEdgeMesh:
         #     "h_negative_B": self.h_negative_B,
         # }
         return {
-            k: self.__getattribute__(k) for k in self.default_sample_keys if len(self.__getattribute__(k)) > 0
+            k: self.__getattribute__(k)
+            for k in self.default_sample_keys
+            if len(self.__getattribute__(k)) > 0
         }
 
     def to_mesh_samples(self):
         return {
-            k: self.__getattribute__(k) for k in self.default_sample_keys if len(self.__getattribute__(k)) > 0
+            k: self.__getattribute__(k)
+            for k in self.default_sample_keys
+            if len(self.__getattribute__(k)) > 0
         }
 
     #######################################################
@@ -1505,7 +1517,9 @@ class HalfEdgeMesh:
     def boundary_contains_h(self, h):
         """check if half-edge h is on the boundary of the mesh"""
         # return self.f_left_h(h) < 0 or self.f_left_h(self.h_twin_h(h)) < 0
-        return np.logical_or(self.negative_boundary_contains_h(h), self.positive_boundary_contains_h(h))
+        return np.logical_or(
+            self.negative_boundary_contains_h(h), self.positive_boundary_contains_h(h)
+        )
 
     def boundary_contains_v(self, v):
         """check if vertex v is on the boundary of the mesh"""
@@ -1534,8 +1548,12 @@ class HalfEdgeMesh:
         rkj = self.xyz_coord_v(vj) - self.xyz_coord_v(vk)
         rkl = self.xyz_coord_v(vl) - self.xyz_coord_v(vk)
 
-        alphai = np.arccos(np.dot(rij, ril) / (np.linalg.norm(rij) * np.linalg.norm(ril)))
-        alphak = np.arccos(np.dot(rkl, rkj) / (np.linalg.norm(rkl) * np.linalg.norm(rkj)))
+        alphai = np.arccos(
+            np.dot(rij, ril) / (np.linalg.norm(rij) * np.linalg.norm(ril))
+        )
+        alphak = np.arccos(
+            np.dot(rkl, rkj) / (np.linalg.norm(rkl) * np.linalg.norm(rkj))
+        )
 
         return alphai + alphak <= np.pi
 
@@ -1793,7 +1811,10 @@ class HalfEdgeMesh:
 
     def get_unsigned_simplicial_sets(self):
         S0 = {frozenset(v) for v in range(self.num_vertices)}
-        S1 = {frozenset([self.v_origin_h(h), self.v_head_h(h)]) for h in range(self.num_half_edges)}
+        S1 = {
+            frozenset([self.v_origin_h(h), self.v_head_h(h)])
+            for h in range(self.num_half_edges)
+        }
         S2 = {frozenset(self.generate_V_of_f(f)) for f in range(self.num_faces)}
         return S0, S1, S2
 
@@ -2006,9 +2027,15 @@ class HalfEdgeMesh:
 
         self.xyz_coord_V += weight * lapQ
 
-    def taubin_smooth_graph_laplacian(self, weight_shrink=0.25, weight_inflate=-0.25, smooth_boundary=False):
-        self.smooth_graph_laplacian(weight=weight_shrink, smooth_boundary=smooth_boundary)
-        self.smooth_graph_laplacian(weight=weight_inflate, smooth_boundary=smooth_boundary)
+    def taubin_smooth_graph_laplacian(
+        self, weight_shrink=0.25, weight_inflate=-0.25, smooth_boundary=False
+    ):
+        self.smooth_graph_laplacian(
+            weight=weight_shrink, smooth_boundary=smooth_boundary
+        )
+        self.smooth_graph_laplacian(
+            weight=weight_inflate, smooth_boundary=smooth_boundary
+        )
 
     def update_V_slice(self, index_slice, xyz_coord_V=None, h_out_V=None):
         """ """
@@ -2017,7 +2044,9 @@ class HalfEdgeMesh:
         if h_out_V is not None:
             self.h_out_V[index_slice] = h_out_V
 
-    def update_H_slice(self, index_slice, h_next_H=None, h_twin_H=None, v_origin_H=None, f_left_H=None):
+    def update_H_slice(
+        self, index_slice, h_next_H=None, h_twin_H=None, v_origin_H=None, f_left_H=None
+    ):
         """ """
         if h_next_H is not None:
             self.h_next_H[index_slice] = h_next_H
@@ -2040,7 +2069,9 @@ class HalfEdgeMesh:
         # dNb = 0
         self.xyz_coord_V = np.concatenate([self.xyz_coord_V, np.zeros((dNv, 3))])
         self.h_out_V = np.concatenate([self.h_out_V, np.zeros(dNv, dtype=np.intc)])
-        self.v_origin_H = np.concatenate([self.v_origin_H, np.zeros(dNh, dtype=np.intc)])
+        self.v_origin_H = np.concatenate(
+            [self.v_origin_H, np.zeros(dNh, dtype=np.intc)]
+        )
         self.h_next_H = np.concatenate([self.h_next_H, np.zeros(dNh, dtype=np.intc)])
         self.h_twin_H = np.concatenate([self.h_twin_H, np.zeros(dNh, dtype=np.intc)])
         self.f_left_H = np.concatenate([self.f_left_H, np.zeros(dNh, dtype=np.intc)])
@@ -2063,14 +2094,24 @@ class HalfEdgeMesh:
             [[h0, h1, h2], list(range(self.num_half_edges, self.num_half_edges + dNh))],
             dtype=np.intc,
         )
-        F = np.concatenate([[f0], list(range(self.num_faces, self.num_faces + dNf))], dtype=np.intc)
+        F = np.concatenate(
+            [[f0], list(range(self.num_faces, self.num_faces + dNf))], dtype=np.intc
+        )
 
         #####
-        self.update_vertex(V[3], xyz=np.sum(self.xyz_coord_V[V[:3]], axis=0), h_out=H[4])
+        self.update_vertex(
+            V[3], xyz=np.sum(self.xyz_coord_V[V[:3]], axis=0), h_out=H[4]
+        )
         self.update_H_slice(H[3:], v_origin_H=[V[1], V[3], V[2], V[3], V[0], V[3]])
-        self.update_H_slice(H, h_next_H=[H[3], H[5], H[7], H[8], H[1], H[4], H[2], H[6], H[0]])
-        self.update_H_slice(H[3:], h_next_H=None, h_twin_H=[H[4], H[3], H[6], H[5], H[8], H[7]])
-        self.update_H_slice(H[1:], f_left_H=[F[1], F[2], F[0], F[1], F[1], F[2], F[2], F[0]])
+        self.update_H_slice(
+            H, h_next_H=[H[3], H[5], H[7], H[8], H[1], H[4], H[2], H[6], H[0]]
+        )
+        self.update_H_slice(
+            H[3:], h_next_H=None, h_twin_H=[H[4], H[3], H[6], H[5], H[8], H[7]]
+        )
+        self.update_H_slice(
+            H[1:], f_left_H=[F[1], F[2], F[0], F[1], F[1], F[2], F[2], F[0]]
+        )
         self.update_F_slice(F, h_right_F=H[:3])
         return dNv, dNh, dNf
 
@@ -2238,21 +2279,46 @@ class HalfEdgeMesh:
             normDrjjp1 = np.sqrt(rj_rj - 2 * rj_rjp1 + rjp1_rjp1)
             # normu2 = np.sqrt(r2_r2 - 2 * r1_r2 + r1_r1)  # jitnorm(u2)
             normDrjp1i = np.sqrt(rjp1_rjp1 - 2 * rjp1_ri + ri_ri)
-            cos_thetajijp1 = (ri_ri + rj_rjp1 - ri_rj - rjp1_ri) / (normDrij * normDrjp1i)
-            cos_thetajp1ji = (rj_rj + rjp1_ri - rj_rjp1 - ri_rj) / (normDrij * normDrjjp1)
-            cos_thetaijp1j = (rjp1_rjp1 + ri_rj - rj_rjp1 - rjp1_ri) / (normDrjp1i * normDrjjp1)
+            cos_thetajijp1 = (ri_ri + rj_rjp1 - ri_rj - rjp1_ri) / (
+                normDrij * normDrjp1i
+            )
+            cos_thetajp1ji = (rj_rj + rjp1_ri - rj_rjp1 - ri_rj) / (
+                normDrij * normDrjjp1
+            )
+            cos_thetaijp1j = (rjp1_rjp1 + ri_rj - rj_rjp1 - rjp1_ri) / (
+                normDrjp1i * normDrjjp1
+            )
             if cos_thetajijp1 < 0:
                 semiP = (normDrij + normDrjjp1 + normDrjp1i) / 2
-                Atot += np.sqrt(semiP * (semiP - normDrij) * (semiP - normDrjjp1) * (semiP - normDrjp1i)) / 2
+                Atot += (
+                    np.sqrt(
+                        semiP
+                        * (semiP - normDrij)
+                        * (semiP - normDrjjp1)
+                        * (semiP - normDrjp1i)
+                    )
+                    / 2
+                )
                 # Atot += normDrij * normDrjp1i * np.sqrt(1 - cos_thetajijp1**2) / 4
             elif cos_thetajp1ji < 0 or cos_thetaijp1j < 0:
                 semiP = (normDrij + normDrjjp1 + normDrjp1i) / 2
-                Atot += np.sqrt(semiP * (semiP - normDrij) * (semiP - normDrjjp1) * (semiP - normDrjp1i)) / 4
+                Atot += (
+                    np.sqrt(
+                        semiP
+                        * (semiP - normDrij)
+                        * (semiP - normDrjjp1)
+                        * (semiP - normDrjp1i)
+                    )
+                    / 4
+                )
                 # Atot += normDrij * normDrjp1i * np.sqrt(1 - cos_thetajijp1**2) / 8
             else:
                 cot_thetaijp1j = cos_thetaijp1j / np.sqrt(1 - cos_thetaijp1j**2)
                 cot_thetajp1ji = cos_thetajp1ji / np.sqrt(1 - cos_thetajp1ji**2)
-                Atot += normDrij**2 * cot_thetaijp1j / 8 + normDrjp1i**2 * cot_thetajp1ji / 8
+                Atot += (
+                    normDrij**2 * cot_thetaijp1j / 8
+                    + normDrjp1i**2 * cot_thetajp1ji / 8
+                )
 
         return Atot
 

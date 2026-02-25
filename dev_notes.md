@@ -7,7 +7,7 @@ This repo ships a `Makefile` to automate dev installs, builds, wheel repair, and
 
 ## Prereqs
 
-* Python ≥ 3.8, `g++`, `make`
+* Python ≥ 3.11, `g++`, `make`
 * Optional (Linux wheel repair): `auditwheel` (installed automatically by `make repair`)
 * Optional: `~/.pypirc` configured for `pypi` and `testpypi`
 
@@ -19,6 +19,19 @@ Tells clangd about include dir so linter works properly.
 
 ```bash
 cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
+
+## Install from test.pypi
+```bash
+pip install -i https://test.pypi.org/simple --extra-index-url https://pypi.org/simple pymathutils
+
+# or with uv
+
+uv pip install \
+  --default-index https://test.pypi.org/simple \
+  --index https://pypi.org/simple \
+  --index-strategy unsafe-best-match \ # this is like normal pip default
+  pymathutils
 ```
 
 ---
@@ -54,10 +67,6 @@ make clean-all    # plus removes .venv/build and test venvs
 ## Full Release Flow
 
 ```bash
-# Dev loop
-make dev-editable
-make test-import
-
 # Build + validate
 make build
 

@@ -14,6 +14,7 @@
 // mathutils::hash::hash_combine
 #include "mathutils/mesh/half_edge_mesh.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
+#include "mathutils/mesh/simplicial_complex2.hpp"
 // #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
 // #include <array>
 // #include <cstddef>
@@ -122,7 +123,8 @@ tri_cycles_to_half_edge_samples_alt(const SamplesIndex &V_cycle_F);
  * @brief Convert triangle vertex cycles to half-edge samples.
  *
  * @param V_cycle_F (Nf, 3) triangle vertex cycles
- * @return std::map<std::string, Samplesi> Half-edge samples and related data
+ * @return std::map<std::string, SampleSimple half-edge mesh classsi> Half-edge
+ * samples and related data
  */
 std::map<std::string, SamplesIndex>
 tri_cycles_to_half_edge_samples(const SamplesIndex &V_cycle_F);

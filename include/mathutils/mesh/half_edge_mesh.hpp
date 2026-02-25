@@ -21,40 +21,6 @@ namespace mesh {
  *  @{
  */
 
-class SimplicialTopology2 {
-public:
-  SamplesIndex V_cycle_E_;
-  SamplesIndex V_cycle_F_;
-
-  SimplicialTopology2() = default;
-  SimplicialTopology2(size_t Ne, size_t Nf)
-      : V_cycle_E_(SamplesIndex(Ne, 2)), V_cycle_F_(SamplesIndex(Nf, 3)) {}
-
-  SamplesIndex &V_cycle_E() { return V_cycle_E_; }
-  SamplesIndex &V_cycle_F() { return V_cycle_F_; }
-
-  std::span<Index> V_cycle_e(Index e) { return V_cycle_E_.row(e); }
-  std::span<Index> V_cycle_f(Index f) { return V_cycle_F_.row(f); }
-};
-
-class DartTopology2 {
-public:
-  ////////////////////////////
-  // Core data structure /////
-  ////////////////////////////
-  SamplesIndex d_through_S0;
-  SamplesIndex d_through_S1;
-  SamplesIndex d_through_S2;
-
-  SamplesIndex s0_in_D;
-  SamplesIndex s1_in_D;
-  SamplesIndex s2_in_D;
-
-  SamplesIndex d_cmap0_D;
-  SamplesIndex d_cmap1_D;
-  SamplesIndex d_cmap2_D;
-};
-
 class HalfEdgeTopology {
   using Generatori = mathutils::SimpleGenerator<Index>;
 

@@ -3,7 +3,7 @@
 # Prefer Python 3.13 for dev envs (VTK/PyVista wheels exist through cp313).
 # Override explicitly:  make PYVER=3.12 dev-editable
 # Or override interpreter path/name: make UVPY=/usr/bin/python3.13 dev-editable
-PY_CANDIDATES := 3.13 3.12 3.11 3.10
+PY_CANDIDATES := 3.13 3.12 3.11
 
 # If user sets UVPY, use it directly. Else choose first available pythonX.Y.
 UVPY ?= $(shell \
@@ -25,17 +25,18 @@ DISTDIR := dist
 PKGNAME := pymathutils
 
 REPO_ROOT := $(abspath .)
-ABSBIN    := $(abspath $(BIN))
+PY := $(abspath $(BIN))/python
 
-# Absolute paths and uv helpers 
-VENV_ABS := $(abspath $(VENV))
-UVPIP    := VIRTUAL_ENV=$(VENV_ABS) uv pip
-UVRUN    := VIRTUAL_ENV=$(VENV_ABS) uv run
+# Absolute paths and uv helpers
+UVRUN := UV_PROJECT_ENVIRONMENT=$(abspath $(VENV)) uv run
+UVPIP_INSTALL := uv pip install --python "$(PY)"
 
 TESTVENV     := .venvs/testpypi
-TESTVENV_ABS := $(abspath $(TESTVENV))
-TEST_UVPIP   := VIRTUAL_ENV=$(TESTVENV_ABS) uv pip
-TEST_UVRUN   := VIRTUAL_ENV=$(TESTVENV_ABS) uv run
+TEST_BIN := $(abspath $(TESTVENV))/bin
+
+TEST_PY := $(TEST_BIN)/python
+TEST_UVRUN := UV_PROJECT_ENVIRONMENT=$(TESTVENV_ABS) uv run
+TEST_UVPIP_INSTALL := uv pip install --python "$(TEST_PY)"
 
 .PHONY: help venv dev-editable build audit repair upload-test upload \
         test-install-testpypi test-import clean clean-all show-python
@@ -63,20 +64,26 @@ show-python:
 	@echo "UVPY=$(UVPY)"
 
 # Create the venv using uv (no activation needed)
-$(VENV):
-	uv venv $(VENV) --python $(UVPY)
+$(PY):
+	rm -rf "$(VENV)"
+	uv venv "$(VENV)" --python "$(UVPY)"
 
-venv: $(VENV)
-	$(UVPIP) install -U build twine
+$(TEST_PY):
+	rm -rf "$(TESTVENV)"
+	uv venv $(TESTVENV) --python $(UVPY)
 
-dev-editable: $(VENV)
+venv: $(PY)
+	$(UVPIP_INSTALL) -U build twine
+
+dev-editable: $(PY)
 	# Toolchain deps for scikit-build-core/pybind11 builds
-	$(UVPIP) install -U scikit-build-core pybind11 cmake ninja
+	$(UVPIP_INSTALL) -U scikit-build-core pybind11 cmake ninja
 	# Editable install of this project (+ dev extras, if defined)
-	$(UVPIP) install -U ".[dev]"
-	$(UVPIP) install -e . --no-build-isolation --force-reinstall --no-deps -v
-# 	$(UVPIP) install -e ".[dev]" --no-build-isolation --upgrade --force-reinstall --no-deps -v
-# 	$(UVPIP) install -e ".[dev]" --no-build-isolation
+	$(UVPIP_INSTALL) -U ".[dev]"
+	$(UVPIP_INSTALL) -e . --no-build-isolation --force-reinstall --no-deps -v
+	cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+# 	$(UVPIP_INSTALL) -e ".[dev]" --no-build-isolation --upgrade --force-reinstall --no-deps -v
+# 	$(UVPIP_INSTALL) -e ".[dev]" --no-build-isolation
 
 build: venv
 	rm -rf $(DISTDIR) build *.egg-info
@@ -84,7 +91,7 @@ build: venv
 	$(UVRUN) python -m twine check $(DISTDIR)/*
 
 audit: venv
-	$(UVPIP) install -U auditwheel
+	$(UVPIP_INSTALL) -U auditwheel
 	$(UVRUN) auditwheel show $(DISTDIR)/*.whl || true
 
 # Only attempt to repair plain linux-tagged wheels; ignore if none exist
@@ -100,14 +107,13 @@ upload: venv
 
 # ---------- quick tests ----------
 # Install from TestPyPI (with PyPI as fallback for deps) into a throwaway venv
-test-install-testpypi:
-	uv venv $(TESTVENV) --python $(UVPY)
-	$(TEST_UVPIP) install \
-	  -i https://test.pypi.org/simple --extra-index-url https://pypi.org/simple \
-	  $(PKGNAME)==$$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+test-install-testpypi: $(TEST_PY)
+	$(TEST_UVPIP_INSTALL) \
+	  -i https://test.pypi.org/simple --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match \
+	  $(PKGNAME)==$$( "$(TEST_PY)" -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])" )
 
-test-import: $(VENV)
-	"$(ABSBIN)/python" -c "import os, sys; \
+test-import: $(PY)
+	"$(PY)" -c "import os, sys; \
 	  (sys.path.pop(0) if os.path.abspath(sys.path[0]) == os.path.abspath('$(REPO_ROOT)') else None); \
 	  import $(PKGNAME) as m; from $(PKGNAME) import mathutils_backend as be; \
 	  print('OK import:', m.__version__, '| backend:', be.__name__)"

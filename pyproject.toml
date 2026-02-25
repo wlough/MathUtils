@@ -4,12 +4,12 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pymathutils"
-version = "0.1.25"
+version = "0.2.1"
 description = "Mathematical utilities"
 authors = [{ name = "wlough", email = "wilson.lough@colorado.edu" }]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = ["numpy", "numba"]
 keywords = ["mathematics", "scientific-computing", "numerical-methods"]
 classifiers = [
@@ -55,27 +55,48 @@ dev = [
 [tool.scikit-build]
 wheel.packages = ["src/pymathutils"]
 sdist.include = [
-    "pyproject.toml",
-    "README.md",
-    "LICENSE",
-    "CMakeLists.txt",
-    "src/pymathutils/**",
-    "src/cpp/**",
-    "include/mathutils/**",
+    "/pyproject.toml",
+    "/README.md",
+    "/LICENSE",
+    "/CMakeLists.txt",
+    "/src/pymathutils/**/*.cpp",
+    "/src/pymathutils/**/*.py",
+    "/src/cpp/**/*.cpp",
+    "/include/mathutils/**/*.hpp",
+    "/include/mathutils/**/*.h",
 ]
 sdist.exclude = [
-    ".github",
-    "notebooks",
-    "scratch",
-    "scripts",
-    ".gitignore",
-    "dev_notes.md",
-    "Doxyfile",
-    "Makefile",
-    "requirements_testing.txt",
+    ".cache/**",
+    ".git/**",
+    ".github/**",
+    ".venv/**",
+    ".venvs/**",
+    ".virtual_documents/**",
+    ".vscode/**",
+    "BACK/**", #
+    "data/**", #
+    "dist/**",
+    "docs/**", #
+    "notebooks/**", #
+    "output/**",
+    "scratch/**", #
+    "scripts/**", #
+    "src/python/**", #
+    ".clang-format",
+    ".gitignore", #
+    "dev_notes.md", #
+    "Doxyfile", #
+    "Makefile", #
+    "requirements_testing.txt", #
+    "requirements_dev.txt", #
+    "requirements_graphics.txt", #
+    "uv.lock",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/*.pyo",
 ]
 # Pin the backend minimum to lock defaults
-minimum-version = "0.1.24"
+minimum-version = "0.2.0"
 # declare CMake/Ninja minimums so skbuild will fetch wheels if needed
 # cmake.minimum-version = "3.15"
 # ninja.minimum-version = "1.10"
