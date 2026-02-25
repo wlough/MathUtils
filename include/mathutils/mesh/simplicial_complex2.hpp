@@ -37,8 +37,8 @@ public:
   SamplesIndex &V_cycle_E() { return V_cycle_E_; }
   SamplesIndex &V_cycle_F() { return V_cycle_F_; }
 
-  std::span<Index> V_cycle_e(Index e) { return V_cycle_E_.row(e); }
-  std::span<Index> V_cycle_f(Index f) { return V_cycle_F_.row(f); }
+  std::span<Index> V_cycle_e(Index e) { return V_cycle_E_.row_span(e); }
+  std::span<Index> V_cycle_f(Index f) { return V_cycle_F_.row_span(f); }
 };
 
 /**

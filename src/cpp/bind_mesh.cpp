@@ -221,6 +221,9 @@ Args:
   py::class_<HalfEdgeMesh>(m, "HalfEdgeMesh")
       .def(py::init<>())
 
+      .def("h_is_locally_delaunay", &HalfEdgeMesh::h_is_locally_delaunay,
+           py::arg("h"))
+
       .def_property_readonly(
           "topo",
           [](HalfEdgeMesh &self) -> HalfEdgeTopology & { return self.topo; },

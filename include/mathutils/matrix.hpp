@@ -1,8 +1,9 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
+#include <complex>
 #include <cstddef>
-#include <cstdint>
 #include <initializer_list>
 #include <limits>
 #include <span>
@@ -13,7 +14,11 @@
 
 namespace mathutils {
 
-// enum class NumpyView : uint8_t { Ndarray2D, Ndarray1D };
+// TODO put these to a type_traits.hpp header or something
+template <typename T> struct is_std_complex : std::false_type {};
+
+template <typename T>
+struct is_std_complex<std::complex<T>> : std::true_type {};
 
 /**
  * @brief A simple 2D matrix class with row-major contiguous storage.
@@ -52,9 +57,6 @@ public:
   Matrix() = default;
   Matrix(std::size_t rows, std::size_t cols)
       : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)) {}
-  // Matrix(std::size_t rows, std::size_t cols, NumpyView view)
-  //     : rows_(rows), cols_(cols), elements_(checked_size(rows, cols)),
-  //       numpy_view_(view) {}
   Matrix(std::size_t rows)
       : rows_(rows), cols_(1), elements_(checked_size(rows, 1)) {}
 
@@ -85,13 +87,6 @@ public:
   //   for (const auto &row : init) {
   //     elements_.insert(elements_.end(), row.begin(), row.end());
   //   }
-  // }
-
-  // void set_numpy_view (NumpyView v) { numpy_view_ = v; }
-  // NumpyView numpy_view() const { return numpy_view_; }
-  // bool want_numpy_vector() const {
-  //   return (rows_ == 1 || cols_ == 1) && (numpy_view_ ==
-  //   NumpyView::Ndarray1D);
   // }
 
   bool is_vector() const { return (rows_ == 1 || cols_ == 1); }
@@ -141,13 +136,19 @@ public:
   }
 
   // Row view (contiguous)
-  std::span<DataType> row(std::size_t r) {
+  std::span<DataType> row_span(std::size_t r) {
     row_bounds_check(r);
     return {elements_.data() + r * cols_, cols_};
   }
-  std::span<const DataType> row(std::size_t r) const {
+  std::span<const DataType> row_span(std::size_t r) const {
     row_bounds_check(r);
     return {elements_.data() + r * cols_, cols_};
+  }
+  Matrix row_copy(std::size_t r) const {
+    row_bounds_check(r);
+    Matrix out(1, cols_);
+    std::copy_n(elements_.data() + r * cols_, cols_, out.data());
+    return out;
   }
 
   void resize(std::size_t rows, std::size_t cols) {
@@ -246,11 +247,30 @@ public:
   }
 
   DataType squaredNorm() const {
-    DataType norm2{0};
-    for (const DataType &x : elements_) {
-      norm2 += x * x;
+    DataType norm2 = 0.0;
+    for (const auto &x : elements_) {
+      const double xd = static_cast<double>(x);
+      norm2 += xd * xd;
     }
     return norm2;
+  }
+
+  double norm() const { return std::sqrt(squaredNorm()); }
+
+  DataType dot(const Matrix &B) const {
+    if (rows_ != B.rows_ || cols_ != B.cols_) {
+      throw std::invalid_argument("Matrix::dot: shape mismatch");
+    }
+
+    DataType out{}; // zero-init
+    for (std::size_t i = 0; i < elements_.size(); ++i) {
+      if constexpr (is_std_complex<DataType>::value) {
+        out += std::conj(elements_[i]) * B.elements_[i];
+      } else {
+        out += elements_[i] * B.elements_[i];
+      }
+    }
+    return out;
   }
 
   template <typename NewDataType>
@@ -281,7 +301,86 @@ public:
       return out;
     }
   }
+
+  Matrix &operator-=(const Matrix &B) {
+    if (rows_ != B.rows_ || cols_ != B.cols_) {
+      throw std::invalid_argument("Matrix::operator-=: shape mismatch");
+    }
+    for (std::size_t i = 0; i < elements_.size(); ++i) {
+      elements_[i] -= B.elements_[i];
+    }
+    return *this;
+  }
+
+  Matrix operator-(const Matrix &B) const {
+    Matrix out = *this; // copy
+    out -= B;           // reuse checked in-place op
+    return out;
+  }
+
+  Matrix &operator+=(const Matrix &B) {
+    if (rows_ != B.rows_ || cols_ != B.cols_) {
+      throw std::invalid_argument("Matrix::operator-=: shape mismatch");
+    }
+    for (std::size_t i = 0; i < elements_.size(); ++i) {
+      elements_[i] += B.elements_[i];
+    }
+    return *this;
+  }
+
+  Matrix operator+(const Matrix &B) const {
+    Matrix out = *this; // copy
+    out += B;           // reuse checked in-place op
+    return out;
+  }
+
+  template <typename Scalar>
+    requires std::is_arithmetic_v<Scalar> &&
+             std::is_convertible_v<Scalar, DataType>
+  Matrix &operator*=(Scalar a) {
+    const DataType aa = static_cast<DataType>(a);
+    for (auto &x : elements_) {
+      x *= aa;
+    }
+    return *this;
+  }
+
+  template <typename Scalar>
+    requires std::is_arithmetic_v<Scalar> &&
+             std::is_convertible_v<Scalar, DataType>
+  Matrix operator*(Scalar a) const {
+    Matrix out = *this;
+    out *= a;
+    return out;
+  }
+
+  Matrix operator*(const Matrix &B) const {
+    if (cols_ != B.rows_) {
+      throw std::invalid_argument("Matrix::operator*: shape mismatch");
+    }
+
+    Matrix C(rows_, B.cols_);
+    // naive O(m*n*k) row-major loop
+    for (std::size_t i = 0; i < rows_; ++i) {
+      for (std::size_t k = 0; k < cols_; ++k) {
+        const DataType aik = (*this)(i, k);
+        const std::size_t b_row = k * B.cols_;
+        const std::size_t c_row = i * C.cols_;
+        for (std::size_t j = 0; j < B.cols_; ++j) {
+          C.elements_[c_row + j] += aik * B.elements_[b_row + j];
+        }
+      }
+    }
+    return C;
+  }
 };
+
+template <typename DataType, typename Scalar>
+  requires std::is_arithmetic_v<Scalar> &&
+           std::is_convertible_v<Scalar, DataType>
+Matrix<DataType> operator*(Scalar a, const Matrix<DataType> &A) {
+  return A * a;
+}
 
 /**
  * @brief Assign an output matrix from a variant holding a matrix of (possibly)

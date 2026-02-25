@@ -44,7 +44,6 @@ public:
   SamplesIndex &h_out_V() { return h_out_V_; }
   SamplesIndex &h_directed_E() { return h_directed_E_; }
   SamplesIndex &h_right_F() { return h_right_F_; }
-  // SamplesIndex &h_above_C() { return h_above_C_; }
   SamplesIndex &h_negative_B() { return h_negative_B_; }
 
   SamplesIndex &v_origin_H() { return v_origin_H_; }
@@ -95,8 +94,7 @@ public:
   bool some_boundary_contains_v(Index v) const {
     return some_boundary_contains_h(h_out_v(v));
   }
-  bool h_is_locally_delaunay(Index h) const;
-  bool h_is_flippable(Index h) const { return !some_boundary_contains_h(h); }
+  bool h_is_flippable(Index h) const;
   ///////////////////////////////////////////////////////
   // Generators /////////////////////////////////////////
   ///////////////////////////////////////////////////////
@@ -195,7 +193,7 @@ public:
   MeshSamples attrs;
 
   SamplesReal &X_ambient_V() { return X_ambient_V_; }
-  std::span<Real> X_ambient_v(Index v) { return X_ambient_V_.row(v); }
+  std::span<Real> X_ambient_v(Index v) { return X_ambient_V_.row_span(v); }
   void set_X_ambient_v(Index v, std::initializer_list<Real> X) {
     X_ambient_V_.set_row(v, X);
   }
@@ -222,7 +220,9 @@ public:
   /**
    * @brief Add V_cycle_E and V_cycle_F to attrs.
    */
-  void add_simplex_cycles_to_attrs();
+  void refresh_simplex_cycles_from_topo();
+
+  bool h_is_locally_delaunay(Index h) const;
 };
 /**
 @} // addtogroup Mesh
