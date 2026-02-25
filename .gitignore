@@ -84,7 +84,7 @@ cover/
 
 # Virtual environments
 .env
-.venv
+.venvs/
 .venv/
 env/
 venv/
