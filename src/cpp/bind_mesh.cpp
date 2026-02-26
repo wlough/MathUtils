@@ -188,6 +188,8 @@ Args:
   py::class_<HalfEdgeTopology>(m, "HalfEdgeTopology")
       .def(py::init<>())
 
+      .def("h_is_flippable", &HalfEdgeTopology::h_is_flippable, py::arg("h"))
+
       // scalar queries
       .def("h_out_v", &HalfEdgeTopology::h_out_v, py::arg("v"))
       .def("h_directed_e", &HalfEdgeTopology::h_directed_e, py::arg("e"))

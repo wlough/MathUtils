@@ -59,7 +59,6 @@ public:
   Index h_out_v(Index v) const { return h_out_V_[v]; }
   Index h_directed_e(Index e) const { return h_directed_E_[e]; }
   Index h_right_f(Index f) const { return h_right_F_[f]; }
-  // Index h_above_c(Index c) const { return h_above_C_[c]; }
   Index h_negative_b(Index b) const { return h_negative_B_[b]; }
 
   Index v_origin_h(Index h) const { return v_origin_H_[h]; }
@@ -74,7 +73,7 @@ public:
   Index h_in_v(Index v) const { return h_twin_H_[h_out_V_[v]]; }
   Index v_head_h(Index h) const { return v_origin_H_[h_twin_H_[h]]; }
   Index h_prev_h(Index h) const { return h_next_H_[h_next_H_[h]]; }
-  Index h_rotcw_h(Index h) const;
+  Index h_rotcw_h(Index h) const { return h_next_H_[h_twin_H_[h]]; }
   Index h_rotccw_h(Index h) const;
   Index h_prev_h_by_rot(Index h) const;
 
@@ -88,8 +87,8 @@ public:
     return some_negative_boundary_contains_h(h_twin_h(h));
   }
   bool some_boundary_contains_h(Index h) const {
-    return some_boundary_contains_h(h) ||
-           some_negative_boundary_contains_h(h_twin_h(h));
+    return (some_boundary_contains_h(h) ||
+            some_negative_boundary_contains_h(h_twin_h(h)));
   }
   bool some_boundary_contains_v(Index v) const {
     return some_boundary_contains_h(h_out_v(v));
@@ -98,7 +97,14 @@ public:
   ///////////////////////////////////////////////////////
   // Generators /////////////////////////////////////////
   ///////////////////////////////////////////////////////
-  Generatori generate_H_out_v_clockwise(Index v, Index h_start = -1) const;
+  Generatori generate_H_out_v_clockwise(Index v, Index h_start = -1) const {
+    if (h_start == -1) {
+      h_start = h_out_V_[v];
+    }
+    for (auto h : generate_H_rotcw_h(h_start)) {
+      co_yield h;
+    }
+  }
   Generatori generate_H_right_f(Index f) const;
   Generatori generate_H_rotcw_h(Index h) const {
     Index h_start = h;
@@ -122,7 +128,12 @@ public:
       h = h_next_h(h);
     } while (h != h_start);
   }
-  Generatori generate_F_incident_v(Index v) const;
+  Generatori generate_F_incident_v(Index v) const {
+
+    for (auto h : generate_H_rotcw_h(h_out_V_[v])) {
+      co_yield f_left_H_[h];
+    }
+  }
 
   ///////////////////////////////////////////
   // Miscellaneous properties ///////////////
