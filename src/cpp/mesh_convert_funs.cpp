@@ -541,9 +541,8 @@ HalfEdgeTopology_to_SimplicialTopology2(const HalfEdgeTopology &he_topo) {
     Index h0 = he_topo.h_right_f(f);
     Index h1 = he_topo.h_next_h(h0);
     Index h2 = he_topo.h_next_h(h1);
-    s_topo.V_cycle_F_.set_row(f,
-                              {he_topo.v_origin_h(h0), he_topo.v_origin_h(h1),
-                               he_topo.v_origin_h(h2)});
+    s_topo.V_cycle_F.set_row(f, {he_topo.v_origin_h(h0), he_topo.v_origin_h(h1),
+                                 he_topo.v_origin_h(h2)});
 
     Index h = h0;
     Index h_start = h;
@@ -559,7 +558,7 @@ HalfEdgeTopology_to_SimplicialTopology2(const HalfEdgeTopology &he_topo) {
         if (vt < v) {
           std::swap(v, vt);
         }
-        s_topo.V_cycle_E_.set_row(e, {v, vt});
+        s_topo.V_cycle_E.set_row(e, {v, vt});
         e_undirected_H_[h] = e;
         e_undirected_H_[ht] = e;
         h_directed_E_[e] = h;

@@ -15,14 +15,14 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 # extension target
 pybind11_add_module(pymathutils_backend
     src/cpp/bindings.cpp
-    # src/cpp/shared_utils.cpp
     src/cpp/bind_shared_utils.cpp
     src/cpp/findiff.cpp
     src/cpp/bind_findiff.cpp
     src/cpp/half_edge_mesh.cpp
+    src/cpp/mesh_builder_funs.cpp
+    src/cpp/mesh_common.cpp
     src/cpp/mesh_convert_funs.cpp
     src/cpp/mesh_plyio.cpp
-    src/cpp/mesh_common.cpp
     src/cpp/bind_mesh.cpp
     src/cpp/random.cpp
     src/cpp/bind_random.cpp

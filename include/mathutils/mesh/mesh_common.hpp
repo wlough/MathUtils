@@ -4,17 +4,12 @@
  * @file mesh_common_data_types.hpp
  */
 
-// #include "mathutils/io/tinyply.h"
 #include "mathutils/matrix.hpp"
-// #include "mathutils/simple_generator.hpp"
 #include <Eigen/Core>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-// #include <iostream> // ***
-// #include <limits>
 #include <map>
-// #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <variant>

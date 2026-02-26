@@ -41,17 +41,17 @@ public:
   SamplesIndex h_twin_H_; // (v, e, f, c) --> (v', e, f', c)
   ////////////////////////////
 
-  SamplesIndex &h_out_V() { return h_out_V_; }
-  SamplesIndex &h_directed_E() { return h_directed_E_; }
-  SamplesIndex &h_right_F() { return h_right_F_; }
-  SamplesIndex &h_negative_B() { return h_negative_B_; }
-
-  SamplesIndex &v_origin_H() { return v_origin_H_; }
-  SamplesIndex &e_undirected_H() { return e_undirected_H_; }
-  SamplesIndex &f_left_H() { return f_left_H_; }
-
-  SamplesIndex &h_next_H() { return h_next_H_; }
-  SamplesIndex &h_twin_H() { return h_twin_H_; }
+  // SamplesIndex &h_out_V() { return h_out_V_; }
+  // SamplesIndex &h_directed_E() { return h_directed_E_; }
+  // SamplesIndex &h_right_F() { return h_right_F_; }
+  // SamplesIndex &h_negative_B() { return h_negative_B_; }
+  //
+  // SamplesIndex &v_origin_H() { return v_origin_H_; }
+  // SamplesIndex &e_undirected_H() { return e_undirected_H_; }
+  // SamplesIndex &f_left_H() { return f_left_H_; }
+  //
+  // SamplesIndex &h_next_H() { return h_next_H_; }
+  // SamplesIndex &h_twin_H() { return h_twin_H_; }
 
   ///////////////////////////////////////////////////////
   // Combinatorial maps /////////////////////////////////

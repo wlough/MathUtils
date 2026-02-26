@@ -4,7 +4,9 @@
  * @file simplicial_complex2.hpp
  * @brief Two-dimensional simplicial complex.
  */
+// #include "mathutils/mesh/mesh_builder_funs.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
+#include "mathutils/simple_generator.hpp"
 // #include "mathutils/mesh/mesh_plyio.hpp"
 // #include "mathutils/simple_generator.hpp"
 // #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
@@ -22,25 +24,30 @@ namespace mesh {
  */
 
 class SimplicialTopology2 {
-public:
-  SamplesIndex V_cycle_E_;
-  SamplesIndex V_cycle_F_;
+  using Generatori = mathutils::SimpleGenerator<Index>;
 
-  SamplesIndex f_incident_V_;
-  SamplesIndex F_incident_E_;
-  SamplesIndex E_incident_F_;
+public:
+  SamplesIndex V_cycle_E;
+  SamplesIndex V_cycle_F;
+
+  SamplesIndex f_incident_V;
+  SamplesIndex F_incident_E;
+  SamplesIndex E_incident_F;
 
   SimplicialTopology2() = default;
   SimplicialTopology2(size_t Ne, size_t Nf)
-      : V_cycle_E_(SamplesIndex(Ne, 2)), V_cycle_F_(SamplesIndex(Nf, 3)) {}
+      : V_cycle_E(SamplesIndex(Ne, 2)), V_cycle_F(SamplesIndex(Nf, 3)) {}
 
-  SamplesIndex &V_cycle_E() { return V_cycle_E_; }
-  SamplesIndex &V_cycle_F() { return V_cycle_F_; }
+  std::span<Index> V_cycle_e(Index e) { return V_cycle_E.row_span(e); }
+  std::span<Index> V_cycle_f(Index f) { return V_cycle_F.row_span(f); }
 
-  std::span<Index> V_cycle_e(Index e) { return V_cycle_E_.row_span(e); }
-  std::span<Index> V_cycle_f(Index f) { return V_cycle_F_.row_span(f); }
+  void from_mesh_samples(MeshSamples &ms);
+  MeshSamples to_mesh_samples() const;
+  std::map<std::string_view, SamplesIndex> to_topo_samples() const;
+};
 
-  void init_icososphere();
+class SimplicialComplex2 {
+public:
 };
 
 /**

@@ -13,9 +13,7 @@ namespace mesh {
 
 MeshSamples HalfEdgeTopology::to_mesh_samples() const {
   MeshSamples ms;
-  // if (!h_out_V_.empty()) {
   ms["h_out_V"] = h_out_V_;
-  // }
   ms["h_directed_E"] = h_directed_E_;
   ms["h_right_F"] = h_right_F_;
   ms["h_negative_B"] = h_negative_B_;

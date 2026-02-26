@@ -4,6 +4,7 @@
 #include "mathutils/bind/matrix_view.hpp"
 #include "mathutils/bind/span_view.hpp"
 #include "mathutils/mesh/half_edge_mesh.hpp"
+#include "mathutils/mesh/mesh_builder_funs.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/mesh/mesh_convert_funs.hpp"
 #include "mathutils/mesh/mesh_plyio.hpp"
@@ -141,6 +142,19 @@ Args:
       py::arg("preload_into_memory") = true, py::arg("verbose") = false,
       py::arg("ply_property_convention") = "MathUtils");
 
+  m.def(
+      "build_icososphere_samples",
+      [](size_t num_refinements) {
+        auto ms = mathutils::mesh::build_icososphere_samples(num_refinements);
+
+        py::dict d;
+        for (auto &[k, v] : ms) {
+          d[py::str(k)] = py::cast(v); // SamplesVariant -> Python object
+        }
+        return d;
+      },
+      "Refine icosohedron", py::arg("num_refinements"));
+
   //////////////////////////////////////////////
   //////////////////////////////////////////////
   //////////////////////////////////////////////
@@ -157,10 +171,6 @@ Args:
 
   py::class_<SimplicialTopology2>(m, "SimplicialTopology2")
       .def(py::init<>())
-      .def("V_cycle_E", &SimplicialTopology2::V_cycle_E,
-           py::return_value_policy::reference_internal)
-      .def("V_cycle_F", &SimplicialTopology2::V_cycle_F,
-           py::return_value_policy::reference_internal)
 
       .def(
           "V_cycle_e",

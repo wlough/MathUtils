@@ -11,10 +11,11 @@
 
 namespace mathutils {
 namespace mesh {
-MeshSamples build_icosohedron();
+MeshSamples build_icosohedron_samples();
 
 void refine_vertex_face_samples(MeshSamples &ms);
 
-MeshSamples build_icososphere(size_t num_refinements);
+MeshSamples build_icososphere_samples(size_t num_refinements);
+
 } // namespace mesh
 } // namespace mathutils
