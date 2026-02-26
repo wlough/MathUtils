@@ -302,6 +302,7 @@ public:
     }
   }
 
+  // Matrix -= Matrix in place subtraction
   Matrix &operator-=(const Matrix &B) {
     if (rows_ != B.rows_ || cols_ != B.cols_) {
       throw std::invalid_argument("Matrix::operator-=: shape mismatch");
@@ -312,12 +313,14 @@ public:
     return *this;
   }
 
+  // Matrix - Matrix subtraction
   Matrix operator-(const Matrix &B) const {
     Matrix out = *this; // copy
     out -= B;           // reuse checked in-place op
     return out;
   }
 
+  // Matrix += Matrix in place addition
   Matrix &operator+=(const Matrix &B) {
     if (rows_ != B.rows_ || cols_ != B.cols_) {
       throw std::invalid_argument("Matrix::operator-=: shape mismatch");
@@ -328,12 +331,14 @@ public:
     return *this;
   }
 
+  // Matrix + Matrix addition
   Matrix operator+(const Matrix &B) const {
     Matrix out = *this; // copy
     out += B;           // reuse checked in-place op
     return out;
   }
 
+  // Matrix *= scalar in place multiplication
   template <typename Scalar>
     requires std::is_arithmetic_v<Scalar> &&
              std::is_convertible_v<Scalar, DataType>
@@ -344,7 +349,7 @@ public:
     }
     return *this;
   }
-
+  // Matrix x scalar multiplication
   template <typename Scalar>
     requires std::is_arithmetic_v<Scalar> &&
              std::is_convertible_v<Scalar, DataType>
@@ -354,6 +359,28 @@ public:
     return out;
   }
 
+  // Matrix /= scalar in place division
+  template <typename Scalar>
+    requires std::is_arithmetic_v<Scalar> &&
+             std::is_convertible_v<Scalar, DataType>
+  Matrix &operator/=(Scalar a) {
+    const DataType aa = static_cast<DataType>(a);
+    for (auto &x : elements_) {
+      x /= aa;
+    }
+    return *this;
+  }
+  // Matrix / scalar division
+  template <typename Scalar>
+    requires std::is_arithmetic_v<Scalar> &&
+             std::is_convertible_v<Scalar, DataType>
+  Matrix operator/(Scalar a) const {
+    Matrix out = *this;
+    out /= a;
+    return out;
+  }
+
+  // Matrix x Matrix multiplication
   Matrix operator*(const Matrix &B) const {
     if (cols_ != B.rows_) {
       throw std::invalid_argument("Matrix::operator*: shape mismatch");
@@ -375,6 +402,7 @@ public:
   }
 };
 
+// Scalar x Matrix multiplication
 template <typename DataType, typename Scalar>
   requires std::is_arithmetic_v<Scalar> &&
            std::is_convertible_v<Scalar, DataType>
