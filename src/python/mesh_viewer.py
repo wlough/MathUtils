@@ -24,9 +24,7 @@ def get_half_edge_vector_field(self):
                     * (
                         self.xyz_coord_v(self.v_origin_h(h))
                         + self.xyz_coord_v(self.v_origin_h(self.h_next_h(h)))
-                        + self.xyz_coord_v(
-                            self.v_origin_h(self.h_next_h(self.h_next_h(h)))
-                        )
+                        + self.xyz_coord_v(self.v_origin_h(self.h_next_h(self.h_next_h(h))))
                     )
                     / 3
                     + (1 - shift_to_center) * self.xyz_coord_v(self.v_origin_h(h)),
@@ -50,14 +48,8 @@ def get_half_edge_vector_field(self):
                         )
                         - (
                             self.xyz_coord_v(self.v_origin_h(self.h_twin_h(h)))
-                            + self.xyz_coord_v(
-                                self.v_origin_h(self.h_next_h(self.h_twin_h(h)))
-                            )
-                            + self.xyz_coord_v(
-                                self.v_origin_h(
-                                    self.h_next_h(self.h_next_h(self.h_twin_h(h)))
-                                )
-                            )
+                            + self.xyz_coord_v(self.v_origin_h(self.h_next_h(self.h_twin_h(h))))
+                            + self.xyz_coord_v(self.v_origin_h(self.h_next_h(self.h_next_h(self.h_twin_h(h)))))
                         )
                         / 3
                     )
@@ -464,9 +456,7 @@ class MeshViewer:
         vert_cloud.mlab_source.dataset.point_data.vectors = rad_vecs
         vert_cloud.mlab_source.dataset.point_data.vectors.name = "radius_vectors"
 
-        vert_cloud.module_manager.scalar_lut_manager.lut.number_of_colors = len(
-            rgba_int
-        )
+        vert_cloud.module_manager.scalar_lut_manager.lut.number_of_colors = len(rgba_int)
         vert_cloud.module_manager.scalar_lut_manager.lut.table = rgba_int
         vert_cloud.module_manager.lut_data_mode = "point data"
         vert_cloud.mlab_source.dataset.point_data.scalars = color_scalars
@@ -698,17 +688,11 @@ class MeshViewer:
                 self.add_vector_field_to_fig(**data)
 
         if show_face_colored_surface:
-            face_colored_surface = self.add_face_colored_surface_to_fig(
-                downsampled=downsampled
-            )
+            face_colored_surface = self.add_face_colored_surface_to_fig(downsampled=downsampled)
         if show_vertex_colored_surface:
-            vertex_colored_surface = self.add_vertex_colored_surface_to_fig(
-                downsampled=downsampled
-            )
+            vertex_colored_surface = self.add_vertex_colored_surface_to_fig(downsampled=downsampled)
         if show_wireframe_surface:
-            wireframe_surface = self.add_wireframe_surface_to_fig(
-                fig, downsampled=downsampled
-            )
+            wireframe_surface = self.add_wireframe_surface_to_fig(fig, downsampled=downsampled)
         if show_vertices:
             vert_cloud = self.add_vertices_to_fig(downsampled=downsampled)
         if show_half_edges:
@@ -919,9 +903,7 @@ class MeshViewer:
         )
         plotter.add_mesh(pv_H, scalars="RGBA", rgba=True, show_edges=False)
 
-    def set_view_pyvista(
-        self, plotter, azimuth=0.0, elevation=0.0, distance=4.0, focalpoint=(0, 0, 0)
-    ):
+    def set_view_pyvista(self, plotter, azimuth=0.0, elevation=0.0, distance=4.0, focalpoint=(0, 0, 0)):
         # print(f"f{azimuth=}, {elevation=}, {distance=}, {focalpoint=}")
         # fazimuth = float(azimuth)
         # felevation = float(elevation)
@@ -1099,9 +1081,7 @@ class MultiMeshViewer:
         if mesh_params is None:
             self.mesh_params = [self.params.copy() for _ in range(len(meshes))]
 
-        self.mesh_viewers = [
-            MeshViewer(mesh, **params) for mesh, params in zip(meshes, self.mesh_params)
-        ]
+        self.mesh_viewers = [MeshViewer(mesh, **params) for mesh, params in zip(meshes, self.mesh_params)]
         ###############################################################
         # image/movie output options
         ###############################################################

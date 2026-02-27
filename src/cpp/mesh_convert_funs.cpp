@@ -419,7 +419,7 @@ tri_cycles_to_half_edge_samples(const SamplesIndex &V_cycle_F) {
 
 std::map<std::string, SamplesIndex>
 half_edge_samples_no_edge_data_to_edge_tri_cycles(
-    const std::map<std::string_view, SamplesIndex> &he_samples) {
+    const std::map<std::string, SamplesIndex> &he_samples) {
 
   const SamplesIndex &h_out_V = he_samples.at("h_out_V");
   const SamplesIndex &v_origin_H = he_samples.at("v_origin_H");
@@ -485,8 +485,8 @@ half_edge_samples_no_edge_data_to_edge_tri_cycles(
   return data_map;
 }
 
-std::map<std::string_view, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
-    const std::map<std::string_view, SamplesIndex> &he_samples) {
+std::map<std::string, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
+    const std::map<std::string, SamplesIndex> &he_samples) {
 
   const SamplesIndex &h_directed_E = he_samples.at("h_directed_E");
   const SamplesIndex &h_right_F = he_samples.at("h_right_F");
@@ -500,7 +500,7 @@ std::map<std::string_view, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
   size_t num_faces = h_right_F.size();
 
   SamplesIndex V_cycle_E(num_edges, 2);
-  SamplesIndex V_cycle_F(num_edges, 3);
+  SamplesIndex V_cycle_F(num_faces, 3);
 
   for (Index f{0}; f < num_faces; ++f) {
     Index h0 = h_right_F[f];
@@ -515,7 +515,7 @@ std::map<std::string_view, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
     V_cycle_E.set_row(e, {v_origin_H[h0], v_origin_H[h1]});
   }
 
-  std::map<std::string_view, SamplesIndex> data_map;
+  std::map<std::string, SamplesIndex> data_map;
   data_map["V_cycle_E"] = V_cycle_E;
   data_map["V_cycle_F"] = V_cycle_F;
   return data_map;

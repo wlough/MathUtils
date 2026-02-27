@@ -4,6 +4,7 @@
  * @file half_edge_mesh.hpp
  * @brief Simple half-edge mesh class
  */
+#include "mathutils/mesh/mesh_builder_funs.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/mesh/mesh_plyio.hpp"
 #include "mathutils/simple_generator.hpp"
@@ -25,70 +26,57 @@ class HalfEdgeTopology {
   using Generatori = mathutils::SimpleGenerator<Index>;
 
 public:
-  ////////////////////////////
-  // Core data structure /////
-  ////////////////////////////
-  SamplesIndex h_out_V_;
-  SamplesIndex h_directed_E_;
-  SamplesIndex h_right_F_;
-  SamplesIndex h_negative_B_;
-
-  SamplesIndex v_origin_H_;
-  SamplesIndex e_undirected_H_;
-  SamplesIndex f_left_H_;
-
-  SamplesIndex h_next_H_; // (v, e, f, c) --> (v', e', f, c)
-  SamplesIndex h_twin_H_; // (v, e, f, c) --> (v', e, f', c)
-  ////////////////////////////
-
-  // SamplesIndex &h_out_V() { return h_out_V_; }
-  // SamplesIndex &h_directed_E() { return h_directed_E_; }
-  // SamplesIndex &h_right_F() { return h_right_F_; }
-  // SamplesIndex &h_negative_B() { return h_negative_B_; }
-  //
-  // SamplesIndex &v_origin_H() { return v_origin_H_; }
-  // SamplesIndex &e_undirected_H() { return e_undirected_H_; }
-  // SamplesIndex &f_left_H() { return f_left_H_; }
-  //
-  // SamplesIndex &h_next_H() { return h_next_H_; }
-  // SamplesIndex &h_twin_H() { return h_twin_H_; }
+  ///////////////////////////////
+  // Core data structure ////////
+  ///////////////////////////////
+  SamplesIndex h_out_V;        //
+  SamplesIndex h_directed_E;   //
+  SamplesIndex h_right_F;      //
+  SamplesIndex h_negative_B;   //
+                               //
+  SamplesIndex v_origin_H;     //
+  SamplesIndex e_undirected_H; //
+  SamplesIndex f_left_H;       //
+                               //
+  SamplesIndex h_next_H;       //
+  SamplesIndex h_twin_H;       //
+  ///////////////////////////////
 
   ///////////////////////////////////////////////////////
   // Combinatorial maps /////////////////////////////////
   ///////////////////////////////////////////////////////
-  Index h_out_v(Index v) const { return h_out_V_[v]; }
-  Index h_directed_e(Index e) const { return h_directed_E_[e]; }
-  Index h_right_f(Index f) const { return h_right_F_[f]; }
-  Index h_negative_b(Index b) const { return h_negative_B_[b]; }
+  Index h_out_v(Index v) const { return h_out_V[v]; }
+  Index h_directed_e(Index e) const { return h_directed_E[e]; }
+  Index h_right_f(Index f) const { return h_right_F[f]; }
+  Index h_negative_b(Index b) const { return h_negative_B[b]; }
 
-  Index v_origin_h(Index h) const { return v_origin_H_[h]; }
-  Index e_undirected_h(Index h) const { return e_undirected_H_[h]; }
-  Index f_left_h(Index h) const { return f_left_H_[h]; }
+  Index v_origin_h(Index h) const { return v_origin_H[h]; }
+  Index e_undirected_h(Index h) const { return e_undirected_H[h]; }
+  Index f_left_h(Index h) const { return f_left_H[h]; }
 
-  Index h_next_h(Index h) const { return h_next_H_[h]; } // (v', e', f, c)
-  Index h_twin_h(Index h) const { return h_twin_H_[h]; } // (v', e, f', c)
+  Index h_next_h(Index h) const { return h_next_H[h]; } // (v', e', f, c)
+  Index h_twin_h(Index h) const { return h_twin_H[h]; } // (v', e, f', c)
 
   Index b_ghost_f(Index f) const { return -f - 1; }
 
-  Index h_in_v(Index v) const { return h_twin_H_[h_out_V_[v]]; }
-  Index v_head_h(Index h) const { return v_origin_H_[h_twin_H_[h]]; }
-  Index h_prev_h(Index h) const { return h_next_H_[h_next_H_[h]]; }
-  Index h_rotcw_h(Index h) const { return h_next_H_[h_twin_H_[h]]; }
+  Index h_in_v(Index v) const { return h_twin_H[h_out_V[v]]; }
+  Index v_head_h(Index h) const { return v_origin_H[h_twin_H[h]]; }
+  Index h_prev_h(Index h) const { return h_next_H[h_next_H[h]]; }
+  Index h_rotcw_h(Index h) const { return h_next_H[h_twin_H[h]]; }
   Index h_rotccw_h(Index h) const;
   Index h_prev_h_by_rot(Index h) const;
-
   ///////////////////////////////////////////////////////
   // Predicates /////////////////////////////////////////
   ///////////////////////////////////////////////////////
   bool some_negative_boundary_contains_h(Index h) const {
-    return (f_left_h(h) < 0);
+    return f_left_h(h) < 0;
   }
   bool some_positive_boundary_contains_h(Index h) const {
     return some_negative_boundary_contains_h(h_twin_h(h));
   }
   bool some_boundary_contains_h(Index h) const {
-    return (some_boundary_contains_h(h) ||
-            some_negative_boundary_contains_h(h_twin_h(h)));
+    return some_negative_boundary_contains_h(h) ||
+           some_positive_boundary_contains_h(h);
   }
   bool some_boundary_contains_v(Index v) const {
     return some_boundary_contains_h(h_out_v(v));
@@ -97,15 +85,22 @@ public:
   ///////////////////////////////////////////////////////
   // Generators /////////////////////////////////////////
   ///////////////////////////////////////////////////////
-  Generatori generate_H_out_v_clockwise(Index v, Index h_start = -1) const {
+  Generatori generate_H_outcw_v(Index v, Index h_start = -1) const {
     if (h_start == -1) {
-      h_start = h_out_V_[v];
+      h_start = h_out_V[v];
     }
     for (auto h : generate_H_rotcw_h(h_start)) {
       co_yield h;
     }
   }
-  Generatori generate_H_right_f(Index f) const;
+  Generatori generate_H_right_f(Index f) const {
+    Index h_start = h_right_F[f];
+    Index h = h_start;
+    do {
+      co_yield h;
+      h = h_next_h(h);
+    } while (h != h_start);
+  }
   Generatori generate_H_rotcw_h(Index h) const {
     Index h_start = h;
     do {
@@ -130,8 +125,8 @@ public:
   }
   Generatori generate_F_incident_v(Index v) const {
 
-    for (auto h : generate_H_rotcw_h(h_out_V_[v])) {
-      co_yield f_left_H_[h];
+    for (auto h : generate_H_rotcw_h(h_out_V[v])) {
+      co_yield f_left_H[h];
     }
   }
 
@@ -143,19 +138,19 @@ public:
    *
    * @return Index
    */
-  Index num_vertices() const { return h_out_V_.size(); }
+  Index num_vertices() const { return h_out_V.size(); }
   /**
    * @brief Get the number edges in the mesh
    *
    * @return Index
    */
-  Index num_edges() const { return v_origin_H_.size() / 2; }
+  Index num_edges() const { return v_origin_H.size() / 2; }
   /**
    * @brief Get the number of faces in the mesh
    *
    * @return Index
    */
-  Index num_faces() const { return h_right_F_.size(); }
+  Index num_faces() const { return h_right_F.size(); }
 
   // Index num_cells() const { return h_above_C_.size(); }
 
@@ -164,7 +159,7 @@ public:
    *
    * @return Index
    */
-  Index num_half_edges() const { return v_origin_H_.size(); }
+  Index num_half_edges() const { return v_origin_H.size(); }
   /**
    * @brief Get the Euler characteristic of the mesh
    *
@@ -178,7 +173,7 @@ public:
    *
    * @return Index
    */
-  Index num_boundaries() const { return h_negative_B_.size(); }
+  Index num_boundaries() const { return h_negative_B.size(); }
   /**
    * @brief Get the genus of the mesh
    *
@@ -189,24 +184,50 @@ public:
   }
 
   MeshSamples to_mesh_samples() const;
-  std::map<std::string_view, SamplesIndex> to_topo_samples() const;
+  std::map<std::string, SamplesIndex> to_topo_samples() const;
 
   void from_mesh_samples(MeshSamples &ms);
+
+  /**
+   * @brief Flips half-edge h.
+   *
+   * @param h
+   *
+   *```
+   *         v1                           v1
+   *       /    \                       /  |  \
+   *      /      \                     /   |   \
+   *     /h3    h2\                   /h3  |  h2\
+   *    /    f0    \                 /     |     \
+   *   /            \               /  f0  |  f1  \
+   *  /     h=h0     \             /       |       \
+   * v2--------------v0  |----->  v2     h0|h1     v0
+   *  \      h1      /             \       |       /
+   *   \            /               \      |      /
+   *    \    f1    /                 \     |     /
+   *     \h4    h5/                   \h4  |  h5/
+   *      \      /                     \   |   /
+   *       \    /                       \  |  /
+   *         v3                           v3
+   * ```
+   */
+  bool flip_hedge(Index h);
+
+  std::vector<SamplesIndex> VB_cycles() const;
 };
 
 class HalfEdgeMesh {
 
 public:
-  SamplesReal X_ambient_V_;
-  SamplesIndex V_cycle_E_;
-  SamplesIndex V_cycle_F_;
+  SamplesReal X_ambient_V;
+  SamplesIndex V_cycle_E;
+  SamplesIndex V_cycle_F;
   HalfEdgeTopology topo;
   MeshSamples attrs;
 
-  SamplesReal &X_ambient_V() { return X_ambient_V_; }
-  std::span<Real> X_ambient_v(Index v) { return X_ambient_V_.row_span(v); }
+  std::span<Real> X_ambient_v(Index v) { return X_ambient_V.row_span(v); }
   void set_X_ambient_v(Index v, std::initializer_list<Real> X) {
-    X_ambient_V_.set_row(v, X);
+    X_ambient_V.set_row(v, X);
   }
 
   MeshSamples to_mesh_samples() const;
@@ -234,6 +255,12 @@ public:
   void refresh_simplex_cycles_from_topo();
 
   bool h_is_locally_delaunay(Index h) const;
+
+  void build_icososphere(size_t num_refinements) {
+    // MeshSamples ms = build_icososphere_samples(num_refinements);
+
+  }
+  void split_edge(Index e);
 };
 /**
 @} // addtogroup Mesh

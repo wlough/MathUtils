@@ -8,7 +8,7 @@
 
 namespace mathutils {
 namespace mesh {
-MeshSamples build_icosohedron_samples() {
+MeshSamples build_icosohedron_simplicial_samples() {
   printf("MatrixMesh::from_icosohedron\n");
   MeshSamples ms;
   double phi = (1.0 + sqrt(5.0)) * 0.5; // golden ratio 1.61803...
@@ -139,13 +139,7 @@ MeshSamples build_icosohedron_samples() {
 }
 
 void refine_vertex_face_samples(MeshSamples &ms) {
-  // printf("MatrixMesh::refine_icososphere\n");
 
-  // auto vertex_pair_key = [](Index v0, Index v1) -> long long {
-  //   return static_cast<long long>(std::min(v0, v1)) *
-  //              static_cast<long long>(1000000) +
-  //          static_cast<long long>(std::max(v0, v1));
-  // };
   auto vertex_pair_key = [](Index v0, Index v1) -> std::uint64_t {
     std::uint32_t a = static_cast<std::uint32_t>(std::min(v0, v1));
     std::uint32_t b = static_cast<std::uint32_t>(std::max(v0, v1));
@@ -224,8 +218,23 @@ void refine_vertex_face_samples(MeshSamples &ms) {
   ms["V_cycle_F"] = V_cycle_F;
 }
 
-MeshSamples build_icososphere_samples(size_t num_refinements) {
-  MeshSamples ms = build_icosohedron_samples();
+void refine_simplicial_samples(MeshSamples &ms) {
+
+  SamplesReal &X_ambient_V0 = std::get<SamplesReal>(ms.at("X_ambient_V"));
+  SamplesReal &V_cycle_E0 = std::get<SamplesReal>(ms.at("V_cycle_E"));
+  SamplesReal &V_cycle_F0 = std::get<SamplesReal>(ms.at("V_cycle_F"));
+
+  size_t Nv0 = X_ambient_V0.rows();
+  size_t Ne0 = V_cycle_E0.rows();
+  size_t Nf0 = V_cycle_F0.rows();
+
+  size_t Nv = Nv0 + Ne0;
+  size_t Ne = 2 * Ne0 + 3 * Nf0;
+  size_t Nf = 4 * Nf0;
+}
+
+MeshSamples build_icososphere_simplicial_samples(size_t num_refinements) {
+  MeshSamples ms = build_icosohedron_simplicial_samples();
   SamplesReal &X_ambient_V0 = std::get<SamplesReal>(ms.at("X_ambient_V"));
   Index num_vertices0 = X_ambient_V0.rows();
   for (size_t refinement; refinement < num_refinements; ++refinement) {

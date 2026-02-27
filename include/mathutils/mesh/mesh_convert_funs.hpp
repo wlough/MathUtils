@@ -131,10 +131,10 @@ tri_cycles_to_half_edge_samples(const SamplesIndex &V_cycle_F);
 
 std::map<std::string, SamplesIndex>
 half_edge_samples_no_edge_data_to_edge_tri_cycles(
-    const std::map<std::string_view, SamplesIndex> &he_samples);
+    const std::map<std::string, SamplesIndex> &he_samples);
 
-std::map<std::string_view, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
-    const std::map<std::string_view, SamplesIndex> &he_samples);
+std::map<std::string, SamplesIndex> half_edge_samples_to_edge_tri_cycles(
+    const std::map<std::string, SamplesIndex> &he_samples);
 
 std::map<std::string, SamplesIndex>
 tri_cycles_to_dart_samples(const SamplesIndex &V_cycle_F);

@@ -49,7 +49,6 @@ private:
   std::size_t rows_{0};
   std::size_t cols_{0};
   std::vector<DataType> elements_;
-  // NumpyView numpy_view_{NumpyView::Ndarray2D};
 
 public:
   using value_type = DataType;
@@ -148,6 +147,28 @@ public:
     row_bounds_check(r);
     Matrix out(1, cols_);
     std::copy_n(elements_.data() + r * cols_, cols_, out.data());
+    return out;
+  }
+
+  Matrix col_copy(std::size_t c) {
+    if (c >= cols_) {
+      throw std::out_of_range("Matrix: col out of range");
+    }
+    Matrix<DataType> out(rows_);
+    for (std::size_t r = 0; r < rows_; ++r) {
+      out.elements_[r] = elements_[r * cols_ + c]; // row-major stride
+    }
+    return out;
+  }
+
+  Matrix transpose() {
+    Matrix<DataType> out(cols_, rows_);
+    for (std::size_t r = 0; r < rows_; ++r) {
+      for (std::size_t c = 0; c < cols_; ++c) {
+        out.elements_[c * rows_ + r] =
+            elements_[r * cols_ + c]; // row-major stride}
+      }
+    }
     return out;
   }
 
@@ -411,14 +432,15 @@ Matrix<DataType> operator*(Scalar a, const Matrix<DataType> &A) {
 }
 
 /**
- * @brief Assign an output matrix from a variant holding a matrix of (possibly)
- * different scalar type.
+ * @brief Assign an output matrix from a variant holding a matrix of
+ * (possibly) different scalar type.
  *
  * This helper extracts the matrix stored in @p v (a @c std::variant of matrix
- * types) and writes it into @p out. If the stored matrix type matches @p OutMat
- * exactly, the assignment is performed directly. Otherwise, if the stored
- * scalar type @c InScalar is constructible as @c OutScalar, the stored matrix
- * is converted to @c OutScalar via @c to_dtype<OutScalar>() and assigned to
+ * types) and writes it into @p out. If the stored matrix type matches @p
+ * OutMat exactly, the assignment is performed directly. Otherwise, if the
+ * stored scalar type @c InScalar is constructible as @c OutScalar, the stored
+ * matrix is converted to @c OutScalar via @c to_dtype<OutScalar>() and
+ * assigned to
  * @p out.
  *
  * If provided, @p key is used only to annotate exception messages with the
@@ -433,16 +455,17 @@ Matrix<DataType> operator*(Scalar a, const Matrix<DataType> &A) {
  * @tparam OutMat Output matrix type. Must define:
  *   - @c value_type (scalar type),
  *   - copy assignment from @c OutMat,
- *   - @c template <class S> OutMat to_dtype() const (or compatible) for scalar
- *     conversion.
+ *   - @c template <class S> OutMat to_dtype() const (or compatible) for
+ * scalar conversion.
  *
  * @param[in]  v    Variant containing an input matrix instance.
  * @param[out] out  Output matrix to be overwritten.
- * @param[in]  key  Optional label used to prefix error messages (typically the
- * map key for @p v). If empty, error messages omit the label.
+ * @param[in]  key  Optional label used to prefix error messages (typically
+ * the map key for @p v). If empty, error messages omit the label.
  *
  * @throws std::runtime_error
- *   - if the stored matrix scalar type cannot be converted to @c OutScalar, or
+ *   - if the stored matrix scalar type cannot be converted to @c OutScalar,
+ * or
  *   - if @c to_dtype<OutScalar>() throws (e.g., due to overflow/invalid
  *     conversion checks).
  *
@@ -451,8 +474,8 @@ Matrix<DataType> operator*(Scalar a, const Matrix<DataType> &A) {
  *
  * @par Example
  * @code{.cpp}
- * using MatrixVariant = std::variant<SamplesField, SamplesIndex, SamplesRGBA>;
- * MatrixVariant v = SamplesField{...}; // e.g., Matrix<float>
+ * using MatrixVariant = std::variant<SamplesField, SamplesIndex,
+ * SamplesRGBA>; MatrixVariant v = SamplesField{...}; // e.g., Matrix<float>
  *
  * SamplesField out_f;
  * assign_matrix_from_variant(v, out_f, "X_ambient_V"); // exact dtype or

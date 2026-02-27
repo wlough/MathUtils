@@ -22,13 +22,6 @@ void bind_mesh(py::module_ &m) {
 
   py::bind_map<mathutils::mesh::MeshSamples>(m, "MeshSamples");
 
-  m.def("find_halfedge_index_of_twin",
-        &mathutils::mesh::find_halfedge_index_of_twin,
-        "Find the index of the twin half-edge", py::arg("H"), py::arg("h"),
-        R"doc(
-Find the index ht of H[ht]=[j, i] in H, where H[h]=[i, j]. Return -1 if not found.
-)doc");
-
   m.def("tri_cycles_to_half_edge_samples",
         &mathutils::mesh::tri_cycles_to_half_edge_samples,
         "Convert triangle vertex cycles to half-edge samples",
@@ -37,63 +30,64 @@ Find the index ht of H[ht]=[j, i] in H, where H[h]=[i, j]. Return -1 if not foun
 Convert triangle vertex cycles to half-edge samples.
 )doc");
 
-  m.def("load_vf_samples_from_ply",
-        &mathutils::mesh::io::load_vf_samples_from_ply,
-        "Load vertex and face samples from a PLY file", py::arg("filepath"),
-        py::arg("preload_into_memory") = true, py::arg("verbose") = false,
-        R"doc(
-Load vertex and face samples from a PLY file.
-
-Args:
-    filepath: Path to the PLY file
-    preload_into_memory: Whether to preload the file into memory (default: True)
-    verbose: Whether to print verbose output (default: False)
-
-Returns:
-    A tuple of (vertices, faces) where:
-    - vertices is an Nx3 array of vertex coordinates
-    - faces is an Mx3 array of triangle vertex indices
-)doc");
-
-  m.def("write_vf_samples_to_ply",
-        &mathutils::mesh::io::write_vf_samples_to_ply,
-        "Write vertex and face samples to a PLY file", py::arg("xyz_coord_V"),
-        py::arg("V_cycle_F"), py::arg("ply_path"), py::arg("use_binary") = true,
-        R"doc(
-  Write vertex and face samples to a PLY file.
-
-  Args:
-      xyz_coord_V: Nx3 array of vertex coordinates
-      V_cycle_F: Mx3 array of triangle vertex indices
-      ply_path: Output PLY file path
-      use_binary: Whether to write binary format (default: True)
-  )doc");
-
-  m.def("load_mesh_samples_from_ply",
-        &mathutils::mesh::io::load_mesh_samples_from_ply,
-        "Load mesh samples from a PLY file", py::arg("filepath"),
-        py::arg("preload_into_memory") = true, py::arg("verbose") = false,
-        R"doc(
-Load mesh samples from a PLY file.
-Args:
-    filepath: Path to the PLY file
-    preload_into_memory: Whether to preload the file into memory (default: True)
-    verbose: Whether to print verbose output (default: False)
-Returns:
-    A dict of mesh samples with keys as sample names and values as ndarrays.
-)doc");
-
-  m.def("write_mesh_samples_to_ply",
-        &mathutils::mesh::io::write_mesh_samples_to_ply,
-        "Write mesh samples to a PLY file", py::arg("mesh_samples"),
-        py::arg("ply_path"), py::arg("use_binary") = true,
-        R"doc(
-Write mesh samples to a PLY file.
-Args:
-    mesh_samples: A dict of mesh samples with keys as sample names and values as ndarrays.
-    ply_path: Output PLY file path
-    use_binary: Whether to write binary format (default: True)
-)doc");
+  //   m.def("load_vf_samples_from_ply",
+  //         &mathutils::mesh::io::load_vf_samples_from_ply,
+  //         "Load vertex and face samples from a PLY file",
+  //         py::arg("filepath"), py::arg("preload_into_memory") = true,
+  //         py::arg("verbose") = false, R"doc(
+  // Load vertex and face samples from a PLY file.
+  //
+  // Args:
+  //     filepath: Path to the PLY file
+  //     preload_into_memory: Whether to preload the file into memory (default:
+  //     True) verbose: Whether to print verbose output (default: False)
+  //
+  // Returns:
+  //     A tuple of (vertices, faces) where:
+  //     - vertices is an Nx3 array of vertex coordinates
+  //     - faces is an Mx3 array of triangle vertex indices
+  // )doc");
+  //
+  //   m.def("write_vf_samples_to_ply",
+  //         &mathutils::mesh::io::write_vf_samples_to_ply,
+  //         "Write vertex and face samples to a PLY file",
+  //         py::arg("xyz_coord_V"), py::arg("V_cycle_F"), py::arg("ply_path"),
+  //         py::arg("use_binary") = true, R"doc(
+  //   Write vertex and face samples to a PLY file.
+  //
+  //   Args:
+  //       xyz_coord_V: Nx3 array of vertex coordinates
+  //       V_cycle_F: Mx3 array of triangle vertex indices
+  //       ply_path: Output PLY file path
+  //       use_binary: Whether to write binary format (default: True)
+  //   )doc");
+  //
+  //   m.def("load_mesh_samples_from_ply",
+  //         &mathutils::mesh::io::load_mesh_samples_from_ply,
+  //         "Load mesh samples from a PLY file", py::arg("filepath"),
+  //         py::arg("preload_into_memory") = true, py::arg("verbose") = false,
+  //         R"doc(
+  // Load mesh samples from a PLY file.
+  // Args:
+  //     filepath: Path to the PLY file
+  //     preload_into_memory: Whether to preload the file into memory (default:
+  //     True) verbose: Whether to print verbose output (default: False)
+  // Returns:
+  //     A dict of mesh samples with keys as sample names and values as
+  //     ndarrays.
+  // )doc");
+  //
+  //   m.def("write_mesh_samples_to_ply",
+  //         &mathutils::mesh::io::write_mesh_samples_to_ply,
+  //         "Write mesh samples to a PLY file", py::arg("mesh_samples"),
+  //         py::arg("ply_path"), py::arg("use_binary") = true,
+  //         R"doc(
+  // Write mesh samples to a PLY file.
+  // Args:
+  //     mesh_samples: A dict of mesh samples with keys as sample names and
+  //     values as ndarrays. ply_path: Output PLY file path use_binary: Whether
+  //     to write binary format (default: True)
+  // )doc");
 
   // m.def("save_mesh_samples", &mathutils::mesh::io::save_mesh_samples,
   //       "Write mesh samples to a PLY file", py::arg("mesh_samples"),
@@ -228,7 +222,23 @@ Args:
       .def("genus", &HalfEdgeTopology::genus)
 
       .def("to_mesh_samples", &HalfEdgeTopology::to_mesh_samples)
-      .def("from_mesh_samples", &HalfEdgeTopology::from_mesh_samples);
+      .def("from_mesh_samples", &HalfEdgeTopology::from_mesh_samples)
+
+      .def("some_negative_boundary_contains_h",
+           &HalfEdgeTopology::some_negative_boundary_contains_h, py::arg("h"))
+
+      .def("some_positive_boundary_contains_h",
+           &HalfEdgeTopology::some_positive_boundary_contains_h, py::arg("h"))
+
+      .def("some_boundary_contains_h",
+           &HalfEdgeTopology::some_boundary_contains_h, py::arg("h"))
+
+      .def("some_boundary_contains_v",
+           &HalfEdgeTopology::some_boundary_contains_v, py::arg("h"))
+
+      .def("VB_cycles", &HalfEdgeTopology::VB_cycles)
+
+      .def("flip_hedge", &HalfEdgeTopology::flip_hedge, py::arg("h"));
 
   py::class_<HalfEdgeMesh>(m, "HalfEdgeMesh")
       .def(py::init<>())
@@ -251,83 +261,83 @@ Args:
       .def_property_readonly(
           "X_ambient_V",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return matrix_view(self.X_ambient_V_, py::cast(&self));
+            return matrix_view(self.X_ambient_V, py::cast(&self));
           },
           "Writable NumPy view of X_ambient_V.")
       .def_property_readonly(
           "xyz_coord_V",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return matrix_view(self.X_ambient_V_, py::cast(&self));
+            return matrix_view(self.X_ambient_V, py::cast(&self));
           },
           "Writable NumPy view of X_ambient_V.")
 
       .def_property_readonly(
           "h_out_V",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.h_out_V_, py::cast(&self));
+            return vector_view(self.topo.h_out_V, py::cast(&self));
           },
           "Writable NumPy view of h_out_V.")
       .def_property_readonly(
           "h_directed_E",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.h_directed_E_, py::cast(&self));
+            return vector_view(self.topo.h_directed_E, py::cast(&self));
           },
           "Writable NumPy view of h_directed_E.")
       .def_property_readonly(
           "h_right_F",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.h_right_F_, py::cast(&self));
+            return vector_view(self.topo.h_right_F, py::cast(&self));
           },
           "Writable NumPy view of h_right_F.")
       .def_property_readonly(
           "h_negative_B",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.h_negative_B_, py::cast(&self));
+            return vector_view(self.topo.h_negative_B, py::cast(&self));
           },
           "Writable NumPy view of h_negative_B.")
 
       .def_property_readonly(
           "v_origin_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.v_origin_H_, py::cast(&self));
+            return vector_view(self.topo.v_origin_H, py::cast(&self));
           },
           "Writable NumPy view of v_origin_H.")
       .def_property_readonly(
           "e_undirected_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.e_undirected_H_, py::cast(&self));
+            return vector_view(self.topo.e_undirected_H, py::cast(&self));
           },
           "Writable NumPy view of e_undirected_H.")
       .def_property_readonly(
           "f_left_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.f_left_H_, py::cast(&self));
+            return vector_view(self.topo.f_left_H, py::cast(&self));
           },
           "Writable NumPy view of f_left_H.")
 
       .def_property_readonly(
           "h_next_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.h_next_H_, py::cast(&self));
+            return vector_view(self.topo.h_next_H, py::cast(&self));
           },
           "Writable NumPy view of h_next_H.")
       .def_property_readonly(
           "h_twin_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return vector_view(self.topo.h_twin_H_, py::cast(&self));
+            return vector_view(self.topo.h_twin_H, py::cast(&self));
           },
           "Writable NumPy view of h_twin_H.")
 
       .def_property_readonly(
           "V_cycle_E",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return matrix_view(self.V_cycle_E_, py::cast(&self));
+            return matrix_view(self.V_cycle_E, py::cast(&self));
           },
           "Writable NumPy view of V_cycle_E.")
       .def_property_readonly(
           "V_cycle_F",
           [](mathutils::mesh::HalfEdgeMesh &self) {
-            return matrix_view(self.V_cycle_F_, py::cast(&self));
+            return matrix_view(self.V_cycle_F, py::cast(&self));
           },
           "Writable NumPy view of V_cycle_F.")
 
@@ -390,6 +400,9 @@ Args:
           "h_twin_h",
           [](HalfEdgeMesh &self, Index h) { return self.topo.h_twin_h(h); },
           py::arg("h"))
+
+      .def("refresh_simplex_cycles_from_topo",
+           &HalfEdgeMesh::refresh_simplex_cycles_from_topo)
 
       // .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
       .def("to_mesh_samples",
