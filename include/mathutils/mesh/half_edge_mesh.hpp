@@ -258,7 +258,6 @@ public:
 
   void build_icososphere(size_t num_refinements) {
     // MeshSamples ms = build_icososphere_samples(num_refinements);
-
   }
   void split_edge(Index e);
 };
