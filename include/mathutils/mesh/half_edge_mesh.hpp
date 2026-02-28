@@ -61,9 +61,9 @@ public:
 
   Index h_in_v(Index v) const { return h_twin_H[h_out_V[v]]; }
   Index v_head_h(Index h) const { return v_origin_H[h_twin_H[h]]; }
-  Index h_prev_h(Index h) const { return h_next_H[h_next_H[h]]; }
+  Index h_prev_h(Index h) const;
   Index h_rotcw_h(Index h) const { return h_next_H[h_twin_H[h]]; }
-  Index h_rotccw_h(Index h) const;
+  // Index h_rotccw_h(Index h) const;
   Index h_prev_h_by_rot(Index h) const;
   ///////////////////////////////////////////////////////
   // Predicates /////////////////////////////////////////
@@ -259,6 +259,91 @@ public:
   void build_icososphere(size_t num_refinements) {
     // MeshSamples ms = build_icososphere_samples(num_refinements);
   }
+
+  /**
+   * @brief Divides pair of face by adding a new vertex at midpoint of their
+   * shared edge
+   *
+   * @param f
+   * @details
+   * ```
+   * On Boundary:
+   *                 v2                                    v2
+   *               /   \                                 / | \
+   *              /     \                               /  |  \
+   *             /       \                             /   |   \
+   *            /         \                           /    |    \
+   *           /           \                         /     |     \
+   *          /             \                       /      |      \
+   *         /               \                     /       |       \
+   *        /h2             h1\                   /h2      |      h1\
+   *       /        f0         \                 /         |e2       \
+   *      /                     \               /        h4|h5        \
+   *     /                       \             /    f0     |    f1     \
+   *    /                         \           /            |            \
+   *   /            e0             \         /    e0       |      e1     \
+   *  /             h0              \ ----> /     h0       |      h3      \
+   * v0 ----------------------------v1     v0 ------------v3--------------v1
+   *  \            ht0              /       \    ht3             ht0      /
+   *   \                           /         \                           /
+   *    \ht1    ft0=-b0-1      ht2/           \ht1    ft0=-b0-1      ht2/
+   *
+   * existing half-edges: h0, h1, h2|, ht0, ht1, ht2
+   * existing vertices: v0, v1, v2
+   * existing edges: e0
+   * existing faces: f0, ft0=-b0-1
+   *
+   * new half-edges: h3, h4, h5|, ht3
+   * new vertices: v3
+   * new edges: e1, e2
+   * new faces: f1
+   *
+   *
+   * Not on boundary:
+   *                 v2                                    v2
+   *               /   \                                 / | \
+   *              /     \                               /  |  \
+   *             /       \                             /   |   \
+   *            /         \                           /    |    \
+   *           /           \                         /     |     \
+   *          /             \                       /      |      \
+   *         /               \                     /       |       \
+   *        /h2             h1\                   /h2      |      h1\
+   *       /        f0         \                 /         |e2       \
+   *      /                     \               /        h4|h5        \
+   *     /                       \             /    f0     |    f1     \
+   *    /                         \           /            |            \
+   *   /            e0             \         /    e0       |      e1     \
+   *  /             h0              \ ----> /     h0       |      h3      \
+   * v0 ----------------------------v1     v0 ------------v3--------------v1
+   *  \            ht0              /       \    ht3       |     ht0      /
+   *   \                           /         \             |             /
+   *    \                         /           \            |            /
+   *     \                       /             \    ft1    |    ft0    /
+   *      \                     /               \       ht5|ht4       /
+   *       \       ft0         /                 \         |et2      /
+   *        \ht1           ht2/                   \ht1     |     ht2/
+   *         \               /                     \       |       /
+   *          \             /                       \      |      /
+   *           \           /                         \     |     /
+   *            \         /                           \    |    /
+   *             \       /                             \   |   /
+   *              \     /                               \  |  /
+   *               \   /                                 \ | /
+   *                vt2                                   vt2
+   *
+   * existing half-edges: h0, h1, h2|, ht0, ht1, ht2
+   * existing vertices: v0, v1, v2|, vt2
+   * existing edges: e0
+   * existing faces: f0|, ft0
+   *
+   * new half-edges: h3, h4, h5|, ht3, ht4, ht5
+   * new vertices: v3
+   * new edges: e1, e2|, et2
+   * new faces: f1|, ft1
+   *
+   * ```
+   */
   void split_edge(Index e);
 };
 /**

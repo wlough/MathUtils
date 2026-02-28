@@ -136,18 +136,19 @@ Convert triangle vertex cycles to half-edge samples.
       py::arg("preload_into_memory") = true, py::arg("verbose") = false,
       py::arg("ply_property_convention") = "MathUtils");
 
-  m.def(
-      "build_icososphere_samples",
-      [](size_t num_refinements) {
-        auto ms = mathutils::mesh::build_icososphere_samples(num_refinements);
-
-        py::dict d;
-        for (auto &[k, v] : ms) {
-          d[py::str(k)] = py::cast(v); // SamplesVariant -> Python object
-        }
-        return d;
-      },
-      "Refine icosohedron", py::arg("num_refinements"));
+  // m.def(
+  //     "build_icososphere_samples",
+  //     [](size_t num_refinements) {
+  //       auto ms =
+  //       mathutils::mesh::build_icososphere_samples(num_refinements);
+  //
+  //       py::dict d;
+  //       for (auto &[k, v] : ms) {
+  //         d[py::str(k)] = py::cast(v); // SamplesVariant -> Python object
+  //       }
+  //       return d;
+  //     },
+  //     "Refine icosohedron", py::arg("num_refinements"));
 
   //////////////////////////////////////////////
   //////////////////////////////////////////////
@@ -403,6 +404,8 @@ Convert triangle vertex cycles to half-edge samples.
 
       .def("refresh_simplex_cycles_from_topo",
            &HalfEdgeMesh::refresh_simplex_cycles_from_topo)
+
+      .def("split_edge", &HalfEdgeMesh::split_edge, py::arg("e"))
 
       // .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
       .def("to_mesh_samples",

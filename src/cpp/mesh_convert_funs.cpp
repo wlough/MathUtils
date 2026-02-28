@@ -434,7 +434,7 @@ half_edge_samples_no_edge_data_to_edge_tri_cycles(
   size_t num_half_edges = v_origin_H.size();
 
   SamplesIndex V_cycle_E(num_edges, 2);
-  SamplesIndex V_cycle_F(num_edges, 3);
+  SamplesIndex V_cycle_F(num_faces, 3);
 
   SamplesIndex e_undirected_H(num_half_edges);
   SamplesIndex h_directed_E(num_edges);
