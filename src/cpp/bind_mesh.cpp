@@ -406,6 +406,7 @@ Convert triangle vertex cycles to half-edge samples.
            &HalfEdgeMesh::refresh_simplex_cycles_from_topo)
 
       .def("split_edge", &HalfEdgeMesh::split_edge, py::arg("e"))
+      .def("flip_non_delaunay", &HalfEdgeMesh::flip_non_delaunay)
 
       // .def("to_mesh_samples", &HalfEdgeMesh::to_mesh_samples)
       .def("to_mesh_samples",

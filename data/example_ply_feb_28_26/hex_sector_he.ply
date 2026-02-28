@@ -1,0 +1,69 @@
+ply
+format ascii 1.0
+comment MathUtils ply
+element half_edge 22
+property int e_undirected
+property int v_origin
+property int h_twin
+property int h_next
+property int f_left
+element boundary 1
+property int h_negative
+element vertex 7
+property int h_out
+property double x
+property double y
+property double z
+element face 5
+property int h_right
+property list uchar int V_cycle
+element edge 11
+property int h_directed
+property list uchar int V_cycle
+end_header
+0 0 15 1 0 
+1 1 16 2 0 
+2 2 3 0 0 
+2 0 2 4 1 
+3 2 17 5 1 
+4 3 6 3 1 
+4 0 5 7 2 
+5 3 18 8 2 
+6 4 9 6 2 
+6 0 8 10 3 
+7 4 19 11 3 
+8 5 12 9 3 
+8 0 11 13 4 
+9 5 20 14 4 
+10 6 21 12 4 
+0 1 0 21 -1 
+1 2 1 15 -1 
+3 3 4 16 -1 
+5 4 7 17 -1 
+7 5 10 18 -1 
+9 6 13 19 -1 
+10 0 14 20 -1 
+21 
+0 0 0 0.1 
+1 0.800038 0 0.1 
+2 0.470866 0.815564 0.05 
+5 -0.486976 0.843467 -0.05 
+8 -0.89681 1.09827e-16 -0.1 
+11 -0.429691 -0.744246 -0.05 
+14 0.478786 -0.829282 0.05 
+0 3 0 1 2 
+3 3 0 2 3 
+6 3 0 3 4 
+9 3 0 4 5 
+12 3 0 5 6 
+0 2 0 1 
+1 2 1 2 
+2 2 0 2 
+4 2 2 3 
+5 2 0 3 
+7 2 3 4 
+8 2 0 4 
+10 2 4 5 
+11 2 0 5 
+13 2 5 6 
+14 2 0 6 

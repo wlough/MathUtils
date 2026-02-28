@@ -54,19 +54,24 @@ void HalfEdgeTopology::from_mesh_samples(MeshSamples &ms) {
 
 Index HalfEdgeTopology::h_prev_h(Index h) const {
   Index h_next = h_next_H[h];
-  Index h_prev = h;
+  int guard = 0;
   while (h_next != h) {
-    h_prev = h_next;
+    h = h_next;
     h_next = h_next_H[h];
+    guard++;
+    assert(guard < 100);
   }
-  return h_prev;
+  return h;
 }
 
 Index HalfEdgeTopology::h_prev_h_by_rot(Index h) const {
   Index h_rot = h_rotcw_h(h);
+  int guard = 0;
   while (h_rot != h) {
     h = h_rot;
     h_rot = h_rotcw_h(h);
+    guard++;
+    assert(guard < 100);
   }
   return h_twin_H[h];
 }
@@ -260,7 +265,7 @@ void HalfEdgeMesh::split_edge(Index e) {
     size_t Nh = topo.num_half_edges() + 4;
     size_t Nv = topo.num_vertices() + 1;
     size_t Ne = topo.num_edges() + 2;
-    size_t Nf = topo.num_vertices() + 1;
+    size_t Nf = topo.num_faces() + 1;
 
     topo.h_next_H.conservativeResize(Nh);
     topo.h_twin_H.conservativeResize(Nh);
@@ -366,7 +371,190 @@ void HalfEdgeMesh::split_edge(Index e) {
     topo.f_left_H[ht3] = ft0;
     return;
   }
+
+  // existing
+  Index h1 = topo.h_next_h(h0);
+  Index h2 = topo.h_next_h(h1);
+
+  Index ht1 = topo.h_next_h(ht0);
+  // Index ht2 = topo.h_prev_h(ht0);
+  Index ht2 = topo.h_next_h(topo.h_next_h(ht0));
+
+  Index v0 = topo.v_origin_h(h0);
+  Index v1 = topo.v_origin_h(h1);
+  Index v2 = topo.v_origin_h(h2);
+
+  Index vt2 = topo.v_origin_h(ht2);
+
+  Index e0 = topo.e_undirected_h(h0);
+
+  Index f0 = topo.f_left_h(h0);
+
+  Index ft0 = topo.f_left_h(ht0);
+
+  // new
+  Index h3 = topo.num_half_edges();
+  Index h4 = h3 + 1;
+  Index h5 = h4 + 1;
+
+  Index ht3 = h5 + 1;
+  Index ht4 = ht3 + 1;
+  Index ht5 = ht4 + 1;
+
+  Index v3 = topo.num_vertices();
+
+  Index e1 = topo.num_edges();
+  Index e2 = e1 + 1;
+
+  Index et2 = e2 + 1;
+
+  Index f1 = topo.num_faces();
+
+  Index ft1 = f1 + 1;
+
+  SamplesReal x3 = (X_ambient_V.row_copy(v0) + X_ambient_V.row_copy(v1)) / 2.0;
+
+  size_t Nh = topo.num_half_edges() + 6;
+  size_t Nv = topo.num_vertices() + 1;
+  size_t Ne = topo.num_edges() + 3;
+  size_t Nf = topo.num_faces() + 2;
+
+  topo.h_next_H.conservativeResize(Nh);
+  topo.h_twin_H.conservativeResize(Nh);
+  topo.v_origin_H.conservativeResize(Nh);
+  topo.e_undirected_H.conservativeResize(Nh);
+  topo.f_left_H.conservativeResize(Nh);
+
+  X_ambient_V.conservativeResize(Nv, 3);
+  topo.h_out_V.conservativeResize(Nv);
+
+  topo.h_directed_E.conservativeResize(Ne);
+
+  topo.h_right_F.conservativeResize(Nf);
+
+  /////////////////////////////
+  // Update existing h0 side //
+  /////////////////////////////
+  // h0:
+  topo.h_twin_H[h0] = ht3;
+  topo.h_next_H[h0] = h4;
+  // topo.v_origin_H[h0] = same;
+  // topo.e_undirected_H[h0] = same;
+  // topo.f_left_H[h0] = same;
+  // h1:
+  // topo.h_twin_H[h1] = same;
+  topo.h_next_H[h1] = h5;
+  // topo.v_origin_H[h1] = same;
+  // topo.e_undirected_H[h1] = same;
+  topo.f_left_H[h1] = f1;
+  // h2:
+  // topo.h_twin_H[h2] = same;
+  // topo.h_next_H[h2] = same;
+  // topo.v_origin_H[h2] = same;
+  // topo.e_undirected_H[h2] = same;
+  // topo.f_left_H[h2] = same;
+  // v0: same
+  // v1: same
+  // v2: same
+  // e0: same
+  // f0:
+  if (topo.h_right_F[f0] == h1) {
+    topo.h_right_F[f0] = h0;
+  }
+  //////////////////////////////
+  // Update existing ht0 side //
+  //////////////////////////////
+  // ht0:
+  topo.h_twin_H[ht0] = h3;
+  topo.h_next_H[ht0] = ht4;
+  // topo.v_origin_H[ht0] = same;
+  topo.e_undirected_H[ht0] = e1;
+  // topo.f_left_H[ht0] = same;
+  // ht1:
+  // topo.h_twin_H[ht1] = same;
+  topo.h_next_H[ht1] = ht5;
+  // topo.v_origin_H[ht1] = same;
+  // topo.e_undirected_H[ht1] = same;
+  topo.f_left_H[ht1] = ft1;
+  // ht2:
+  // topo.h_twin_H[ht2] = same;
+  // topo.h_next_H[ht2] = same;
+  // topo.v_origin_H[ht2] = same;
+  // topo.e_undirected_H[ht2] = same;
+  // topo.f_left_H[ht2] = same;
+  // vt2: same
+  // ft0:
+  if (topo.h_right_F[ft0] == ht1) {
+    topo.h_right_F[ft0] = ht0;
+  }
+  ////////////////////////
+  // Update new h0 side //
+  ////////////////////////
+  // h3:
+  topo.h_twin_H[h3] = ht0;
+  topo.h_next_H[h3] = h1;
+  topo.v_origin_H[h3] = v3;
+  topo.e_undirected_H[h3] = e1;
+  topo.f_left_H[h3] = f1;
+  // h4:
+  topo.h_twin_H[h4] = h5;
+  topo.h_next_H[h4] = h2;
+  topo.v_origin_H[h4] = v3;
+  topo.e_undirected_H[h4] = e2;
+  topo.f_left_H[h4] = f0;
+  // h5:
+  topo.h_twin_H[h5] = h4;
+  topo.h_next_H[h5] = h3;
+  topo.v_origin_H[h5] = v2;
+  topo.e_undirected_H[h5] = e2;
+  topo.f_left_H[h5] = f1;
+  // v3:
+  topo.h_out_V[v3] = h3;
+  X_ambient_V.set_row(v3, {x3[0], x3[1], x3[2]});
+  // e1:
+  topo.h_directed_E[e1] = h3;
+  // e2:
+  topo.h_directed_E[e2] = h4;
+  // f1:
+  topo.h_right_F[f1] = h3;
+  /////////////////////////
+  // Update new ht0 side //
+  /////////////////////////
+  // ht3:
+  topo.h_twin_H[ht3] = h0;
+  topo.h_next_H[ht3] = ht1;
+  topo.v_origin_H[ht3] = v3;
+  topo.e_undirected_H[ht3] = e0;
+  topo.f_left_H[ht3] = ft1;
+  // ht4:
+  topo.h_twin_H[ht4] = ht5;
+  topo.h_next_H[ht4] = ht2;
+  topo.v_origin_H[ht4] = v3;
+  topo.e_undirected_H[ht4] = et2;
+  topo.f_left_H[ht4] = ft0;
+  // ht5:
+  topo.h_twin_H[ht5] = ht4;
+  topo.h_next_H[ht5] = ht3;
+  topo.v_origin_H[ht5] = vt2;
+  topo.e_undirected_H[ht5] = et2;
+  topo.f_left_H[ht5] = ft1;
+  // et2:
+  topo.h_directed_E[et2] = ht4;
+  // ft1:
+  topo.h_right_F[ft1] = ht3;
 }
 
+int HalfEdgeMesh::flip_non_delaunay() {
+  int count = 0;
+  std::vector<size_t> E = rng_.random_permutation(topo.num_edges());
+  for (auto e : E) {
+    Index h = topo.h_directed_e(e);
+    if (!h_is_locally_delaunay(h)) {
+      topo.flip_hedge(h);
+      ++count;
+    }
+  }
+  return count;
+}
 } // namespace mesh
 } // namespace mathutils

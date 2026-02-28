@@ -7,6 +7,7 @@
 #include "mathutils/mesh/mesh_builder_funs.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/mesh/mesh_plyio.hpp"
+#include "mathutils/random/random.hpp"
 #include "mathutils/simple_generator.hpp"
 // #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
 // #include <array>
@@ -61,10 +62,10 @@ public:
 
   Index h_in_v(Index v) const { return h_twin_H[h_out_V[v]]; }
   Index v_head_h(Index h) const { return v_origin_H[h_twin_H[h]]; }
-  Index h_prev_h(Index h) const;
+  Index h_prev_h(Index h) const; // TODO test this
   Index h_rotcw_h(Index h) const { return h_next_H[h_twin_H[h]]; }
   // Index h_rotccw_h(Index h) const;
-  Index h_prev_h_by_rot(Index h) const;
+  Index h_prev_h_by_rot(Index h) const; // TODO test this
   ///////////////////////////////////////////////////////
   // Predicates /////////////////////////////////////////
   ///////////////////////////////////////////////////////
@@ -85,8 +86,8 @@ public:
   ///////////////////////////////////////////////////////
   // Generators /////////////////////////////////////////
   ///////////////////////////////////////////////////////
-  Generatori generate_H_outcw_v(Index v, Index h_start = -1) const {
-    if (h_start == -1) {
+  Generatori generate_H_outcw_v(Index v, Index h_start = InvalidIndex) const {
+    if (h_start == InvalidIndex) {
       h_start = h_out_V[v];
     }
     for (auto h : generate_H_rotcw_h(h_start)) {
@@ -217,6 +218,8 @@ public:
 };
 
 class HalfEdgeMesh {
+private:
+  random::RandomNumberGenerator rng_;
 
 public:
   SamplesReal X_ambient_V;
@@ -255,6 +258,8 @@ public:
   void refresh_simplex_cycles_from_topo();
 
   bool h_is_locally_delaunay(Index h) const;
+
+  int flip_non_delaunay();
 
   void build_icososphere(size_t num_refinements) {
     // MeshSamples ms = build_icososphere_samples(num_refinements);
