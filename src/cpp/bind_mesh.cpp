@@ -239,7 +239,9 @@ Convert triangle vertex cycles to half-edge samples.
 
       .def("VB_cycles", &HalfEdgeTopology::VB_cycles)
 
-      .def("flip_hedge", &HalfEdgeTopology::flip_hedge, py::arg("h"));
+      .def("flip_hedge", &HalfEdgeTopology::flip_hedge, py::arg("h"))
+
+      .def("collapse_hedge", &HalfEdgeTopology::collapse_hedge, py::arg("h"));
 
   py::class_<HalfEdgeMesh>(m, "HalfEdgeMesh")
       .def(py::init<>())

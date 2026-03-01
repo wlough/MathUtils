@@ -83,6 +83,180 @@ public:
     return some_boundary_contains_h(h_out_v(v));
   }
   bool h_is_flippable(Index h) const;
+
+  /**
+   * ```
+   *                 v2                     v2
+   *               /   \                      \
+   *              /     \                      \
+   *             /       \                      \
+   *            /         \                      \
+   *           /           \                      \
+   *          /             \                      \
+   *         /               \                      \
+   *      h7/h2             h1\h6                  h7\h6
+   * f3    / e2     f0      e1 \   f2          f3   e1\    f2
+   *      /                     \                      \
+   *     /                       \                      \
+   *    /                         \                      \
+   *   /            e0             \                      \
+   *  /             h0              \   ---->              \
+   * v0 ----------------------------v1                      v1
+   *  \             h3              /                      /
+   *   \                           /                      /
+   *    \                         /                      /
+   *     \                       /                      /
+   *      \         f1          /                      /
+   *       \                   /                      /
+   * f4     \                 /    f5           f4   /   f5
+   *       h8\h4           h5/h9                  h8/h9
+   *          \e3         e4/                    e3/
+   *           \           /                      /
+   *            \         /                      /
+   *             \       /                      /
+   *              \     /                      /
+   *               \   /                      /
+   *                v3                     vt2
+   *```
+   *
+   * removed
+   * h0, h1, h2, h3, h4, h5
+   * v0
+   * e0, e2, e3
+   * f0, f1
+   *
+   */
+  bool h_is_collapsable(Index h) const;
+
+  bool collapse_hedge(Index h); // TODO finish me
+
+  void swap_h_indices(Index h0, Index h1) { // TODO debug me
+    Index h_next_h0 = h_next_H[h0];
+    Index h_twin_h0 = h_twin_H[h0];
+    Index v_origin_h0 = v_origin_H[h0];
+    Index e_undirected_h0 = e_undirected_H[h0];
+    Index f_left_h0 = f_left_H[h0];
+    Index h_prev_h0 = h_prev_h(h0);
+
+    Index h_next_h1 = h_next_H[h1];
+    Index h_twin_h1 = h_twin_H[h1];
+    Index v_origin_h1 = v_origin_H[h1];
+    Index e_undirected_h1 = e_undirected_H[h1];
+    Index f_left_h1 = f_left_H[h1];
+    Index h_prev_h1 = h_prev_h(h1);
+
+    // update things that point to h0
+    h_next_H[h_prev_h0] = h1;
+    h_twin_H[h_twin_h0] = h1;
+    if (h_out_V[v_origin_h0] == h0) {
+      h_out_V[v_origin_h0] = h1;
+    }
+    if (h_directed_E[e_undirected_h0] == h0) {
+      h_directed_E[e_undirected_h0] = h1;
+    }
+    if (h_right_F[f_left_h0] == h0) {
+      h_right_F[f_left_h0] = h1;
+    }
+
+    // update things that point to h1
+    h_next_H[h_prev_h1] = h0;
+    h_twin_H[h_twin_h1] = h0;
+    if (h_out_V[v_origin_h1] == h1) {
+      h_out_V[v_origin_h1] = h0;
+    }
+    if (h_directed_E[e_undirected_h1] == h1) {
+      h_directed_E[e_undirected_h1] = h0;
+    }
+    if (h_right_F[f_left_h1] == h1) {
+      h_right_F[f_left_h1] = h0;
+    }
+
+    // update things h0 points to
+    h_next_H[h0] = h_next_h1;
+    h_twin_H[h0] = h_twin_h1;
+    v_origin_H[h0] = v_origin_h1;
+    e_undirected_H[h0] = e_undirected_h1;
+    f_left_H[h0] = f_left_h1;
+
+    // update things h1 points to
+    h_next_H[h1] = h_next_h0;
+    h_twin_H[h1] = h_twin_h0;
+    v_origin_H[h1] = v_origin_h0;
+    e_undirected_H[h1] = e_undirected_h0;
+    f_left_H[h1] = f_left_h0;
+  }
+
+  void swap_v_indices(Index v0, Index v1) {
+    Index h0 = h_out_V[v0];
+    Index h1 = h_out_V[v1];
+
+    // update things that point to v0
+    for (auto h : generate_H_outcw_v(v0)) {
+      v_origin_H[h] = v1;
+    }
+    // update things that point to v1
+    for (auto h : generate_H_outcw_v(v1)) {
+      v_origin_H[h] = v0;
+    }
+
+    // update things v0 points to
+    h_out_V[v0] = h1;
+    // update things v1 points to
+    h_out_V[v1] = h0;
+  }
+  void swap_e_indices(Index e0, Index e1) {
+    Index h0 = h_directed_E[e0];
+    Index ht0 = h_twin_H[h0];
+    Index h1 = h_directed_E[e1];
+    Index ht1 = h_twin_H[h1];
+
+    // update things that point to e0
+    e_undirected_H[h0] = e1;
+    e_undirected_H[ht0] = e1;
+    // update things that point to e1
+    e_undirected_H[h1] = e0;
+    e_undirected_H[ht1] = e0;
+    // update things e0 points to
+    h_directed_E[e0] = h1;
+    // update things e1 points to
+    h_directed_E[e1] = h0;
+  };
+
+  void swap_f_indices(Index f0, Index f1) {
+    Index h00 = h_right_F[f0];
+
+    Index h10 = h_right_F[f1];
+
+    // update things that point to f0
+    for (auto h : generate_H_right_f(f0)) {
+      f_left_H[h] = f1;
+    }
+    // update things that point to f1
+    for (auto h : generate_H_right_f(f1)) {
+      f_left_H[h] = f0;
+    }
+    // update things f0 points to
+    h_right_F[f0] = h10;
+    // update things f1 points to
+    h_right_F[f1] = h00;
+  };
+
+  // void swap_f_indices(Index f0, Index f1) {
+  //   if (f0 == f1)
+  //     return;
+  //
+  //   // Swap representative halfedge pointers
+  //   std::swap(h_right_F[f0], h_right_F[f1]);
+  //
+  //   // Fix halfedge -> face mapping globally
+  //   for (Index h = 0; h < num_half_edges(); ++h) {
+  //     if (f_left_H[h] == f0)
+  //       f_left_H[h] = f1;
+  //     else if (f_left_H[h] == f1)
+  //       f_left_H[h] = f0;
+  //   }
+  // }
+
   ///////////////////////////////////////////////////////
   // Generators /////////////////////////////////////////
   ///////////////////////////////////////////////////////
@@ -90,9 +264,14 @@ public:
     if (h_start == InvalidIndex) {
       h_start = h_out_V[v];
     }
-    for (auto h : generate_H_rotcw_h(h_start)) {
+    // for (auto h : generate_H_rotcw_h(h_start)) {
+    //   co_yield h;
+    // }
+    Index h = h_start;
+    do {
       co_yield h;
-    }
+      h = h_rotcw_h(h);
+    } while (h != h_start);
   }
   Generatori generate_H_right_f(Index f) const {
     Index h_start = h_right_F[f];
@@ -126,9 +305,33 @@ public:
   }
   Generatori generate_F_incident_v(Index v) const {
 
-    for (auto h : generate_H_rotcw_h(h_out_V[v])) {
+    // for (auto h : generate_H_rotcw_h(h_out_V[v])) {
+    //   co_yield f_left_H[h];
+    // }
+    Index h_start = h_out_V[v];
+    Index h = h_start;
+    do {
       co_yield f_left_H[h];
+      h = h_rotcw_h(h);
+    } while (h != h_start);
+  }
+  Generatori generate_E_incident_v(Index v) const {
+
+    for (auto h : generate_H_rotcw_h(h_out_V[v])) {
+      co_yield e_undirected_H[h];
     }
+  }
+  Generatori generate_V_adjacent_v(Index v) const {
+
+    // for (auto h : generate_H_rotcw_h(h_out_V[v])) {
+    //   co_yield v_head_h(h);
+    // }
+    Index h_start = h_out_V[v];
+    Index h = h_start;
+    do {
+      co_yield v_head_h(h);
+      h = h_rotcw_h(h);
+    } while (h != h_start);
   }
 
   ///////////////////////////////////////////
@@ -253,7 +456,7 @@ public:
   }
 
   /**
-   * @brief Add V_cycle_E and V_cycle_F to attrs.
+   * @brief Compute V_cycle_E and V_cycle_F from HalfEdgeTopology.
    */
   void refresh_simplex_cycles_from_topo();
 
@@ -350,6 +553,8 @@ public:
    * ```
    */
   void split_edge(Index e);
+
+  bool collapse_edge(Index e); // TODO finish me
 };
 /**
 @} // addtogroup Mesh

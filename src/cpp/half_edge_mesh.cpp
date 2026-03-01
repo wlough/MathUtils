@@ -1,6 +1,7 @@
 #include "mathutils/mesh/half_edge_mesh.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/mesh/mesh_convert_funs.hpp"
+#include <unordered_set>
 
 namespace mathutils {
 namespace mesh {
@@ -90,6 +91,89 @@ bool HalfEdgeTopology::h_is_flippable(Index h) const {
       return false;
     }
   }
+  return true;
+}
+
+bool HalfEdgeTopology::h_is_collapsable(Index h) const {
+
+  Index h0 = h;
+  Index h1 = h_next_H[h0];
+  Index h2 = h_next_H[h1];
+  Index h3 = h_twin_H[h0];
+  Index h4 = h_next_H[h3];
+  Index h5 = h_next_H[h4];
+
+  Index v0 = v_origin_H[h0];
+  Index v1 = v_origin_H[h1];
+  Index v2 = v_origin_H[h2];
+  Index v3 = v_origin_H[h5];
+
+  if (some_boundary_contains_v(v0) || some_boundary_contains_v(v1)) {
+    return false;
+  }
+
+  std::unordered_set<Index> V1;
+  for (auto v : generate_V_adjacent_v(v1)) {
+    V1.insert(v);
+  }
+  std::unordered_set<Index> V0_intersect_V1;
+  for (auto v : generate_V_adjacent_v(v0)) {
+    if (V1.find(v) == V1.end()) {
+      continue;
+    }
+    V0_intersect_V1.insert(v);
+  }
+  if (V0_intersect_V1.size() != 2 ||
+      V0_intersect_V1.find(v2) == V0_intersect_V1.end() ||
+      V0_intersect_V1.find(v3) == V0_intersect_V1.end()) {
+    return false;
+  }
+
+  return true;
+}
+
+bool HalfEdgeTopology::collapse_hedge(Index h) {
+  if (!h_is_collapsable(h)) {
+    return false;
+  }
+
+  Index h0 = h;
+  Index h1 = h_next_H[h0];
+  Index h2 = h_next_H[h1];
+  Index h3 = h_twin_H[h0];
+  Index h4 = h_next_H[h3];
+  Index h5 = h_next_H[h4];
+
+  Index v0 = v_origin_H[h0];
+  Index v1 = v_origin_H[h1];
+  Index v2 = v_origin_H[h2];
+  Index v3 = v_origin_H[h5];
+
+  Index e0 = e_undirected_H[h0];
+  Index e1 = e_undirected_H[h1];
+  Index e2 = e_undirected_H[h2];
+  Index e3 = e_undirected_H[h4];
+  Index e4 = e_undirected_H[h5];
+
+  Index f0 = f_left_H[h0];
+  Index f1 = f_left_H[h3];
+
+  // swap_v_indices(v0, num_vertices() - 1); // need to update positions...
+
+  swap_e_indices(e0, num_vertices() - 1);
+  swap_e_indices(e1, num_vertices() - 2);
+  swap_e_indices(e2, num_vertices() - 3);
+
+  swap_f_indices(f0, num_faces() - 1);
+  swap_f_indices(f1, num_faces() - 2);
+
+  // swap_h_indices(h0, num_half_edges() - 1);
+  // swap_h_indices(h1, num_half_edges() - 2);
+  // swap_h_indices(h2, num_half_edges() - 3);
+  // swap_h_indices(h3, num_half_edges() - 4);
+  // swap_h_indices(h4, num_half_edges() - 5);
+  // swap_h_indices(h5, num_half_edges() - 6);
+
   return true;
 }
 
@@ -556,5 +640,11 @@ int HalfEdgeMesh::flip_non_delaunay() {
   }
   return count;
 }
+
+// bool HalfEdgeMesh::collapse_edge(Index e) {
+//   Index h = topo.h_directed_e(e);
+//
+//   return topo.collapse_hedge(h);
+// }
 } // namespace mesh
 } // namespace mathutils
