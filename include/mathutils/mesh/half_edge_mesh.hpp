@@ -62,10 +62,16 @@ public:
 
   Index h_in_v(Index v) const { return h_twin_H[h_out_V[v]]; }
   Index v_head_h(Index h) const { return v_origin_H[h_twin_H[h]]; }
-  Index h_prev_h(Index h) const; // TODO test this
+  /**
+   * \todo test me!
+   */
+  Index h_prev_h(Index h) const;
   Index h_rotcw_h(Index h) const { return h_next_H[h_twin_H[h]]; }
   // Index h_rotccw_h(Index h) const;
-  Index h_prev_h_by_rot(Index h) const; // TODO test this
+  /**
+   * \todo test me!
+   */
+  Index h_prev_h_by_rot(Index h) const;
   ///////////////////////////////////////////////////////
   // Predicates /////////////////////////////////////////
   ///////////////////////////////////////////////////////
@@ -128,9 +134,15 @@ public:
    */
   bool h_is_collapsable(Index h) const;
 
-  bool collapse_hedge(Index h); // TODO finish me
+  /**
+   *  \todo Finish me
+   */
+  bool collapse_hedge(Index h);
 
-  void swap_h_indices(Index h0, Index h1) { // TODO debug me
+  /**
+   * \todo debug
+   */
+  void swap_h_indices(Index h0, Index h1) {
     Index h_next_h0 = h_next_H[h0];
     Index h_twin_h0 = h_twin_H[h0];
     Index v_origin_h0 = v_origin_H[h0];
@@ -554,7 +566,10 @@ public:
    */
   void split_edge(Index e);
 
-  bool collapse_edge(Index e); // TODO finish me
+  /**
+   * \todo finish me!
+   */
+  bool collapse_edge(Index e);
 };
 /**
 @} // addtogroup Mesh

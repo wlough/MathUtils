@@ -14,7 +14,9 @@
 
 namespace mathutils {
 
-// TODO put these to a type_traits.hpp header or something
+/**
+ * \todo put these to a type_traits.hpp header or something
+ */
 template <typename T> struct is_std_complex : std::false_type {};
 
 template <typename T>

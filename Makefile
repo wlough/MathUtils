@@ -18,7 +18,7 @@ ifdef PYVER
 UVPY := python$(PYVER)
 endif
 
-VENV ?= .venvs/build
+VENV ?= .venv/build
 BIN  := $(VENV)/bin
 
 DISTDIR := dist
@@ -31,7 +31,7 @@ PY := $(abspath $(BIN))/python
 UVRUN := UV_PROJECT_ENVIRONMENT=$(abspath $(VENV)) uv run
 UVPIP_INSTALL := uv pip install --python "$(PY)"
 
-TESTVENV     := .venvs/testpypi
+TESTVENV     := .venv/testpypi
 TEST_BIN := $(abspath $(TESTVENV))/bin
 
 TEST_PY := $(TEST_BIN)/python
