@@ -487,6 +487,7 @@ def run_mathutils_vs_scipy_tests(
     print(2 * "----------------\n")
     print(f"Testing pymathutils.Ylm against scipy.special.sph_harm_y with {tol=}, {l_max=}")
 
+    print("\n*Testing scalar Ylm")
     test_scalar_Y_vs_Y(
         Ylm,
         sph_harm_y,
@@ -495,6 +496,7 @@ def run_mathutils_vs_scipy_tests(
         use_problem_angles=True,
     )
 
+    print("\n*Testing Ylm")
     test_Y_vs_Y(
         Ylm,
         sciYlm,
@@ -502,7 +504,7 @@ def run_mathutils_vs_scipy_tests(
         l_max=l_max,
         use_problem_angles=True,
     )
-
+    print("\n*Testing real_Ylm")
     test_Y_vs_Y(
         real_Ylm,
         real_sciYlm,
@@ -510,7 +512,7 @@ def run_mathutils_vs_scipy_tests(
         l_max=l_max,
         use_problem_angles=True,
     )
-
+    print("\n*Testing compute_all_Ylm")
     test_all_Y_vs_Y(
         compute_all_Ylm,
         compute_all_sciYlm,
@@ -518,7 +520,7 @@ def run_mathutils_vs_scipy_tests(
         l_max=l_max,
         use_problem_angles=True,
     )
-
+    print("\n*Testing compute_all_real_Ylm")
     test_all_Y_vs_Y(
         compute_all_real_Ylm,
         compute_all_real_sciYlm,

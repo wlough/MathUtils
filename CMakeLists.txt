@@ -27,6 +27,7 @@ pybind11_add_module(pymathutils_backend
     src/cpp/random.cpp
     src/cpp/bind_random.cpp
     src/cpp/special.cpp
+    src/cpp/spherical_harmonics.cpp
     src/cpp/bind_special.cpp
     src/cpp/tinyply.cpp
 )

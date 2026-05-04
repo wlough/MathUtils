@@ -1,6 +1,8 @@
 // bind_special.cpp
 #include "mathutils/bind/bind_special.hpp"
+#include "mathutils/bind/matrix_type_caster.hpp"
 #include "mathutils/special/special.hpp"
+#include "mathutils/special/spherical_harmonics.hpp"
 #include <pybind11/complex.h>
 #include <pybind11/eigen.h>
 #include <pybind11/pybind11.h>
@@ -27,26 +29,35 @@ void bind_special(py::module_ &m) {
   //   m.def("spherical_Plm", &mathutils::special::spherical_Plm,
   //               "Compute spherical Plm", py::arg("l"), py::arg("m"),
   //               py::arg("theta"));
+  // m.def("Ylm",
+  //       static_cast<std::complex<double> (*)(int, int, double, double)>(
+  //           &mathutils::special::Ylm),
+  //       "Compute spherical harmonic Ylm for single point", py::arg("l"),
+  //       py::arg("m"), py::arg("theta"), py::arg("phi"));
+  // m.def("Ylm",
+  //       static_cast<Eigen::VectorXcd (*)(int, int, const Eigen::MatrixXd &)>(
+  //           &mathutils::special::Ylm),
+  //       "Compute spherical harmonic Ylm for multiple points", py::arg("l"),
+  //       py::arg("m"), py::arg("thetaphi_coord_P"));
   m.def("Ylm",
-        static_cast<std::complex<double> (*)(int, int, double, double)>(
-            &mathutils::special::Ylm),
+        py::overload_cast<int, int, double, double>(&mathutils::special::Ylm),
         "Compute spherical harmonic Ylm for single point", py::arg("l"),
         py::arg("m"), py::arg("theta"), py::arg("phi"));
   m.def("Ylm",
-        static_cast<Eigen::VectorXcd (*)(int, int, const Eigen::MatrixXd &)>(
+        py::overload_cast<int, int, const mathutils::Matrix<double> &>(
             &mathutils::special::Ylm),
         "Compute spherical harmonic Ylm for multiple points", py::arg("l"),
         py::arg("m"), py::arg("thetaphi_coord_P"));
   m.def("real_Ylm",
-        static_cast<double (*)(int, int, double, double)>(
+        py::overload_cast<int, int, double, double>(
             &mathutils::special::real_Ylm),
-        "Compute real spherical harmonic Ylm for single point", py::arg("l"),
-        py::arg("m"), py::arg("theta"), py::arg("phi"));
+        py::arg("l"), py::arg("m"), py::arg("theta"), py::arg("phi"),
+        "Compute real spherical harmonic Ylm for single point");
   m.def("real_Ylm",
-        static_cast<Eigen::VectorXd (*)(int, int, const Eigen::MatrixXd &)>(
+        py::overload_cast<int, int, const mathutils::Matrix<double> &>(
             &mathutils::special::real_Ylm),
-        "Compute real spherical harmonic Ylm for multiple points", py::arg("l"),
-        py::arg("m"), py::arg("thetaphi_coord_P"));
+        py::arg("l"), py::arg("m"), py::arg("thetaphi_coord_P"),
+        "Compute real spherical harmonic Ylm for multiple points");
   m.def("spherical_harmonic_index_n_LM",
         &mathutils::special::spherical_harmonic_index_n_LM,
         "Convert (l,m) to linear index", py::arg("l"), py::arg("m"));
@@ -61,7 +72,7 @@ void bind_special(py::module_ &m) {
         py::arg("thetaphi_coord_P"));
   m.def("fit_real_sh_coefficients_to_points",
         &mathutils::special::fit_real_sh_coefficients_to_points,
-        "Fit real spherical harmonic coefficients to points", py::arg("XYZ0"),
+        "Fit real spherical harmonic coefficients to points", py::arg("XYZ"),
         py::arg("l_max"), py::arg("reg_lambda"));
 
   //////////////////////////////////

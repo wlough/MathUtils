@@ -5,236 +5,6 @@
 namespace mathutils {
 namespace special {
 
-mathutils::SimpleGenerator<double>
-generate_reduced_spherical_Plm_recursion_three_term_upward_ell(int l_start,
-                                                               int l_end,
-                                                               double theta) {
-  if (l_start < 0 || l_end < l_start) {
-    co_return;
-  }
-  int m = l_start;
-  double P_ell_minus_one_m = reduced_spherical_Pmm(m, theta);
-  // ell = l_start
-  co_yield P_ell_minus_one_m;
-  if (l_start == l_end) {
-    co_return;
-  }
-  double cos_theta = std::cos(theta);
-  double P_ell_m = cos_theta * std::sqrt(2 * m + 3) * P_ell_minus_one_m;
-  // ell = l_start + 1
-  co_yield P_ell_m;
-  for (int ell = m + 2; ell <= l_end; ++ell) {
-    const double den_ell_m = (ell - m) * 1.0 * (ell + m);
-    const double c_ell_m =
-        std::sqrt(((2.0 * ell - 1.0) * (2.0 * ell + 1.0)) / den_ell_m);
-    const double den_ell_minus_one_m =
-        (ell - m) * 1.0 * (ell + m) * (2.0 * ell - 3.0);
-    const double c_ell_minus_one_m =
-        std::sqrt(((ell - m - 1.0) * (ell + m - 1.0) * (2.0 * ell + 1.0)) /
-                  den_ell_minus_one_m);
-    const double q =
-        cos_theta * c_ell_m * P_ell_m - c_ell_minus_one_m * P_ell_minus_one_m;
-    P_ell_minus_one_m = P_ell_m;
-    P_ell_m = q;
-    co_yield P_ell_m;
-  }
-}
-
-mathutils::SimpleGenerator<std::pair<int, double>>
-enumerate_reduced_spherical_Plm_recursion_three_term_upward_ell(int l_start,
-                                                                int l_end,
-                                                                double theta) {
-  if (l_start < 0 || l_end < l_start) {
-    co_return;
-  }
-  int m = l_start;
-  double P_ell_minus_one_m = reduced_spherical_Pmm(m, theta);
-  // ell = l_start
-  co_yield {l_start, P_ell_minus_one_m};
-  if (l_start == l_end) {
-    co_return;
-  }
-  double cos_theta = std::cos(theta);
-  double P_ell_m = cos_theta * std::sqrt(2 * m + 3) * P_ell_minus_one_m;
-  // ell = l_start + 1
-  co_yield {l_start + 1, P_ell_m};
-  for (int ell = m + 2; ell <= l_end; ++ell) {
-    const double den_ell_m = (ell - m) * 1.0 * (ell + m);
-    const double c_ell_m =
-        std::sqrt(((2.0 * ell - 1.0) * (2.0 * ell + 1.0)) / den_ell_m);
-    const double den_ell_minus_one_m =
-        (ell - m) * 1.0 * (ell + m) * (2.0 * ell - 3.0);
-    const double c_ell_minus_one_m =
-        std::sqrt(((ell - m - 1.0) * (ell + m - 1.0) * (2.0 * ell + 1.0)) /
-                  den_ell_minus_one_m);
-    const double q =
-        cos_theta * c_ell_m * P_ell_m - c_ell_minus_one_m * P_ell_minus_one_m;
-    P_ell_minus_one_m = P_ell_m;
-    P_ell_m = q;
-    co_yield {ell, P_ell_m};
-  }
-}
-
-Eigen::VectorXd real_Ylm(int l, int m,
-                         const Eigen::MatrixXd &thetaphi_coord_P) {
-  // check l and m
-  if (l < 0) {
-    throw std::out_of_range("l must be non-negative");
-  }
-  if (m < -l || m > l) {
-    throw std::out_of_range("m must be in the range [-l, l]");
-  }
-  // check thetaphi_coord_P
-  if (thetaphi_coord_P.cols() != 2) {
-    throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
-  }
-  Eigen::VectorXd result(thetaphi_coord_P.rows());
-  for (int i = 0; i < thetaphi_coord_P.rows(); ++i) {
-    double theta = thetaphi_coord_P(i, 0);
-    if (theta < 0 || theta > M_PI) {
-      throw std::out_of_range("theta must be in the range [0, pi]");
-    }
-    double phi = thetaphi_coord_P(i, 1);
-    result(i) = recursive_real_Ylm(l, m, theta, phi);
-  }
-  return result;
-}
-
-Eigen::MatrixXd compute_all_real_Ylm(int l_max,
-                                     const Eigen::MatrixXd &thetaphi_coord_P) {
-  // check l_max
-  if (l_max < 0) {
-    throw std::out_of_range("l_max must be non-negative");
-  }
-  // check thetaphi_coord_P
-  if (thetaphi_coord_P.cols() != 2) {
-    throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
-  }
-  int num_points = thetaphi_coord_P.rows();
-  if (num_points <= 0) {
-    throw std::invalid_argument("thetaphi_coord_P must have at least one row");
-  }
-  //////////////////////////////////
-  int num_modes = l_max * (l_max + 2) + 1; // = n_LM(l_max, l_max)+1
-  Eigen::MatrixXd Y(num_points, num_modes);
-  Y.setZero();
-
-  for (int p{0}; p < num_points; ++p) {
-    double theta = thetaphi_coord_P(p, 0);
-    if (theta < 0 || theta > M_PI) {
-      throw std::out_of_range("theta must be in the range [0, pi]");
-    }
-    double phi = thetaphi_coord_P(p, 1);
-    double reduced_theta =
-        std::min(theta, M_PI - theta); // transform theta to [0, pi/2]
-    // m = 0
-    for (auto [l, reduced_P] :
-         enumerate_reduced_spherical_Plm_recursion_three_term_upward_ell(
-             0, l_max, reduced_theta)) {
-      int n = l * (l + 1);
-      Y(p, n) = ((theta > M_PI_2) && (l & 1)) ? -reduced_P : reduced_P;
-    }
-    // m = +/-1, ... , +/-l_max
-    for (int m = 1; m <= l_max; ++m) {
-      for (auto [l, reduced_P] :
-           enumerate_reduced_spherical_Plm_recursion_three_term_upward_ell(
-               m, l_max, reduced_theta)) {
-        int n_plus = l * (l + 1) + m;
-        int n_minus = l * (l + 1) - m;
-        // Q = (-1)^m * sqrt(2) * P_{l|m|}(theta)
-        double Q = ((m & 1) ^ ((theta > M_PI_2) && ((l - m) & 1)))
-                       ? -std::sqrt(2) * reduced_P
-                       : std::sqrt(2) * reduced_P;
-        // Y_{l |m|} = (-1)^m * sqrt(2) * P_{l|m|}*cos(|m|*phi)
-        Y(p, n_plus) = std::cos(m * phi) * Q;
-        // Y_{l, -|m|} = (-1)^m * sqrt(2) * P_{l|m|}*sin(|m|*phi)
-        Y(p, n_minus) = std::sin(m * phi) * Q;
-      }
-    }
-  } // end for p
-  return Y;
-}
-
-Eigen::VectorXcd Ylm(int l, int m, const Eigen::MatrixXd &thetaphi_coord_P) {
-
-  // check l and m
-  if (l < 0) {
-    throw std::out_of_range("l must be non-negative");
-  }
-  if (m < -l || m > l) {
-    throw std::out_of_range("m must be in the range [-l, l]");
-  }
-  // check thetaphi_coord_P
-  if (thetaphi_coord_P.cols() != 2) {
-    throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
-  }
-  Eigen::VectorXcd result(thetaphi_coord_P.rows());
-  for (int i = 0; i < thetaphi_coord_P.rows(); ++i) {
-    double theta = thetaphi_coord_P(i, 0);
-    if (theta < 0 || theta > M_PI) {
-      throw std::out_of_range("theta must be in the range [0, pi]");
-    }
-    double phi = thetaphi_coord_P(i, 1);
-    result(i) = recursive_Ylm(l, m, theta, phi);
-  }
-  return result;
-}
-
-Eigen::MatrixXcd compute_all_Ylm(int l_max,
-                                 const Eigen::MatrixXd &thetaphi_coord_P) {
-  // check l_max
-  if (l_max < 0) {
-    throw std::out_of_range("l_max must be non-negative");
-  }
-  // check thetaphi_coord_P
-  if (thetaphi_coord_P.cols() != 2) {
-    throw std::invalid_argument("thetaphi_coord_P must have 2 columns");
-  }
-  int num_points = thetaphi_coord_P.rows();
-  if (num_points <= 0) {
-    throw std::invalid_argument("thetaphi_coord_P must have at least one row");
-  }
-  //////////////////////////////////
-  int num_modes = l_max * (l_max + 2) + 1; // = n_LM(l_max, l_max)+1
-  Eigen::MatrixXcd Y(num_points, num_modes);
-  Y.setZero();
-
-  for (int p{0}; p < num_points; ++p) {
-    double theta = thetaphi_coord_P(p, 0);
-    if (theta < 0 || theta > M_PI) {
-      throw std::out_of_range("theta must be in the range [0, pi]");
-    }
-    double phi = thetaphi_coord_P(p, 1);
-    double reduced_theta =
-        std::min(theta, M_PI - theta); // transform theta to [0, pi/2]
-    // m = 0
-    for (auto [l, reduced_P] :
-         enumerate_reduced_spherical_Plm_recursion_three_term_upward_ell(
-             0, l_max, reduced_theta)) {
-      int n = l * (l + 1);
-      Y(p, n) = ((theta > M_PI_2) && (l & 1)) ? -reduced_P : reduced_P;
-    }
-    // m = +/-1, ... , +/-l_max
-    for (int m = 1; m <= l_max; ++m) {
-      for (auto [l, reduced_P] :
-           enumerate_reduced_spherical_Plm_recursion_three_term_upward_ell(
-               m, l_max, reduced_theta)) {
-        int n_plus = l * (l + 1) + m;
-        int n_minus = l * (l + 1) - m;
-        // Y_{l |m|} = P_{l|m|}*exp(i|m|phi)
-        Y(p, n_plus) =
-            ((theta > M_PI_2) && ((l - m) & 1))
-                ? -reduced_P * std::exp(std::complex<double>(0, m * phi))
-                : reduced_P * std::exp(std::complex<double>(0, m * phi));
-        // Y_{l, -|m|} = (-1)^m conj(Y_{l|m|})
-        Y(p, n_minus) =
-            (m & 1) ? -std::conj(Y(p, n_plus)) : std::conj(Y(p, n_plus));
-      }
-    }
-  } // end for p
-  return Y;
-}
-
 //////////////////////////////////////////////////////
 // Alternative implementations of spherical harmonics.
 // May be unstable for large l and m.
@@ -759,9 +529,12 @@ old_compute_all_real_Ylm(int l_max, const Eigen::MatrixXd &thetaphi_coord_P) {
 namespace mathutils {
 namespace special {
 
-Eigen::MatrixXd fit_real_sh_coefficients_to_points(const Eigen::MatrixXd &XYZ0,
-                                                   int l_max,
-                                                   double reg_lambda) {
+Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
+                                                  int l_max,
+                                                  double reg_lambda) {
+
+  using RowMajorMat =
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   // ---------------------------------------------------------------------
   // 0. Basic argument checks
   // ---------------------------------------------------------------------
@@ -769,59 +542,93 @@ Eigen::MatrixXd fit_real_sh_coefficients_to_points(const Eigen::MatrixXd &XYZ0,
     throw std::invalid_argument(
         "fit_real_sh_coefficients_to_points: l_max must be non-negative.");
 
-  if (XYZ0.cols() != 3)
+  if (XYZ.cols() != 3)
     throw std::invalid_argument("fit_real_sh_coefficients_to_points: XYZ0 must "
                                 "have exactly 3 columns.");
 
-  if (XYZ0.rows() == 0)
+  if (XYZ.rows() == 0)
     throw std::invalid_argument("fit_real_sh_coefficients_to_points: XYZ0 must "
                                 "contain at least one point.");
 
   // ---------------------------------------------------------------------
   // 1. Dimensions
   // ---------------------------------------------------------------------
-  const int num_modes = (l_max + 1) * (l_max + 1); // (l_max+1)^2
-  // const int N = static_cast<int>(XYZ0.rows());
+  const size_t num_modes =
+      static_cast<size_t>((l_max + 1) * (l_max + 1)); // (l_max+1)^2
+  const size_t num_points = static_cast<size_t>(XYZ.rows());
 
   // ---------------------------------------------------------------------
-  // 2. Build the design matrix  Y  (N × num_modes)
-  //    Only directions (θ,φ) matter; radius is ignored.
+  // 2. Build sh samples matrix  Y  (num_pts × num_modes)
   // ---------------------------------------------------------------------
-  Eigen::MatrixXd thetaPhi = mathutils::thetaphi_from_xyz(XYZ0); // (N,2)
-  Eigen::MatrixXd Y = compute_all_real_Ylm(l_max, thetaPhi);
+  // Eigen::MatrixXd ThetaPhi = mathutils::thetaphi_from_xyz(XYZ0); // (num_pts,
+  // 2)
+  // Eigen::MatrixXd XYZ0(num_points, 3);
+  // for (size_t q = 0; q < num_points; ++q) {
+  //   XYZ0(q, 0) = XYZ(q, 0);
+  //   XYZ0(q, 1) = XYZ(q, 1);
+  //   XYZ0(q, 2) = XYZ(q, 2);
+  // }
+  Matrix<double> ThetaPhi = mathutils::thetaphi_from_xyz(XYZ); // (num_pts, 2)
+  // Eigen::MatrixXd ThetaPhi0(num_points, 2);
+  // for (size_t q = 0; q < num_points; ++q) {
+  //   ThetaPhi0(q, 0) = ThetaPhi(q, 0);
+  //   ThetaPhi0(q, 1) = ThetaPhi(q, 1);
+  // }
+  Matrix<double> Y =
+      compute_all_real_Ylm(l_max, ThetaPhi); // (num_points, num_modes)
 
   // ---------------------------------------------------------------------
-  // 3. Construct Laplace–Beltrami weights  ℓ(ℓ+1)
+  // 3. Construct Laplace–Beltrami weights  ℓ^2(ℓ+1)^2
   // ---------------------------------------------------------------------
-  Eigen::VectorXd laplace(num_modes);
-  for (int n = 0; n < num_modes; ++n) {
+  Eigen::VectorXd laplace_weights(num_modes);
+  for (size_t n = 0; n < num_modes; ++n) {
     auto [l, m] = spherical_harmonic_index_lm_N(n);
-    laplace(n) = static_cast<double>(l * (l + 1));
+    laplace_weights(n) = static_cast<double>(l * l * (l + 1) * (l + 1));
   }
 
   // ---------------------------------------------------------------------
   // 4. Assemble the normal matrix  M = YᵀY  (SPD)  and add regularisation
   //    directly to its diagonal:  M_ii += λ (ℓ(ℓ+1))²
   // ---------------------------------------------------------------------
-  Eigen::MatrixXd M = Y.transpose() * Y; // (num_modes, num_modes)
+  Matrix<double> M = Y.transpose() * Y; // (num_modes, num_modes)
   if (reg_lambda > 0.0)
-    M.diagonal().array() += reg_lambda * laplace.array().square();
+    // M.diagonal().array() += reg_lambda * laplace.array();
+    for (size_t q = 0; q < num_points; ++q) {
+      M(q, q) += reg_lambda * laplace_weights[q];
+    }
 
   // ---------------------------------------------------------------------
   // 5. Right-hand side  B = Yᵀ X
   // ---------------------------------------------------------------------
-  Eigen::MatrixXd B = Y.transpose() * XYZ0; // (num_modes, 3)
+  Matrix<double> B = Y.transpose() * XYZ; // (num_modes, 3)
 
   // ---------------------------------------------------------------------
   // 6. Solve  M A = B   via Cholesky (faster & stabler than explicit inverse)
   // ---------------------------------------------------------------------
-  Eigen::LLT<Eigen::MatrixXd> chol(M);
+
+  Eigen::Map<const RowMajorMat> M0(M.data(),
+                                   static_cast<Eigen::Index>(M.rows()),
+                                   static_cast<Eigen::Index>(M.cols()));
+  Eigen::Map<const RowMajorMat> B0(M.data(),
+                                   static_cast<Eigen::Index>(B.rows()),
+                                   static_cast<Eigen::Index>(B.cols()));
+  Eigen::LLT<Eigen::MatrixXd> chol(M0);
   if (chol.info() != Eigen::Success)
     throw std::runtime_error("fit_real_sh_coefficients_to_points: normal "
                              "matrix not SPD (ill-posed fit).");
 
-  Eigen::MatrixXd A = chol.solve(B); // coefficients
-  return A;                          // (num_modes, 3)
+  Eigen::MatrixXd A0 = chol.solve(B0); // coefficients
+
+  Matrix<double> A(num_modes, 3);
+
+  Eigen::Map<
+      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      A.data(), A0.rows(), A0.cols()) = A0;
+  // for (size_t n = 0; n < num_modes; ++n) {
+  //   A(n, 0) = A0(n, 0);
+  //   A(n, 1) = A0(n, 1);
+  // }
+  return A; // (num_modes, 3)
 }
 } // namespace special
 } // namespace mathutils
