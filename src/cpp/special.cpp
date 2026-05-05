@@ -1,4 +1,5 @@
 #include "mathutils/special/special.hpp"
+#include "mathutils/matrix.hpp"
 #include <cmath>
 #include <complex>
 
@@ -533,7 +534,7 @@ Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
                                                   int l_max,
                                                   double reg_lambda) {
 
-  using RowMajorMat =
+  using RowMajorEigenMat =
       Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   // ---------------------------------------------------------------------
   // 0. Basic argument checks
@@ -551,14 +552,14 @@ Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
                                 "contain at least one point.");
 
   // ---------------------------------------------------------------------
-  // 1. Dimensions
+  // Dimensions
   // ---------------------------------------------------------------------
   const size_t num_modes =
       static_cast<size_t>((l_max + 1) * (l_max + 1)); // (l_max+1)^2
   const size_t num_points = static_cast<size_t>(XYZ.rows());
 
   // ---------------------------------------------------------------------
-  // 2. Build sh samples matrix  Y  (num_pts × num_modes)
+  // Build sh samples matrix  Y  (num_pts × num_modes)
   // ---------------------------------------------------------------------
   // Eigen::MatrixXd ThetaPhi = mathutils::thetaphi_from_xyz(XYZ0); // (num_pts,
   // 2)
@@ -578,17 +579,17 @@ Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
       compute_all_real_Ylm(l_max, ThetaPhi); // (num_points, num_modes)
 
   // ---------------------------------------------------------------------
-  // 3. Construct Laplace–Beltrami weights  ℓ^2(ℓ+1)^2
+  // Construct Laplace–Beltrami (on unit sphere) weights  \ell^2(\ell+1)^2
   // ---------------------------------------------------------------------
-  Eigen::VectorXd laplace_weights(num_modes);
+  Matrix<double> laplace_weights(num_modes);
   for (size_t n = 0; n < num_modes; ++n) {
     auto [l, m] = spherical_harmonic_index_lm_N(n);
-    laplace_weights(n) = static_cast<double>(l * l * (l + 1) * (l + 1));
+    laplace_weights[n] = static_cast<double>(l * l * (l + 1) * (l + 1));
   }
 
   // ---------------------------------------------------------------------
-  // 4. Assemble the normal matrix  M = YᵀY  (SPD)  and add regularisation
-  //    directly to its diagonal:  M_ii += λ (ℓ(ℓ+1))²
+  // Assemble the normal matrix  M = Y^T Y  (SPD)  and add regularisation
+  //    directly to its diagonal:  M_ii += \lambda (\ell(\ell+1))²
   // ---------------------------------------------------------------------
   Matrix<double> M = Y.transpose() * Y; // (num_modes, num_modes)
   if (reg_lambda > 0.0)
@@ -598,36 +599,37 @@ Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
     }
 
   // ---------------------------------------------------------------------
-  // 5. Right-hand side  B = Yᵀ X
+  // Right-hand side B = Y^T X
   // ---------------------------------------------------------------------
   Matrix<double> B = Y.transpose() * XYZ; // (num_modes, 3)
 
   // ---------------------------------------------------------------------
-  // 6. Solve  M A = B   via Cholesky (faster & stabler than explicit inverse)
+  // Solve  M A = B via Cholesky
   // ---------------------------------------------------------------------
 
-  Eigen::Map<const RowMajorMat> M0(M.data(),
-                                   static_cast<Eigen::Index>(M.rows()),
-                                   static_cast<Eigen::Index>(M.cols()));
-  Eigen::Map<const RowMajorMat> B0(M.data(),
-                                   static_cast<Eigen::Index>(B.rows()),
-                                   static_cast<Eigen::Index>(B.cols()));
-  Eigen::LLT<Eigen::MatrixXd> chol(M0);
-  if (chol.info() != Eigen::Success)
-    throw std::runtime_error("fit_real_sh_coefficients_to_points: normal "
-                             "matrix not SPD (ill-posed fit).");
+  Matrix<double> A = solve_lu(M, B);
 
-  Eigen::MatrixXd A0 = chol.solve(B0); // coefficients
-
-  Matrix<double> A(num_modes, 3);
-
-  Eigen::Map<
-      Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-      A.data(), A0.rows(), A0.cols()) = A0;
-  // for (size_t n = 0; n < num_modes; ++n) {
-  //   A(n, 0) = A0(n, 0);
-  //   A(n, 1) = A0(n, 1);
-  // }
+  // Matrix<double> A(num_modes, 3);
+  // Eigen::Map<const RowMajorEigenMat> M0(M.data(),
+  //                                       static_cast<Eigen::Index>(M.rows()),
+  //                                       static_cast<Eigen::Index>(M.cols()));
+  // Eigen::Map<const RowMajorEigenMat> B0(M.data(),
+  //                                       static_cast<Eigen::Index>(B.rows()),
+  //                                       static_cast<Eigen::Index>(B.cols()));
+  // Eigen::LLT<Eigen::MatrixXd> chol(M0);
+  // if (chol.info() != Eigen::Success)
+  //   throw std::runtime_error("fit_real_sh_coefficients_to_points: normal "
+  //                            "matrix not SPD (ill-posed fit).");
+  //
+  // Eigen::MatrixXd A0 = chol.solve(B0); // coefficients
+  //
+  // Eigen::Map<
+  //     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic,
+  //     Eigen::RowMajor>>( A.data(), A0.rows(), A0.cols()) = A0;
+  // // for (size_t n = 0; n < num_modes; ++n) {
+  // //   A(n, 0) = A0(n, 0);
+  // //   A(n, 1) = A0(n, 1);
+  // // }
   return A; // (num_modes, 3)
 }
 } // namespace special

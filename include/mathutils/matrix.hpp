@@ -434,6 +434,253 @@ Matrix<DataType> operator*(Scalar a, const Matrix<DataType> &A) {
 }
 
 /**
+ * @brief Stores LU factorization with pivots.
+ *
+ * The factorization represents
+ *
+ *     P A = L U,
+ *
+ * where P is a row permutation matrix, L is unit lower triangular, and U is
+ * upper triangular. The matrix lu stores L and U in packed form:
+ *
+ * - lu(i, j), i > j stores L(i, j),
+ * - lu(i, j), i <= j stores U(i, j),
+ * - the diagonal entries of L are implicit and equal to 1.
+ *
+ * The vector pivots stores the final row permutation. That is,
+ *
+ *     (P A)(i, :) = A(pivots[i], :).
+ *
+ * The permutation_sign is +1 for an even number of row swaps and -1 for an
+ * odd number of row swaps.
+ */
+template <typename T> struct LUFactorization {
+  Matrix<T> lu;                    // packed L and U
+  std::vector<std::size_t> pivots; // row permutation
+  int permutation_sign{1};         // useful for determinant
+};
+
+/**
+ * @brief Computes the LU factorization of a square matrix using partial
+ * pivoting.
+ *
+ * This computes
+ *
+ *     P A = L U,
+ *
+ * where P is a row permutation matrix, L is unit lower triangular, and U is
+ * upper triangular. Partial pivoting chooses the pivot row p >= k at each
+ * elimination step k so that
+ *
+ *     |A^{(k)}(p, k)| = max_{i >= k} |A^{(k)}(i, k)|.
+ *
+ * This avoids zero pivots when possible and ensures that the multipliers
+ * stored in L satisfy
+ *
+ *     |L(i, k)| <= 1,  i > k,
+ *
+ * in exact arithmetic.
+ *
+ * The returned matrix stores L and U in packed form. The strictly lower
+ * triangular part stores L, the diagonal and upper triangular part stores U,
+ * and the diagonal of L is implicit.
+ *
+ * @param A Square matrix to factorize.
+ * @param pivot_tol A pivot with absolute value <= pivot_tol is treated as zero.
+ * @return LUFactorization<T> The packed LU factorization and row permutation.
+ *
+ * @throws std::invalid_argument if A is not square.
+ * @throws std::runtime_error if A is singular to the requested tolerance.
+ */
+template <typename T>
+LUFactorization<T> lu_factor(const Matrix<T> &A, double pivot_tol = 0.0)
+  requires(std::is_floating_point_v<T> || is_std_complex<T>::value)
+{
+  const std::size_t n = A.rows();
+
+  if (A.rows() != A.cols()) {
+    throw std::invalid_argument("lu_factor: expected square matrix");
+  }
+
+  LUFactorization<T> fac;
+  fac.lu = A;
+  fac.pivots.resize(n);
+  fac.permutation_sign = 1;
+
+  for (std::size_t i = 0; i < n; ++i) {
+    fac.pivots[i] = i;
+  }
+
+  for (std::size_t k = 0; k < n; ++k) {
+    // Choose pivot row.
+    std::size_t pivot_row = k;
+    double pivot_abs = static_cast<double>(std::abs(fac.lu(k, k)));
+
+    for (std::size_t i = k + 1; i < n; ++i) {
+      const double candidate_abs = static_cast<double>(std::abs(fac.lu(i, k)));
+      if (candidate_abs > pivot_abs) {
+        pivot_abs = candidate_abs;
+        pivot_row = i;
+      }
+    }
+
+    if (pivot_abs <= pivot_tol) {
+      throw std::runtime_error("lu_factor: matrix is singular to tolerance");
+    }
+
+    // Apply row swap to packed LU storage and permutation vector.
+    if (pivot_row != k) {
+      auto row_k = fac.lu.row_span(k);
+      auto row_p = fac.lu.row_span(pivot_row);
+      std::swap_ranges(row_k.begin(), row_k.end(), row_p.begin());
+
+      std::swap(fac.pivots[k], fac.pivots[pivot_row]);
+      fac.permutation_sign *= -1;
+    }
+
+    // Eliminate entries below the pivot.
+    for (std::size_t i = k + 1; i < n; ++i) {
+      fac.lu(i, k) /= fac.lu(k, k);
+
+      const T lik = fac.lu(i, k);
+      for (std::size_t j = k + 1; j < n; ++j) {
+        fac.lu(i, j) -= lik * fac.lu(k, j);
+      }
+    }
+  }
+
+  return fac;
+}
+
+/**
+ * @brief Solves a linear system AB=C for B using a precomputed LU
+ * factorization with pivoting.
+ *
+ * Given a factorization
+ *
+ *     P A = L U,
+ *
+ * where P is a row permutation matrix, L is unit lower triangular, and U is
+ * upper triangular, we solve
+ *
+ *     A B = C
+ *
+ * by applying P to both sides:
+ *
+ *     P A B = P C.
+ *
+ * Since P A = L U, this gives
+ *
+ *     L U B = P C.
+ *
+ * The solution is obtained in two triangular solves:
+ *
+ *     L Y = P C,
+ *     U B = Y.
+ *
+ * The factorization stores L and U in packed form: the strictly lower
+ * triangular part stores L, the diagonal and upper triangular part stores U,
+ * and the diagonal of L is implicit.
+ *
+ * @param fac Precomputed LU factorization of A.
+ * @param C Right-hand side matrix.
+ * @return Matrix<T> The solution matrix B.
+ *
+ * @throws std::invalid_argument if C has incompatible shape.
+ */
+template <typename T>
+Matrix<T> lu_solve(const LUFactorization<T> &fac, const Matrix<T> &C)
+  requires(std::is_floating_point_v<T> || is_std_complex<T>::value)
+{
+  const std::size_t n = fac.lu.rows();
+
+  if (fac.lu.rows() != fac.lu.cols()) {
+    throw std::invalid_argument("lu_solve: expected square LU factorization");
+  }
+
+  if (fac.pivots.size() != n) {
+    throw std::invalid_argument("lu_solve: invalid pivot vector size");
+  }
+
+  if (C.rows() != n) {
+    throw std::invalid_argument("lu_solve: incompatible right-hand side shape");
+  }
+
+  const std::size_t nrhs = C.cols();
+
+  Matrix<T> B(n, nrhs);
+
+  // Apply row permutation: B = P C.
+  for (std::size_t i = 0; i < n; ++i) {
+    const std::size_t pi = fac.pivots[i];
+
+    if (pi >= n) {
+      throw std::invalid_argument("lu_solve: invalid pivot index");
+    }
+
+    for (std::size_t j = 0; j < nrhs; ++j) {
+      B(i, j) = C(pi, j);
+    }
+  }
+
+  // Forward substitution: solve L Y = P C.
+  // L has implicit unit diagonal, so B is overwritten by Y.
+  for (std::size_t i = 0; i < n; ++i) {
+    for (std::size_t k = 0; k < i; ++k) {
+      const T lik = fac.lu(i, k);
+      for (std::size_t j = 0; j < nrhs; ++j) {
+        B(i, j) -= lik * B(k, j);
+      }
+    }
+  }
+
+  // Backward substitution: solve U B = Y.
+  for (std::size_t ii = n; ii-- > 0;) {
+    for (std::size_t k = ii + 1; k < n; ++k) {
+      const T uik = fac.lu(ii, k);
+      for (std::size_t j = 0; j < nrhs; ++j) {
+        B(ii, j) -= uik * B(k, j);
+      }
+    }
+
+    const T uii = fac.lu(ii, ii);
+    for (std::size_t j = 0; j < nrhs; ++j) {
+      B(ii, j) /= uii;
+    }
+  }
+
+  return B;
+}
+
+/**
+ * @brief Solves a linear system AB=C for B using LU factorization with
+ * partial pivoting.
+ *
+ * This is equivalent to
+ *
+ *     auto fac = lu_factor(A, pivot_tol);
+ *     return lu_solve(fac, C);
+ *
+ * If several systems use the same coefficient matrix A but different
+ * right-hand sides C, call lu_factor(A) once and reuse lu_solve(fac, C).
+ *
+ * @param A Square coefficient matrix.
+ * @param C Right-hand side matrix.
+ * @param pivot_tol A pivot with absolute value <= pivot_tol is treated as zero.
+ * @return Matrix<T> The solution matrix B.
+ *
+ * @throws std::invalid_argument if A is not square or if A.rows() != C.rows().
+ * @throws std::runtime_error if A is singular to the requested tolerance.
+ */
+template <typename T>
+Matrix<T> solve_lu(const Matrix<T> &A, const Matrix<T> &C,
+                   double pivot_tol = 0.0)
+  requires(std::is_floating_point_v<T> || is_std_complex<T>::value)
+{
+  return lu_solve(lu_factor(A, pivot_tol), C);
+}
+
+/**
  * @brief Assign an output matrix from a variant holding a matrix of
  * (possibly) different scalar type.
  *
