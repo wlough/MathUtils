@@ -4,9 +4,11 @@
  * @file half_edge_mesh.hpp
  * @brief Simple half-edge mesh class
  */
+#include "mathutils/matrix.hpp"
 #include "mathutils/mesh/mesh_builder_funs.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/mesh/mesh_plyio.hpp"
+#include "mathutils/mesh/simplicial_complex2.hpp"
 #include "mathutils/random/random.hpp"
 #include "mathutils/simple_generator.hpp"
 // #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
@@ -459,6 +461,15 @@ public:
 
     from_mesh_samples(ms);
   }
+
+  // void init_icososphere(size_t num_refinements) {
+  //
+  //   MeshSamples ms = build_icososphere_simplicial_samples(num_refinements);
+  //   SimplicialTopology2 st;
+  //   st.from_mesh_samples(ms);
+  //   topo = SimplicialTopology2_to_HalfEdgeTopology(st); // TODO: implement me
+  //   assign_matrix_from_variant(ms.at("X_ambient_V"), X_ambient_V)
+  // }
 
   void save_ply(const std::string &filepath, const bool use_binary = true,
                 const std::string &ply_property_convention = "MathUtils") {

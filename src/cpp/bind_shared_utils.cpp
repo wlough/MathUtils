@@ -1,5 +1,6 @@
 // bind_shared_utils.cpp
 #include "mathutils/bind/bind_shared_utils.hpp"
+#include "mathutils/bind/matrix_type_caster.hpp"
 #include "mathutils/shared_utils.hpp"
 #include <pybind11/pybind11.h>
 

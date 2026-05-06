@@ -146,6 +146,6 @@ SimplicialTopology2
 HalfEdgeTopology_to_SimplicialTopology2(const HalfEdgeTopology &he_topo);
 
 HalfEdgeTopology
-SimplicialTopology2_to_HalfEdgeTopology(const SimplicialTopology2 &he_topo);
+SimplicialTopology2_to_HalfEdgeTopology(const SimplicialTopology2 &s_topo);
 } // namespace mesh
 } // namespace mathutils

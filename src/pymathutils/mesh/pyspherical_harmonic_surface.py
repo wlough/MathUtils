@@ -1,4 +1,5 @@
-from .pyhalf_edge_mesh import HalfEdgeMesh
+# from .pyhalf_edge_mesh import HalfEdgeMesh
+from ..mathutils_backend.mesh import HalfEdgeMesh
 from ..mathutils_backend import thetaphi_from_xyz
 from ..mathutils_backend.special import (
     compute_all_real_Ylm,
@@ -565,29 +566,22 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
         cassini_a=0.75,
         cassini_center=np.array([0.0, 0.0, 0.0]),
     ):
-        super().__init__(
-            np.zeros((0, 3), dtype=np.float64),
-            np.zeros(0, dtype=np.int32),
-            np.zeros(0, dtype=np.int32),
-            np.zeros(0, dtype=np.int32),
-            np.zeros(0, dtype=np.int32),
-            np.zeros(0, dtype=np.int32),
-            np.zeros(0, dtype=np.int32),
-            np.zeros(0, dtype=np.int32),
-        )
+        # super().__init__(
+        #     np.zeros((0, 3), dtype=np.float64),
+        #     np.zeros(0, dtype=np.int32),
+        #     np.zeros(0, dtype=np.int32),
+        #     np.zeros(0, dtype=np.int32),
+        #     np.zeros(0, dtype=np.int32),
+        #     np.zeros(0, dtype=np.int32),
+        #     np.zeros(0, dtype=np.int32),
+        #     np.zeros(0, dtype=np.int32),
+        # )
+        super().__init__()
         self.point_cloud_ply_path = point_cloud_ply_path
         if point_cloud_ply_path != "":
             print(f"Reading point cloud from {point_cloud_ply_path}...")
-            try:
-                m = HalfEdgeMesh.from_vf_ply(
-                    point_cloud_ply_path, compute_he_stuff=False
-                )
-            except Exception as e:
-                print(f"Error reading vf ply file {point_cloud_ply_path}: {e}")
-                print("trying he ply...")
-                m = HalfEdgeMesh.from_he_ply(
-                    point_cloud_ply_path, compute_vf_stuff=False
-                )
+            m = HalfEdgeMesh()
+            m.load_ply(point_cloud_ply_path)
             self.raw_point_cloud = m.xyz_coord_V.copy()
         else:
             self.raw_point_cloud = raw_point_cloud.copy()
@@ -641,7 +635,7 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
             center = geometric_median(
                 self.raw_point_cloud,
                 w=None,
-                x0=center,
+                # x0=center,
                 tol=1e-9,
                 max_iter=500,
                 eps=1e-12,

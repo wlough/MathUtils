@@ -5,9 +5,6 @@ from pymathutils.special.pyutils import Ylm as _jit_Ylm
 from pymathutils.special import (
     spherical_harmonic_index_n_LM,
     spherical_harmonic_index_lm_N,
-    compute_all_series_real_Ylm,
-    compute_all_series_Ylm,
-    old_compute_all_real_Ylm,
     Ylm,
     real_Ylm,
     compute_all_Ylm,
@@ -49,7 +46,12 @@ def reducedPlm(l, m, theta):
 
     for ell in range(m + 2, l + 1):
         c1 = np.sqrt((2 * ell - 1) * (2 * ell + 1) / ((ell - m) * (ell + m)))
-        c0 = np.sqrt((ell - m - 1) * (ell + m - 1) * (2 * ell + 1) / ((ell - m) * (ell + m) * (2 * ell - 3)))
+        c0 = np.sqrt(
+            (ell - m - 1)
+            * (ell + m - 1)
+            * (2 * ell + 1)
+            / ((ell - m) * (ell + m) * (2 * ell - 3))
+        )
         q = c1 * cos_theta * P_ell_m - c0 * P_ell_minus_1_m
         P_ell_minus_1_m = P_ell_m
         P_ell_m = q
@@ -60,24 +62,15 @@ def reducedPlm(l, m, theta):
 def Plm(l, m, theta):
     abs_m = abs(m)
     sigma = 1 - 2 * ((m * (m < 0) + (l - abs_m) * (theta > np.pi / 2)) & 1)
-    theta = np.pi / 2 + (theta - np.pi / 2) * (int(theta < np.pi / 2) - int(theta > np.pi / 2))
+    theta = np.pi / 2 + (theta - np.pi / 2) * (
+        int(theta < np.pi / 2) - int(theta > np.pi / 2)
+    )
     m = abs_m
     return sigma * reducedPlm(l, m, theta)
 
 
 def test_spherical_Plm_funs():
     from pymathutils.special import (
-        spherical_harmonic_index_n_LM,
-        spherical_harmonic_index_lm_N,
-        compute_all_series_real_Ylm,
-        compute_all_series_Ylm,
-        old_compute_all_real_Ylm,
-        Ylm,
-        real_Ylm,
-        ReLogRe_ImLogRe_over_pi,
-        minus_one_to_int_pow,
-        recursive_Ylm,
-        recursive_real_Ylm,
         reduced_spherical_Pmm,
         reduced_spherical_Plm,
         spherical_Plm,
@@ -89,10 +82,12 @@ def test_spherical_Plm_funs():
             theta = np.pi * np.random.rand()
             reduced_m = abs(m)
             reduced_theta = min(theta, np.pi - theta)
-            reduced_dmm = reducedPmm(reduced_m, reduced_theta) - reduced_spherical_Pmm(reduced_m, reduced_theta)
-            reduced_dlm = reducedPlm(l, reduced_m, reduced_theta) - reduced_spherical_Plm(
-                l, reduced_m, reduced_theta
+            reduced_dmm = reducedPmm(reduced_m, reduced_theta) - reduced_spherical_Pmm(
+                reduced_m, reduced_theta
             )
+            reduced_dlm = reducedPlm(
+                l, reduced_m, reduced_theta
+            ) - reduced_spherical_Plm(l, reduced_m, reduced_theta)
             dlm = Plm(l, m, theta) - spherical_Plm(l, m, theta)
             if any([abs(val) > tol for val in [reduced_dmm, reduced_dlm, dlm]]):
                 print(10 * "-")
@@ -317,7 +312,9 @@ def test_Y_vs_Y(Yfun1, Yfun2, tol=1e-8, l_max=100, use_problem_angles=True):
     )
 
 
-def test_all_Y_vs_Y(compute_all_Yfun1, compute_all_Yfun2, tol=1e-8, l_max=100, use_problem_angles=True):
+def test_all_Y_vs_Y(
+    compute_all_Yfun1, compute_all_Yfun2, tol=1e-8, l_max=100, use_problem_angles=True
+):
 
     # Yfun1 = Ylm
     # Yfun2 = jit_Ylm
@@ -447,7 +444,9 @@ def run_mathutils_vs_sympy_tests(
     l_max=20,
 ):
     print(2 * "----------------\n")
-    print(f"Testing pymathutils.Ylm against sympy.Ynm with {tol=}, {precision=}, {l_max=}")
+    print(
+        f"Testing pymathutils.Ylm against sympy.Ynm with {tol=}, {precision=}, {l_max=}"
+    )
     test_Y_vs_Y(
         Ylm,
         lambda l, m, ThetaPhi: sympy_precision_Ylm(l, m, ThetaPhi, precision=precision),
@@ -463,7 +462,9 @@ def run_scipy_vs_sympy_tests(
     l_max=20,
 ):
     print(2 * "----------------\n")
-    print(f"Testing scipy.special.sph_harm_y against sympy.Ynm with {tol=}, {precision=}, {l_max=}")
+    print(
+        f"Testing scipy.special.sph_harm_y against sympy.Ynm with {tol=}, {precision=}, {l_max=}"
+    )
     test_Y_vs_Y(
         sciYlm,
         lambda l, m, ThetaPhi: sympy_precision_Ylm(l, m, ThetaPhi, precision=precision),
@@ -485,7 +486,9 @@ def run_mathutils_vs_scipy_tests(
     compute_all_real_Ylm, compute_all_real_sciYlm
     """
     print(2 * "----------------\n")
-    print(f"Testing pymathutils.Ylm against scipy.special.sph_harm_y with {tol=}, {l_max=}")
+    print(
+        f"Testing pymathutils.Ylm against scipy.special.sph_harm_y with {tol=}, {l_max=}"
+    )
 
     print("\n*Testing scalar Ylm")
     test_scalar_Y_vs_Y(
