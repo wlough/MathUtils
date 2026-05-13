@@ -657,7 +657,8 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
             print(
                 f"Setting triangulation to icosahedron with {self.icos_refinements} refinements..."
             )
-            m = HalfEdgeMesh.init_icososphere(num_refinements=self.icos_refinements)
+            m = HalfEdgeMesh()
+            m.init_icososphere(self.icos_refinements)
         elif self.triangulation_type == "vf_ply":
             print(f"Reading triangulation from {self.triangulation_ply_path}...")
             m = HalfEdgeMesh.from_vf_ply(

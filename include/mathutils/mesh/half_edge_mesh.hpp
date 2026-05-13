@@ -4,20 +4,12 @@
  * @file half_edge_mesh.hpp
  * @brief Simple half-edge mesh class
  */
-#include "mathutils/matrix.hpp"
+// #include "mathutils/matrix.hpp"
 #include "mathutils/mesh/mesh_builder_funs.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
 #include "mathutils/mesh/mesh_plyio.hpp"
-#include "mathutils/mesh/simplicial_complex2.hpp"
 #include "mathutils/random/random.hpp"
 #include "mathutils/simple_generator.hpp"
-// #include <Eigen/Core> // Eigen::MatrixXd, Eigen::VectorXd
-// #include <array>
-// #include <cstddef>
-// #include <tuple>
-// #include <unordered_set>
-
-// #include <unordered_map>
 
 namespace mathutils {
 namespace mesh {
@@ -44,6 +36,13 @@ public:
   SamplesIndex h_next_H;       //
   SamplesIndex h_twin_H;       //
   ///////////////////////////////
+  HalfEdgeTopology() = default;
+  HalfEdgeTopology(size_t Nv, size_t Ne, size_t Nf, size_t Nb = 0)
+      : h_out_V(SamplesIndex(Nv)), h_directed_E(SamplesIndex(Ne)),
+        h_right_F(SamplesIndex(Nf)), h_negative_B(SamplesIndex(Nb)),
+        v_origin_H(SamplesIndex(2 * Ne)), e_undirected_H(SamplesIndex(2 * Ne)),
+        f_left_H(SamplesIndex(2 * Ne)), h_next_H(SamplesIndex(2 * Ne)),
+        h_twin_H(SamplesIndex(2 * Ne)) {}
 
   ///////////////////////////////////////////////////////
   // Combinatorial maps /////////////////////////////////
@@ -69,7 +68,15 @@ public:
    */
   Index h_prev_h(Index h) const;
   Index h_rotcw_h(Index h) const { return h_next_H[h_twin_H[h]]; }
-  // Index h_rotccw_h(Index h) const;
+  Index h_rotccw_h(Index h) const {
+    Index h0 = h;
+    Index h1 = h;
+    do {
+      h0 = h1;
+      h1 = h_rotcw_h(h1);
+    } while (h1 != h);
+    return h0;
+  }
   /**
    * \todo test me!
    */
@@ -406,6 +413,20 @@ public:
 
   void from_mesh_samples(MeshSamples &ms);
 
+  void from_topo_samples(std::map<std::string, SamplesIndex> ms) {
+    h_out_V = ms.at("h_out_V");
+    h_directed_E = ms.at("h_directed_E");
+    h_right_F = ms.at("h_right_F");
+    h_negative_B = ms.at("h_negative_B");
+
+    v_origin_H = ms.at("v_origin_H");
+    e_undirected_H = ms.at("e_undirected_H");
+    f_left_H = ms.at("f_left_H");
+
+    h_next_H = ms.at("h_next_H");
+    h_twin_H = ms.at("h_twin_H");
+  }
+
   /**
    * @brief Flips half-edge h.
    *
@@ -462,14 +483,15 @@ public:
     from_mesh_samples(ms);
   }
 
-  // void init_icososphere(size_t num_refinements) {
-  //
-  //   MeshSamples ms = build_icososphere_simplicial_samples(num_refinements);
-  //   SimplicialTopology2 st;
-  //   st.from_mesh_samples(ms);
-  //   topo = SimplicialTopology2_to_HalfEdgeTopology(st); // TODO: implement me
-  //   assign_matrix_from_variant(ms.at("X_ambient_V"), X_ambient_V)
-  // }
+  /**
+   * \todo debug me!
+   */
+  void init_icososphere(size_t num_refinements = 0) {
+
+    MeshSamples ms = build_icososphere_half_edge_samples(num_refinements);
+
+    from_mesh_samples(ms);
+  }
 
   void save_ply(const std::string &filepath, const bool use_binary = true,
                 const std::string &ply_property_convention = "MathUtils") {

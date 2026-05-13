@@ -1,6 +1,5 @@
 #include "mathutils/mesh/simplicial_complex2.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
-#include "mathutils/mesh/mesh_convert_funs.hpp"
 
 namespace mathutils {
 namespace mesh {

@@ -246,6 +246,9 @@ Convert triangle vertex cycles to half-edge samples.
   py::class_<HalfEdgeMesh>(m, "HalfEdgeMesh")
       .def(py::init<>())
 
+      .def("init_icososphere", &HalfEdgeMesh::init_icososphere,
+           py::arg("num_refinements"))
+
       .def("h_is_locally_delaunay", &HalfEdgeMesh::h_is_locally_delaunay,
            py::arg("h"))
 
@@ -402,6 +405,14 @@ Convert triangle vertex cycles to half-edge samples.
       .def(
           "h_twin_h",
           [](HalfEdgeMesh &self, Index h) { return self.topo.h_twin_h(h); },
+          py::arg("h"))
+      .def(
+          "h_rotcw_h",
+          [](HalfEdgeMesh &self, Index h) { return self.topo.h_rotcw_h(h); },
+          py::arg("h"))
+      .def(
+          "h_rotccw_h",
+          [](HalfEdgeMesh &self, Index h) { return self.topo.h_rotccw_h(h); },
           py::arg("h"))
 
       .def("refresh_simplex_cycles_from_topo",

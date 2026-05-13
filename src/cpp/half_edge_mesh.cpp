@@ -1,6 +1,5 @@
 #include "mathutils/mesh/half_edge_mesh.hpp"
 #include "mathutils/mesh/mesh_common.hpp"
-#include "mathutils/mesh/mesh_convert_funs.hpp"
 #include <unordered_set>
 
 namespace mathutils {
