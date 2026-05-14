@@ -7,18 +7,20 @@ proj_dir = (nb_dir / "..").resolve()
 sys.path.insert(0, str(proj_dir))
 
 from pymathutils.mesh.pyutils import SphericalHarmonicSurface
+from src.python.mesh_viewer import MeshViewer
 import numpy as np
 
 ply_path = f"{proj_dir}/data/example_ply/dumbbell.ply"
+out_dir = f"{proj_dir}/output"
 
 s0 = SphericalHarmonicSurface(
     # point_cloud_ply_path=elting_ply_paths[1],
     point_cloud_ply_path=ply_path,
-    l_max=90,
+    l_max=100,
     fit_type="xyz",
     reg_lambda=1e-6,
     triangulation_type="icos",  # "icos", "vf_ply", "he_ply"
-    icos_refinements=3,
+    icos_refinements=4,
     triangulation_ply_path="",
     min_neighbor_dist=0.05,
     # pre_surf_coord_transform=lambda xyz: xyz,
@@ -29,12 +31,38 @@ s0 = SphericalHarmonicSurface(
     # cassini_center=np.array([0.0, 0.0, 0.0]),
     cassini_center=np.array([0.05, 0.0, -0.15]),
 )
+# s0.flip_non_delaunay()
 # s0.smooth_verts(num_iterations=80,
 #                 xyz_condition=lambda xyz: np.linalg.norm(xyz) < 0.25)
 # for _ in range(4):
 #     s0.flip_non_delaunay()
 # s0.plot_cloud_vs_mesh()
+dir(s0)
+s0.X_ambient_v(0)
+viewer_kwargs = {
+    "image_dir": f"{out_dir}/next_cycle",
+    "image_index_length": 6,
+    "show_wireframe_surface": False,
+    "show_face_colored_surface": True,
+    "show_vertices": False,
+    "show_half_edges": False,
+    "rgba_face": (1.0, 0.7431, 0.0, 1.0),
+    "rgba_edge": (0.0, 0.0, 0.0, 0.0),
+    "rgba_half_edge": (0.5804, 0.0, 0.8275, 1.0),
+    "rgb_background": (1, 1, 1),
+    "view": {
+        "azimuth": 0.0,
+        "elevation": 0.0,
+        "distance": 8.75,
+        "focalpoint": (0, 0.0, 0),
+    },
+}
+mv = MeshViewer(s0, **viewer_kwargs)
 
+mv.pv_plot(
+    show=True,
+    save=False,
+)
 # %%
 
 import matplotlib.pyplot as plt

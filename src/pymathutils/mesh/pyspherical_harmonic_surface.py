@@ -617,6 +617,23 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
     # ###################################################
     # ###################################################
 
+    def get_surf_coord_P(self):
+        """
+        assigns surface coordinates to points in the point cloud.
+        """
+        print("Assigning surface coordinates to point cloud...")
+        if self.fit_type == "xyz":
+            # Use spherical coordinates (r, theta, phi) for now
+            # eventually use more general surface coordinates
+            xyz_coord_P = np.array(
+                [self.pre_surf_coord_transform(xyz) for xyz in self.xyz_coord_P]
+            )
+            surf_coord_P = thetaphi_from_xyz(xyz_coord_P)
+        elif self.fit_type == "radial":
+            # Use spherical coordinates (r, theta, phi)
+            surf_coord_P = thetaphi_from_xyz(self.xyz_coord_P)
+        return surf_coord_P
+
     def get_standardized_xyz_coord_P(self):
         """
         Apply
@@ -653,12 +670,38 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
         return xyz_coord_P
 
     def set_triangulation(self):
+        # if self.triangulation_type == "icos":
+        #     print(
+        #         f"Setting triangulation to icosahedron with {self.icos_refinements} refinements..."
+        #     )
+        #     m = HalfEdgeMesh()
+        #     m.init_icososphere(self.icos_refinements)
+        # elif self.triangulation_type == "vf_ply":
+        #     print(f"Reading triangulation from {self.triangulation_ply_path}...")
+        #     m = HalfEdgeMesh.from_vf_ply(
+        #         self.triangulation_ply_path, compute_he_stuff=True
+        #     )
+        # elif self.triangulation_type == "he_ply":
+        #     print(f"Reading triangulation from {self.triangulation_ply_path}...")
+        #     m = HalfEdgeMesh.from_he_ply(
+        #         self.triangulation_ply_path, compute_vf_stuff=True
+        #     )
+
+        # self.h_out_V[:] = m.h_out_V
+        # self.v_origin_H[:] = m.v_origin_H
+        # self.h_next_H[:] = m.h_next_H
+        # self.h_twin_H[:] = m.h_twin_H
+        # self.f_left_H[:] = m.f_left_H
+        # self.h_right_F[:] = m.h_right_F
+        # self.h_negative_B[:] = m.h_negative_B
+        # self.V_cycle_F[:] = m.V_cycle_F
+        # self.V_cycle_E[:] = m.V_cycle_E
+
         if self.triangulation_type == "icos":
             print(
                 f"Setting triangulation to icosahedron with {self.icos_refinements} refinements..."
             )
-            m = HalfEdgeMesh()
-            m.init_icososphere(self.icos_refinements)
+            self.init_icososphere(self.icos_refinements)
         elif self.triangulation_type == "vf_ply":
             print(f"Reading triangulation from {self.triangulation_ply_path}...")
             m = HalfEdgeMesh.from_vf_ply(
@@ -670,17 +713,7 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
                 self.triangulation_ply_path, compute_vf_stuff=True
             )
 
-        self.h_out_V = m.h_out_V
-        self.v_origin_H = m.v_origin_H
-        self.h_next_H = m.h_next_H
-        self.h_twin_H = m.h_twin_H
-        self.f_left_H = m.f_left_H
-        self.h_right_F = m.h_right_F
-        self.h_negative_B = m.h_negative_B
-        self.V_cycle_F = m.V_cycle_F
-        self.V_cycle_E = m.V_cycle_E
-
-        self.surf_coord_V = thetaphi_from_xyz(m.xyz_coord_V)
+        self.surf_coord_V = thetaphi_from_xyz(self.xyz_coord_V)
 
     def fit_to_xyz_coord_P(self):
         self.r_coord_P = np.linalg.norm(self.xyz_coord_P, axis=1)

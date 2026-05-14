@@ -808,7 +808,7 @@ void refine_simplicial_samples(MeshSamples &ms) {
   size_t Nf = 4 * Nf0;
 
   X_ambient_V.conservativeResize(Nv, 3);
-  SamplesIndex V_cycle_E(Nf, 2);
+  SamplesIndex V_cycle_E(Ne, 2);
   SamplesIndex V_cycle_F(Nf, 3);
 
   std::unordered_map<std::uint64_t, Index> v_midpt_vv;
@@ -893,7 +893,6 @@ MeshSamples build_icososphere_simplicial_samples(size_t num_refinements) {
 MeshSamples build_icososphere_half_edge_samples(size_t num_refinements) {
   MeshSamples he_samples;
   MeshSamples s_samples = build_icososphere_simplicial_samples(num_refinements);
-
   SamplesIndex V_cycle_F;
   assign_matrix_from_variant(s_samples.at("V_cycle_F"), V_cycle_F);
 
@@ -901,6 +900,9 @@ MeshSamples build_icososphere_half_edge_samples(size_t num_refinements) {
       tri_cycles_to_half_edge_samples(V_cycle_F);
 
   he_samples["X_ambient_V"] = s_samples.at("X_ambient_V");
+  he_samples["V_cycle_E"] = s_samples.at("V_cycle_E");
+  he_samples["V_cycle_F"] = s_samples.at("V_cycle_F");
+
   he_samples["h_out_V"] = ms.at("h_out_V");
   he_samples["h_directed_E"] = ms.at("h_directed_E");
   he_samples["h_right_F"] = ms.at("h_right_F");

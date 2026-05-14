@@ -244,6 +244,8 @@ Convert triangle vertex cycles to half-edge samples.
       .def("collapse_hedge", &HalfEdgeTopology::collapse_hedge, py::arg("h"));
 
   py::class_<HalfEdgeMesh>(m, "HalfEdgeMesh")
+      // .def_property(name, getter, setter, doc)
+      // .def_property_readonly(name, getter, doc)
       .def(py::init<>())
 
       .def("init_icososphere", &HalfEdgeMesh::init_icososphere,
@@ -264,87 +266,153 @@ Convert triangle vertex cycles to half-edge samples.
           },
           py::return_value_policy::reference_internal)
 
-      .def_property_readonly(
+      // .def_property_readonly(
+      //     "X_ambient_V",
+      //     [](mathutils::mesh::HalfEdgeMesh &self) {
+      //       return matrix_view(self.X_ambient_V, py::cast(&self));
+      //     },
+      //     "Writable NumPy view of X_ambient_V.")
+      // .def_property_readonly(
+      //     "xyz_coord_V",
+      //     [](mathutils::mesh::HalfEdgeMesh &self) {
+      //       return matrix_view(self.X_ambient_V, py::cast(&self));
+      //     },
+      //     "Writable NumPy view of X_ambient_V.")
+      // .def_property_readonly(
+      //     "h_out_V",
+      //     [](mathutils::mesh::HalfEdgeMesh &self) {
+      //       return vector_view(self.topo.h_out_V, py::cast(&self));
+      //     },
+      //     "Writable NumPy view of h_out_V.")
+      .def_property(
           "X_ambient_V",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return matrix_view(self.X_ambient_V, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Real> &value) {
+            self.X_ambient_V = value;
+          },
           "Writable NumPy view of X_ambient_V.")
-      .def_property_readonly(
+      .def_property(
           "xyz_coord_V",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return matrix_view(self.X_ambient_V, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Real> &value) {
+            self.X_ambient_V = value;
+          },
           "Writable NumPy view of X_ambient_V.")
 
-      .def_property_readonly(
+      .def_property(
           "h_out_V",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.h_out_V, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.h_out_V = value;
+          },
           "Writable NumPy view of h_out_V.")
-      .def_property_readonly(
+      .def_property(
           "h_directed_E",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.h_directed_E, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.h_directed_E = value;
+          },
           "Writable NumPy view of h_directed_E.")
-      .def_property_readonly(
+      .def_property(
           "h_right_F",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.h_right_F, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.h_right_F = value;
+          },
           "Writable NumPy view of h_right_F.")
-      .def_property_readonly(
+      .def_property(
           "h_negative_B",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.h_negative_B, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.h_negative_B = value;
+          },
           "Writable NumPy view of h_negative_B.")
 
-      .def_property_readonly(
+      .def_property(
           "v_origin_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.v_origin_H, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.v_origin_H = value;
+          },
           "Writable NumPy view of v_origin_H.")
-      .def_property_readonly(
+      .def_property(
           "e_undirected_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.e_undirected_H, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.e_undirected_H = value;
+          },
           "Writable NumPy view of e_undirected_H.")
-      .def_property_readonly(
+      .def_property(
           "f_left_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.f_left_H, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.f_left_H = value;
+          },
           "Writable NumPy view of f_left_H.")
 
-      .def_property_readonly(
+      .def_property(
           "h_next_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.h_next_H, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.h_next_H = value;
+          },
           "Writable NumPy view of h_next_H.")
-      .def_property_readonly(
+      .def_property(
           "h_twin_H",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return vector_view(self.topo.h_twin_H, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) {
+            self.topo.h_twin_H = value;
+          },
           "Writable NumPy view of h_twin_H.")
 
-      .def_property_readonly(
+      .def_property(
           "V_cycle_E",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return matrix_view(self.V_cycle_E, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) { self.V_cycle_E = value; },
           "Writable NumPy view of V_cycle_E.")
-      .def_property_readonly(
+      .def_property(
           "V_cycle_F",
           [](mathutils::mesh::HalfEdgeMesh &self) {
             return matrix_view(self.V_cycle_F, py::cast(&self));
           },
+          [](mathutils::mesh::HalfEdgeMesh &self,
+             const mathutils::Matrix<Index> &value) { self.V_cycle_F = value; },
           "Writable NumPy view of V_cycle_F.")
 
       .def(

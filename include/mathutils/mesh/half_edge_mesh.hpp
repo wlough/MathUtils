@@ -471,6 +471,12 @@ public:
     X_ambient_V.set_row(v, X);
   }
 
+  void set_attr(std::string key, SamplesVariant value) { attrs[key] = value; };
+  SamplesVariant &get_attr(const std::string &key) { return attrs.at(key); };
+
+  // void add_attr(std::string key, SamplesIndex value);
+  // void add_attr(std::string key, SamplesReal value);
+
   MeshSamples to_mesh_samples() const;
   void from_mesh_samples(MeshSamples &ms);
   void load_ply(const std::string &filepath,
