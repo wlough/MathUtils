@@ -253,11 +253,11 @@ Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
         "fit_real_sh_coefficients_to_points: l_max must be non-negative.");
 
   if (XYZ.cols() != 3)
-    throw std::invalid_argument("fit_real_sh_coefficients_to_points: XYZ0 must "
+    throw std::invalid_argument("fit_real_sh_coefficients_to_points: XYZ must "
                                 "have exactly 3 columns.");
 
   if (XYZ.rows() == 0)
-    throw std::invalid_argument("fit_real_sh_coefficients_to_points: XYZ0 must "
+    throw std::invalid_argument("fit_real_sh_coefficients_to_points: XYZ must "
                                 "contain at least one point.");
 
   // ---------------------------------------------------------------------
@@ -303,7 +303,7 @@ Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
   Matrix<double> M = Y.transpose() * Y; // (num_modes, num_modes)
   if (reg_lambda > 0.0)
     // M.diagonal().array() += reg_lambda * laplace.array();
-    for (size_t q = 0; q < num_points; ++q) {
+    for (size_t q = 0; q < num_modes; ++q) {
       M(q, q) += reg_lambda * laplace_weights[q];
     }
 
@@ -313,7 +313,7 @@ Matrix<double> fit_real_sh_coefficients_to_points(const Matrix<double> &XYZ,
   Matrix<double> B = Y.transpose() * XYZ; // (num_modes, 3)
 
   // ---------------------------------------------------------------------
-  // Solve  M A = B via Cholesky
+  // Solve  M A = B via LU
   // ---------------------------------------------------------------------
 
   Matrix<double> A = solve_lu(M, B);

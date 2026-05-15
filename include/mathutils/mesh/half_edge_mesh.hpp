@@ -471,7 +471,11 @@ public:
     X_ambient_V.set_row(v, X);
   }
 
-  void set_attr(std::string key, SamplesVariant value) { attrs[key] = value; };
+  // void set_attr(std::string key, SamplesVariant value) { attrs[key] = value;
+  // };
+  void set_attr(const std::string &key, SamplesVariant value) {
+    attrs[key] = std::move(value);
+  }
   SamplesVariant &get_attr(const std::string &key) { return attrs.at(key); };
 
   // void add_attr(std::string key, SamplesIndex value);

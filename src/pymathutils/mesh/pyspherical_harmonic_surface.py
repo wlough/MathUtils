@@ -472,6 +472,97 @@ def geometric_median(
 #         bins[bin_num].append(xyz)
 
 
+class SphericalHarmonicSurface1:
+    """
+    V -- vertex indices
+    F -- face indices
+    E -- edge indices
+    H -- half-edge indices
+    B -- boundary indices
+    P -- processed point cloud indices
+    N -- spherical harmonic mode indices. (l, m)->l(l+1)+m
+    """
+
+    def __init__(
+        self,
+        point_cloud_ply_path="",
+        l_max=50,
+        reg_lambda=1e-3,
+        icos_refinements=4,
+    ):
+        self.l_max = l_max
+        self.reg_lambda = reg_lambda
+        # self.raw_mesh = None
+        # self.processed_mesh = None
+        # self.spherical_mesh = None
+        self.set_raw_mesh_from_ply(point_cloud_ply_path)
+        self.process_raw_mesh()
+        self.set_spherical_mesh_to_icososphere(
+            num_refinements=icos_refinements,
+        )
+        self.fit_to_points()
+
+    def set_raw_mesh_from_ply(self, ply):
+        self.raw_mesh = HalfEdgeMesh()
+        self.raw_mesh.load_ply(ply)
+
+    def set_spherical_mesh_to_icososphere(self, num_refinements=3):
+        self.spherical_mesh = HalfEdgeMesh()
+        self.spherical_mesh.init_icososphere(num_refinements)
+        X_surf_V = thetaphi_from_xyz(self.spherical_mesh.X_ambient_V)
+        self.spherical_mesh.set_attr("X_surf_V", X_surf_V)
+
+    def process_raw_mesh(self):
+        """
+        Applies rigid transformation + scaling so that:
+          - the centroid of the point cloud is at (0,0,0)
+          - the (1st, 2nd, 3rd) principal components are aligned with the
+            coordinate axes (ez, ey, ex)
+          - the point cloud is scaled to fit inside a unit sphere.
+        """
+        self.processed_mesh = HalfEdgeMesh()
+        self.processed_mesh.from_mesh_samples(self.raw_mesh.to_mesh_samples())
+        center = geometric_median(
+            self.processed_mesh.X_ambient_V,
+            w=None,
+            tol=1e-9,
+            max_iter=500,
+            eps=1e-12,
+            return_info=False,
+        )
+        self.processed_mesh.X_ambient_V -= center
+        ft = point_cloud_principal_components(self.processed_mesh.X_ambient_V)
+        frame = np.array([*ft]).T
+        self.processed_mesh.X_ambient_V = np.einsum(
+            "sj, ij->si", self.processed_mesh.X_ambient_V, frame.T
+        )
+        r_coord_P = np.linalg.norm(self.processed_mesh.X_ambient_V, axis=1)
+        scale = np.max(self.processed_mesh.X_ambient_V)
+        self.processed_mesh.X_ambient_V /= scale
+
+        self.center = center
+        self.frame = frame
+        self.scale = scale
+
+    def fit_to_points(self):
+
+        sh_coeffs_NX = fit_real_sh_coefficients_to_points(
+            self.processed_mesh.X_ambient_V, self.l_max, self.reg_lambda
+        )
+        self.processed_mesh.set_attr("sh_coeffs_NX", sh_coeffs_NX)
+
+        sph_harm_VN = compute_all_real_Ylm(
+            self.l_max, self.spherical_mesh.get_attr("X_surf_V")
+        )
+        self.spherical_mesh.set_attr("sph_harm_VN", sph_harm_VN)
+
+        # print(f"{sh_coeffs_NX.shape=}")
+        # print(f"{sph_harm_VN.shape=}")
+        self.spherical_mesh.X_ambient_V = np.einsum(
+            "ni,vn->vi", sh_coeffs_NX, sph_harm_VN
+        )
+
+
 class SphericalHarmonicSurface(HalfEdgeMesh):
     """
     V -- vertex indices
@@ -479,7 +570,7 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
     E -- edge indices
     H -- half-edge indices
     B -- boundary indices
-    P -- processedpoint cloud indices
+    P -- processed point cloud indices
     N -- spherical harmonic mode indices. (l, m)->l(l+1)+m
 
     Input
@@ -608,7 +699,9 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
                 self.xyz_coord_P, self.min_neighbor_dist, max_iterations=1000
             )
             self.xyz_coord_P = self.xyz_coord_P[keep_indices].copy()
+        print("Setting triangulation...")
         self.set_triangulation()  # and surf_coord_V
+        print("Fitting spherical harmonics to points...")
         self.fit_to_xyz_coord_P()
 
     # ###################################################
@@ -723,7 +816,8 @@ class SphericalHarmonicSurface(HalfEdgeMesh):
         # ***
         self.coeff_xyz_N = self.solve_for_coeff_xyz_N()
         # self.coeff_xyz_N = fit_real_sh_coefficients_to_points(
-        #     self.xyz_coord_P, self.l_max, self.reg_lambda)
+        #     self.xyz_coord_P, self.l_max, self.reg_lambda
+        # )
         # ***
         self.sph_harm_VN = compute_all_real_Ylm(self.l_max, self.surf_coord_V)
         self.xyz_coord_V = self.sph_harm_VN @ self.coeff_xyz_N

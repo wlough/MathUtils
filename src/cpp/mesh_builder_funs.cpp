@@ -257,7 +257,7 @@ tri_cycles_to_half_edge_samples(const SamplesIndex &V_cycle_F) {
 
   Index Nv = V_cycle_F.maxCoeff() + 1;
   Index Nf = V_cycle_F.rows();
-  // num interior + num positive boundary half-edges
+  // Nh0 = num interior + num positive boundary half-edges
   Index Nh0 = 3 * Nf;
   SamplesIndex H0(Nh0, 2);
   // half-edge samples
@@ -859,6 +859,10 @@ void refine_simplicial_samples(MeshSamples &ms) {
       V_cycle_E.set_row(e_count++, {v20, v0});
       v_midpt_vv[key20] = v20;
     }
+
+    V_cycle_E.set_row(e_count++, {v01, v12});
+    V_cycle_E.set_row(e_count++, {v12, v20});
+    V_cycle_E.set_row(e_count++, {v20, v01});
 
     V_cycle_F.set_row(f_count++, {v0, v01, v20});
     V_cycle_F.set_row(f_count++, {v01, v1, v12});

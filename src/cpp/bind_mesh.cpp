@@ -258,32 +258,29 @@ Convert triangle vertex cycles to half-edge samples.
           "topo",
           [](HalfEdgeMesh &self) -> HalfEdgeTopology & { return self.topo; },
           py::return_value_policy::reference_internal)
-
-      .def_property_readonly(
+      .def_property(
           "attrs",
-          [](HalfEdgeMesh &self) -> mathutils::mesh::MeshSamples & {
-            return self.attrs;
+          [](const HalfEdgeMesh &self) {
+            mathutils::mesh::MeshSamples ms = self.attrs; // copy/move return
+            py::dict d;
+            for (auto &[k, v] : ms) {
+              d[py::str(k)] = py::cast(v); // SamplesVariant -> Python object
+            }
+            return d;
           },
-          py::return_value_policy::reference_internal)
+          [](HalfEdgeMesh &self, const py::dict &d) {
+            mathutils::mesh::MeshSamples ms;
 
-      // .def_property_readonly(
-      //     "X_ambient_V",
-      //     [](mathutils::mesh::HalfEdgeMesh &self) {
-      //       return matrix_view(self.X_ambient_V, py::cast(&self));
-      //     },
-      //     "Writable NumPy view of X_ambient_V.")
-      // .def_property_readonly(
-      //     "xyz_coord_V",
-      //     [](mathutils::mesh::HalfEdgeMesh &self) {
-      //       return matrix_view(self.X_ambient_V, py::cast(&self));
-      //     },
-      //     "Writable NumPy view of X_ambient_V.")
-      // .def_property_readonly(
-      //     "h_out_V",
-      //     [](mathutils::mesh::HalfEdgeMesh &self) {
-      //       return vector_view(self.topo.h_out_V, py::cast(&self));
-      //     },
-      //     "Writable NumPy view of h_out_V.")
+            for (auto item : d) {
+              std::string key = py::cast<std::string>(item.first);
+              mathutils::mesh::SamplesVariant val =
+                  py::cast<mathutils::mesh::SamplesVariant>(item.second);
+              ms.insert_or_assign(std::move(key), std::move(val));
+            }
+
+            self.attrs = ms;
+          },
+          "Copy of attrs dict.")
       .def_property(
           "X_ambient_V",
           [](mathutils::mesh::HalfEdgeMesh &self) {
@@ -415,6 +412,25 @@ Convert triangle vertex cycles to half-edge samples.
              const mathutils::Matrix<Index> &value) { self.V_cycle_F = value; },
           "Writable NumPy view of V_cycle_F.")
 
+      .def(
+          "get_attr",
+          [](HalfEdgeMesh &self, const std::string &key) -> py::array {
+            mathutils::mesh::SamplesVariant &v = self.get_attr(key);
+            py::object owner = py::cast(&self);
+
+            return std::visit(
+                [&](auto &M) -> py::array {
+                  if (M.is_vector()) {
+                    return vector_view(M, owner);
+                  }
+                  return matrix_view(M, owner);
+                },
+                v);
+          },
+          py::arg("key"),
+          "Return a writable NumPy view of an attribute matrix.")
+      .def("set_attr", &HalfEdgeMesh::set_attr, py::arg("key"),
+           py::arg("value"), "Set an attribute matrix.")
       .def(
           "X_ambient_v",
           [](HalfEdgeMesh &self, Index v) {

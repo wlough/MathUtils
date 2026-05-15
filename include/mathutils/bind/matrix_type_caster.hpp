@@ -27,7 +27,11 @@ public:
       return false;
     // Require exact dtype so std::variant can try other T's.
     // Stuff gets cast to wrong data types without this.
-    if (!py::dtype::of<T>().is(arr_in.dtype()))
+    // if (!py::dtype::of<T>().is(arr_in.dtype()))
+    //   return false;
+    // `is` fails when loading an array that came from writable NumPy view
+    // returned by pybind function
+    if (!py::dtype::of<T>().equal(arr_in.dtype()))
       return false;
     // Only accept 1D or 2D
     auto ndim = arr_in.ndim();
